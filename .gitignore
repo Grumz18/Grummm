@@ -1,0 +1,35 @@
+﻿# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+ai-context.md
+architecture-lock.md
+dev-state.md
+module-contract.md
+
+# Logs
+*.log
+logs/
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+.pnpm-store/
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+
+# Env/secrets
+.env
+.env.*
+*.secrets
+
+# Docker/runtime
+*.pid
+*.tmp
