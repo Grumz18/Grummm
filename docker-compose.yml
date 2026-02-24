@@ -9,17 +9,16 @@ services:
     ports:
       - "80:80"
     networks:
-      - platform-net
+      - edge-net
 
   backend:
     build:
       context: .
       dockerfile: platform/backend/Dockerfile
     container_name: platform-backend
-    expose:
-      - "8080"
     networks:
-      - platform-net
+      - edge-net
+      - data-net
 
   postgres:
     build:
@@ -32,13 +31,13 @@ services:
       POSTGRES_PASSWORD: platform
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    expose:
-      - "5432"
     networks:
-      - platform-net
+      - data-net
 
 networks:
-  platform-net:
+  edge-net:
+    driver: bridge
+  data-net:
     driver: bridge
 
 volumes:
