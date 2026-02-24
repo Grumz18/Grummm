@@ -2,6 +2,7 @@ using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Security;
 using Platform.WebAPI.Contracts;
+using Platform.WebAPI.Extensions;
 using Platform.WebAPI.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,7 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddModules(typeof(Program).Assembly);
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
@@ -80,5 +82,7 @@ privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest reques
     var revoked = await refreshTokenService.RevokeAsync(request.RefreshToken);
     return revoked ? Results.NoContent() : Results.NotFound();
 });
+
+app.MapModules();
 
 app.Run();
