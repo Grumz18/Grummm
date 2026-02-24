@@ -8,6 +8,10 @@ services:
       - backend
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - nginx-certs:/etc/nginx/certs
+      - certbot-www:/var/www/certbot
     networks:
       - edge-net
 
@@ -42,3 +46,5 @@ networks:
 
 volumes:
   postgres-data:
+  nginx-certs:
+  certbot-www:
