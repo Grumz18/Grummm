@@ -1,6 +1,7 @@
 ﻿import { createElement, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthSessionProvider, type AuthSession } from "../auth/auth-session";
+import { PrivateAppLayout, PublicLayout } from "../layouts";
 import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
 
@@ -40,24 +41,36 @@ export interface AppRouterProps {
   session?: AuthSession;
 }
 
+function withPublicLayout(node: ReactNode): ReactNode {
+  return <PublicLayout>{node}</PublicLayout>;
+}
+
+function withPrivateLayout(node: ReactNode): ReactNode {
+  return <PrivateAppLayout>{node}</PrivateAppLayout>;
+}
+
 export function AppRouter({ session = { isAuthenticated: false } }: AppRouterProps) {
   return (
     <AuthSessionProvider value={session}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<PublicHome />} />
-          <Route path="/projects" element={<PublicProjects />} />
-          <Route path="/projects/:id" element={<PublicProjectDetails />} />
+          <Route path="/" element={withPublicLayout(<PublicHome />)} />
+          <Route path="/projects" element={withPublicLayout(<PublicProjects />)} />
+          <Route path="/projects/:id" element={withPublicLayout(<PublicProjectDetails />)} />
 
           {publicModuleRoutes.map((route) => (
-            <Route key={route.id} path={route.path} element={createElement(route.component)} />
+            <Route
+              key={route.id}
+              path={route.path}
+              element={withPublicLayout(createElement(route.component))}
+            />
           ))}
 
           <Route
             path="/app"
             element={
               <ProtectedRoute adminOnly>
-                <PrivateAppHome />
+                {withPrivateLayout(<PrivateAppHome />)}
               </ProtectedRoute>
             }
           />
@@ -68,7 +81,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
               path={route.path}
               element={
                 <ProtectedRoute adminOnly>
-                  {createElement(route.component)}
+                  {withPrivateLayout(createElement(route.component))}
                 </ProtectedRoute>
               }
             />
@@ -80,16 +93,25 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
               path={route.path}
               element={
                 route.path.startsWith("/app") ? (
-                  <ProtectedRoute adminOnly>{createElement(route.component)}</ProtectedRoute>
+                  <ProtectedRoute adminOnly>
+                    {withPrivateLayout(createElement(route.component))}
+                  </ProtectedRoute>
                 ) : (
-                  createElement(route.component)
+                  withPublicLayout(createElement(route.component))
                 )
               }
             />
           ))}
 
-          <Route path="/app/*" element={<ProtectedRoute adminOnly><Navigate to="/app" replace /></ProtectedRoute>} />
-          <Route path="*" element={<NotFound />} />
+          <Route
+            path="/app/*"
+            element={
+              <ProtectedRoute adminOnly>
+                {withPrivateLayout(<Navigate to="/app" replace />)}
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={withPublicLayout(<NotFound />)} />
         </Routes>
       </BrowserRouter>
     </AuthSessionProvider>
