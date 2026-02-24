@@ -2,6 +2,7 @@ using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Security;
 using Platform.WebAPI.Contracts;
+using Platform.WebAPI.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,10 +49,7 @@ var privateAuth = privateApi.MapGroup("/auth");
 
 publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService refreshTokenService) =>
 {
-    if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
-    {
-        return Results.BadRequest(new { error = "username_and_password_required" });
-    }
+    RequestValidator.Validate(request);
 
     var user = new AuthUser(
         UserId: Guid.NewGuid().ToString("N"),
@@ -64,6 +62,8 @@ publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService r
 
 publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenService refreshTokenService) =>
 {
+    RequestValidator.Validate(request);
+
     var result = await refreshTokenService.RotateAsync(request.RefreshToken);
     if (!result.Success || result.Tokens is null)
     {
@@ -75,6 +75,8 @@ publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenServi
 
 privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest request, IRefreshTokenService refreshTokenService) =>
 {
+    RequestValidator.Validate(request);
+
     var revoked = await refreshTokenService.RevokeAsync(request.RefreshToken);
     return revoked ? Results.NoContent() : Results.NotFound();
 });

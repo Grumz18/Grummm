@@ -1,4 +1,10 @@
-﻿namespace Platform.WebAPI.Contracts;
+﻿using System.ComponentModel.DataAnnotations;
 
-public sealed record LoginRequest(string UserName, string Password);
-public sealed record RefreshRequest(string RefreshToken);
+namespace Platform.WebAPI.Contracts;
+
+public sealed record LoginRequest(
+    [property: Required, MinLength(3), MaxLength(64)] string UserName,
+    [property: Required, MinLength(8), MaxLength(128)] string Password);
+
+public sealed record RefreshRequest(
+    [property: Required, MinLength(16), MaxLength(512)] string RefreshToken);

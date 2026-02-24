@@ -1,4 +1,5 @@
 using System.Net;
+using Platform.WebAPI.Validation;
 
 namespace Platform.WebAPI.Middleware;
 
@@ -9,6 +10,22 @@ public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<Glob
         try
         {
             await next(context);
+        }
+        catch (RequestValidationException ex)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            context.Response.ContentType = "application/problem+json";
+
+            var problem = new
+            {
+                type = "https://httpstatuses.com/400",
+                title = "Validation failed",
+                status = context.Response.StatusCode,
+                traceId = context.TraceIdentifier,
+                errors = ex.Errors
+            };
+
+            await context.Response.WriteAsJsonAsync(problem);
         }
         catch (Exception ex)
         {
