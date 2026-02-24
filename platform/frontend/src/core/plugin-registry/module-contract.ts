@@ -1,4 +1,6 @@
-export type ModuleComponent = unknown;
+import type { ComponentType } from "react";
+
+export type ModuleComponent = ComponentType;
 
 export interface ModuleRoute {
   path: string;
