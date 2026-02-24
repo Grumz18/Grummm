@@ -12,12 +12,21 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.RequireRole("Admin");
+    });
+});
 
 var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<JwtAuthenticationMiddleware>();
+app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
@@ -31,8 +40,11 @@ app.MapGet("/", (HttpContext context) =>
     });
 });
 
-var publicAuth = app.MapGroup("/api/public/auth");
-var privateAuth = app.MapGroup("/api/app/auth");
+var publicApi = app.MapGroup("/api/public");
+var privateApi = app.MapGroup("/api/app").RequireAuthorization("AdminOnly");
+
+var publicAuth = publicApi.MapGroup("/auth");
+var privateAuth = privateApi.MapGroup("/auth");
 
 publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService refreshTokenService) =>
 {
@@ -63,11 +75,6 @@ publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenServi
 
 privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest request, IRefreshTokenService refreshTokenService) =>
 {
-    if (context.User.Identity?.IsAuthenticated != true)
-    {
-        return Results.Unauthorized();
-    }
-
     var revoked = await refreshTokenService.RevokeAsync(request.RefreshToken);
     return revoked ? Results.NoContent() : Results.NotFound();
 });
