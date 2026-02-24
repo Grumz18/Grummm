@@ -1,5 +1,6 @@
 using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
+using Platform.Infrastructure.Extensions;
 using Platform.Infrastructure.Security;
 using Platform.Modules.TaskTracker;
 using Platform.WebAPI.Contracts;
@@ -15,6 +16,7 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddModuleDatabaseRegistry();
 builder.Services.AddModules(typeof(Program).Assembly, typeof(TaskTrackerModule).Assembly);
 builder.Services.AddAuthorization(options =>
 {
