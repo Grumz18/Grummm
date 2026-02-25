@@ -49,6 +49,7 @@ if module needs DB context, register via
 2. Add module entry file with suffix `.module.ts` or `.module.tsx`.
 3. Export default object `module` matching `FrontendModuleContract` from:
 `platform/frontend/src/core/plugin-registry/module-contract.ts`.
+No manual registry edits are required.
 4. Set unique `id` in kebab-case.
 5. Declare route ownership in metadata:
 use `publicPage`, `privateApp`, `routes`, `permissions`.
