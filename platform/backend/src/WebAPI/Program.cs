@@ -74,6 +74,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddModuleDatabaseRegistry();
+builder.Services.AddAuditLogging(builder.Configuration);
 builder.Services.AddPlatformModules();
 builder.Services.AddAuthorization(options =>
 {
@@ -86,6 +87,7 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+app.UseMiddleware<AdminAuditLoggingMiddleware>();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseCookiePolicy();

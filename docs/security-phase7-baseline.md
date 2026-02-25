@@ -78,3 +78,9 @@ Status: BASELINE
   - `/api/public/auth/login` sets refresh cookie;
   - `/api/public/auth/refresh` rotates and rewrites refresh cookie;
   - `/api/app/auth/logout` revokes and deletes refresh cookie.
+
+## 8. Audit Logging
+
+- Admin actions in `/api/app/*` must be written to audit log.
+- Audit storage table: `audit.admin_action_audit_logs`.
+- See: `docs/audit-logging.md`.
