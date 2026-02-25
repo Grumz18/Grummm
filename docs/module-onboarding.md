@@ -43,6 +43,10 @@ if module needs DB context, register via
 12. Verify no direct references to other module assemblies.
 13. Apply SQLi baseline:
 avoid raw SQL concatenation; use EF parameterized/LINQ queries.
+14. Apply IDOR baseline:
+for private resource endpoints, enforce owner/admin access check.
+15. Apply mass-assignment baseline:
+map request DTO into explicit command model, do not bind server-owned fields from request body.
 
 ## 4. Frontend Onboarding Steps
 
@@ -67,6 +71,7 @@ Use only `src/core` and `src/shared` cross-cutting dependencies.
 `moduleRegistry` from `platform/frontend/src/core/plugin-registry/registry.ts`.
 11. If module introduces cookie-based state-changing requests,
 use antiforgery flow (`GET /api/public/security/csrf` + `X-CSRF-TOKEN`).
+12. For private module routes under `/app`, align frontend ownership UI with backend ownership checks.
 
 ## 5. Definition of Done (Baseline)
 

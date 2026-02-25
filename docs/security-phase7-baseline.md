@@ -41,3 +41,24 @@ Status: BASELINE
   - `SameSite=Strict`
   - `Secure`
   - `HttpOnly`
+
+## 4. Brute-force
+
+- Edge rate limiting is enabled in Nginx.
+- Additional app-level rate limiting is enabled in WebAPI:
+  - global per-IP limiter
+  - stricter policy for `/api/public/auth/login`
+  - stricter policy for `/api/public/auth/refresh`
+
+## 5. IDOR
+
+- Private resource endpoints must enforce ownership checks.
+- Access is allowed only for:
+  - resource owner
+  - `Admin` role
+
+## 6. Mass Assignment
+
+- API request DTOs are validated before processing.
+- DTOs are mapped to explicit command models.
+- Server-owned fields (for example, `OwnerUserId`) must not be accepted from body DTO.

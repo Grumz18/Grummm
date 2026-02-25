@@ -7,6 +7,7 @@
 - HSTS enabled
 - Security headers enabled (CSP, frame/options, sniffing, referrer, permissions, cross-origin)
 - Rate limiting enabled (`10r/s`, burst `30`)
+- Auth brute-force limiter enabled for `POST /api/public/auth/login` (`5r/m`)
 - `proxy_pass` for `/api/*` to backend (`http://backend:8080`)
 - Static frontend serving from `/usr/share/nginx/html` with SPA fallback
 

@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Antiforgery;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Extensions;
@@ -12,6 +14,42 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Services.AddProblemDetails();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 120,
+                Window = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("auth-login", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("auth-refresh", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 20,
+                Window = TimeSpan.FromMinutes(1),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+});
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
@@ -46,6 +84,7 @@ var app = builder.Build();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseCookiePolicy();
+app.UseRateLimiter();
 app.UseMiddleware<JwtAuthenticationMiddleware>();
 app.UseMiddleware<CsrfProtectionMiddleware>();
 app.UseAuthorization();
@@ -82,15 +121,16 @@ publicSecurity.MapGet("/csrf", (HttpContext context, IAntiforgery antiforgery) =
 publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService refreshTokenService) =>
 {
     RequestValidator.Validate(request);
+    var command = AuthMappings.ToCommand(request);
 
     var user = new AuthUser(
         UserId: Guid.NewGuid().ToString("N"),
-        UserName: request.UserName,
+        UserName: command.UserName,
         Role: "Admin");
 
     var tokens = await refreshTokenService.IssueAsync(user);
     return Results.Ok(tokens);
-});
+}).RequireRateLimiting("auth-login");
 
 publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenService refreshTokenService) =>
 {
@@ -103,7 +143,7 @@ publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenServi
     }
 
     return Results.Ok(result.Tokens);
-});
+}).RequireRateLimiting("auth-refresh");
 
 privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest request, IRefreshTokenService refreshTokenService) =>
 {
