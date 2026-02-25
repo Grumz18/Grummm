@@ -41,6 +41,8 @@ if module needs DB context, register via
 11. Ensure `Program.cs` keeps `AddPlatformModules()`
 (no per-module manual registration needed).
 12. Verify no direct references to other module assemblies.
+13. Apply SQLi baseline:
+avoid raw SQL concatenation; use EF parameterized/LINQ queries.
 
 ## 4. Frontend Onboarding Steps
 
@@ -63,6 +65,8 @@ Use only `src/core` and `src/shared` cross-cutting dependencies.
 9. Ensure public routes are rendered inside `PublicLayout`.
 10. Run local contract checks by loading registry:
 `moduleRegistry` from `platform/frontend/src/core/plugin-registry/registry.ts`.
+11. If module introduces cookie-based state-changing requests,
+use antiforgery flow (`GET /api/public/security/csrf` + `X-CSRF-TOKEN`).
 
 ## 5. Definition of Done (Baseline)
 
@@ -88,3 +92,4 @@ Use:
 
 - `docs/module-deploy-smoke.md`
 - `platform/infra/server/deploy-module-smoke.sh`
+- `docs/security-phase7-baseline.md`

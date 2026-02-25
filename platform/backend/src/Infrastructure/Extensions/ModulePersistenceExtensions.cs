@@ -39,7 +39,13 @@ public static class ModulePersistenceExtensions
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable("__EFMigrationsHistory", schema);
+                npgsql.EnableRetryOnFailure();
             });
+
+            // Security baseline:
+            // do not leak parameter values or DB internals in logs/errors.
+            options.EnableDetailedErrors(false);
+            options.EnableSensitiveDataLogging(false);
         });
 
         return services;

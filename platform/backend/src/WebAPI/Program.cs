@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Extensions;
@@ -11,6 +12,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Services.AddProblemDetails();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "__Host-platform-csrf";
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+});
+builder.Services.Configure<CookiePolicyOptions>(options =>
+{
+    options.MinimumSameSitePolicy = SameSiteMode.Strict;
+    options.HttpOnly = HttpOnlyPolicy.Always;
+    options.Secure = CookieSecurePolicy.Always;
+});
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
@@ -30,7 +45,9 @@ var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseCookiePolicy();
 app.UseMiddleware<JwtAuthenticationMiddleware>();
+app.UseMiddleware<CsrfProtectionMiddleware>();
 app.UseAuthorization();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
@@ -50,6 +67,17 @@ var privateApi = app.MapGroup("/api/app").RequireAuthorization("AdminOnly");
 
 var publicAuth = publicApi.MapGroup("/auth");
 var privateAuth = privateApi.MapGroup("/auth");
+var publicSecurity = publicApi.MapGroup("/security");
+
+publicSecurity.MapGet("/csrf", (HttpContext context, IAntiforgery antiforgery) =>
+{
+    var tokens = antiforgery.GetAndStoreTokens(context);
+    return Results.Ok(new
+    {
+        csrfHeaderName = "X-CSRF-TOKEN",
+        requestToken = tokens.RequestToken
+    });
+});
 
 publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService refreshTokenService) =>
 {
