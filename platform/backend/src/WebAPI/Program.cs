@@ -2,7 +2,6 @@ using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Extensions;
 using Platform.Infrastructure.Security;
-using Platform.Modules.TaskTracker;
 using Platform.WebAPI.Contracts;
 using Platform.WebAPI.Extensions;
 using Platform.WebAPI.Validation;
@@ -17,7 +16,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddModuleDatabaseRegistry();
-builder.Services.AddModules(typeof(Program).Assembly, typeof(TaskTrackerModule).Assembly);
+builder.Services.AddPlatformModules();
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>

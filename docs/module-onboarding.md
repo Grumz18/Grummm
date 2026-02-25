@@ -21,22 +21,26 @@ This guide defines the exact baseline flow for adding a new module to the platfo
 `platform/backend/src/Modules/{ModuleName}/`.
 2. Add module project file:
 `platform/backend/src/Modules/{ModuleName}/{ModuleName}.Module.csproj`.
-3. Add module class implementing `IModule` from:
+3. Ensure module assembly name starts with `Platform.Modules.`.
+This is required for backend auto-discovery.
+4. Add module class implementing `IModule` from:
 `platform/backend/src/Core/Contracts/Modules/IModule.cs`.
-4. Implement `RegisterServices(IServiceCollection)`:
+5. Implement `RegisterServices(IServiceCollection)`:
 register only services owned by this module.
-5. Implement `MapEndpoints(IEndpointRouteBuilder)`:
+6. Implement `MapEndpoints(IEndpointRouteBuilder)`:
 map routes only under `/api/public/*` and `/api/app/*`.
-6. Apply authorization to private routes:
+7. Apply authorization to private routes:
 `/api/app/*` endpoints must require `AdminOnly`.
-7. Add placeholder DTO/contracts for module endpoints.
+8. Add placeholder DTO/contracts for module endpoints.
 Expose DTO only, never domain/entity types.
-8. Optional persistence registration:
+9. Optional persistence registration:
 if module needs DB context, register via
 `AddModuleDbContext<TContext>(moduleName, schema, connectionString)`.
-9. Ensure module assembly is included in scanning inputs for:
-`AddModules(IServiceCollection, params Assembly[])`.
-10. Verify no direct references to other module assemblies.
+10. Ensure `WebAPI.csproj` keeps wildcard project reference:
+`..\Modules\**\*.csproj` (no per-module manual reference needed).
+11. Ensure `Program.cs` keeps `AddPlatformModules()`
+(no per-module manual registration needed).
+12. Verify no direct references to other module assemblies.
 
 ## 4. Frontend Onboarding Steps
 
