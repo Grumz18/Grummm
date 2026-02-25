@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Platform.WebAPI.Middleware;
 using Platform.Core.Contracts.Auth;
 using Platform.Infrastructure.Extensions;
@@ -64,7 +65,11 @@ builder.Services.Configure<CookiePolicyOptions>(options =>
     options.HttpOnly = HttpOnlyPolicy.Always;
     options.Secure = CookieSecurePolicy.Always;
 });
-builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection("Jwt"))
+    .ValidateOnStart();
+builder.Services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
+builder.Services.Configure<AuthCookieOptions>(builder.Configuration.GetSection("AuthCookies"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
@@ -118,7 +123,7 @@ publicSecurity.MapGet("/csrf", (HttpContext context, IAntiforgery antiforgery) =
     });
 });
 
-publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService refreshTokenService) =>
+publicAuth.MapPost("/login", async (HttpContext context, LoginRequest request, IRefreshTokenService refreshTokenService, IOptions<AuthCookieOptions> authCookieOptions) =>
 {
     RequestValidator.Validate(request);
     var command = AuthMappings.ToCommand(request);
@@ -129,27 +134,58 @@ publicAuth.MapPost("/login", async (LoginRequest request, IRefreshTokenService r
         Role: "Admin");
 
     var tokens = await refreshTokenService.IssueAsync(user);
-    return Results.Ok(tokens);
+    context.Response.SetRefreshTokenCookie(tokens, authCookieOptions);
+    return Results.Ok(new
+    {
+        accessToken = tokens.AccessToken,
+        accessTokenExpiresAtUtc = tokens.AccessTokenExpiresAtUtc
+    });
 }).RequireRateLimiting("auth-login");
 
-publicAuth.MapPost("/refresh", async (RefreshRequest request, IRefreshTokenService refreshTokenService) =>
+publicAuth.MapPost("/refresh", async (HttpContext context, RefreshRequest? request, IRefreshTokenService refreshTokenService, IOptions<AuthCookieOptions> authCookieOptions) =>
 {
-    RequestValidator.Validate(request);
+    if (request is not null)
+    {
+        RequestValidator.Validate(request);
+    }
 
-    var result = await refreshTokenService.RotateAsync(request.RefreshToken);
+    var refreshToken = context.Request.GetRefreshTokenFromCookie(authCookieOptions) ?? request?.RefreshToken;
+    if (string.IsNullOrWhiteSpace(refreshToken))
+    {
+        return Results.BadRequest(new { error = "refresh_token_required" });
+    }
+
+    var result = await refreshTokenService.RotateAsync(refreshToken);
     if (!result.Success || result.Tokens is null)
     {
+        context.Response.DeleteRefreshTokenCookie(authCookieOptions);
         return Results.Unauthorized();
     }
 
-    return Results.Ok(result.Tokens);
+    context.Response.SetRefreshTokenCookie(result.Tokens, authCookieOptions);
+    return Results.Ok(new
+    {
+        accessToken = result.Tokens.AccessToken,
+        accessTokenExpiresAtUtc = result.Tokens.AccessTokenExpiresAtUtc
+    });
 }).RequireRateLimiting("auth-refresh");
 
-privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest request, IRefreshTokenService refreshTokenService) =>
+privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest? request, IRefreshTokenService refreshTokenService, IOptions<AuthCookieOptions> authCookieOptions) =>
 {
-    RequestValidator.Validate(request);
+    if (request is not null)
+    {
+        RequestValidator.Validate(request);
+    }
 
-    var revoked = await refreshTokenService.RevokeAsync(request.RefreshToken);
+    var refreshToken = context.Request.GetRefreshTokenFromCookie(authCookieOptions) ?? request?.RefreshToken;
+    if (string.IsNullOrWhiteSpace(refreshToken))
+    {
+        context.Response.DeleteRefreshTokenCookie(authCookieOptions);
+        return Results.NoContent();
+    }
+
+    var revoked = await refreshTokenService.RevokeAsync(refreshToken);
+    context.Response.DeleteRefreshTokenCookie(authCookieOptions);
     return revoked ? Results.NoContent() : Results.NotFound();
 });
 

@@ -49,7 +49,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.FromSeconds(30)
+                ClockSkew = TimeSpan.FromSeconds(_options.ClockSkewSeconds)
             };
 
             principal = new JwtSecurityTokenHandler().ValidateToken(token, validationParameters, out _);

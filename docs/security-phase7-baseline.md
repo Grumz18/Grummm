@@ -62,3 +62,19 @@ Status: BASELINE
 - API request DTOs are validated before processing.
 - DTOs are mapped to explicit command models.
 - Server-owned fields (for example, `OwnerUserId`) must not be accepted from body DTO.
+
+## 7. Token Lifetime and Refresh Cookie
+
+- JWT lifetime is controlled by configuration (`Jwt` section):
+  - `AccessTokenLifetimeMinutes`
+  - `RefreshTokenLifetimeDays`
+  - `ClockSkewSeconds` (set to `0` for strict expiry baseline)
+- Refresh token rotation is mandatory:
+  every successful refresh revokes old refresh token and issues a new one.
+- Refresh token transport baseline:
+  - do not return refresh token in JSON response body;
+  - store refresh token in cookie only (`HttpOnly`, `Secure`, `SameSite=Strict`).
+- Cookie lifecycle:
+  - `/api/public/auth/login` sets refresh cookie;
+  - `/api/public/auth/refresh` rotates and rewrites refresh cookie;
+  - `/api/app/auth/logout` revokes and deletes refresh cookie.

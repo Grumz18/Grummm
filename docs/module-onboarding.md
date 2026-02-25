@@ -47,6 +47,9 @@ avoid raw SQL concatenation; use EF parameterized/LINQ queries.
 for private resource endpoints, enforce owner/admin access check.
 15. Apply mass-assignment baseline:
 map request DTO into explicit command model, do not bind server-owned fields from request body.
+16. Keep token lifecycle baseline:
+access token TTL and refresh TTL are configured via `Jwt` options;
+refresh token must rotate and be returned via secure cookie only.
 
 ## 4. Frontend Onboarding Steps
 
@@ -72,6 +75,7 @@ Use only `src/core` and `src/shared` cross-cutting dependencies.
 11. If module introduces cookie-based state-changing requests,
 use antiforgery flow (`GET /api/public/security/csrf` + `X-CSRF-TOKEN`).
 12. For private module routes under `/app`, align frontend ownership UI with backend ownership checks.
+13. Use access token from API response; refresh flow relies on cookie transport.
 
 ## 5. Definition of Done (Baseline)
 
