@@ -13,6 +13,7 @@ Apply baseline server hardening:
 
 - `platform/infra/server/bootstrap-ubuntu.sh`
 - `platform/infra/server/verify-ubuntu-hardening.sh`
+- `platform/infra/server/deploy-module-smoke.sh`
 
 ## Apply
 
@@ -31,4 +32,11 @@ sudo ./platform/infra/server/bootstrap-ubuntu.sh --allow-ssh
 
 ```bash
 sudo ./platform/infra/server/verify-ubuntu-hardening.sh
+```
+
+## Module Deploy Smoke
+
+```bash
+chmod +x platform/infra/server/deploy-module-smoke.sh
+./platform/infra/server/deploy-module-smoke.sh
 ```

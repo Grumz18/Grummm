@@ -73,9 +73,18 @@ Use only `src/core` and `src/shared` cross-cutting dependencies.
 5. Private routes are under `/app*` and therefore protected by `AdminOnly`.
 6. Context files updated:
 `dev-state.md`, `ai-context.md`, and if constraints changed `architecture-lock.md`.
+7. Deploy smoke flow is passed:
+`commit -> build -> docker restart -> verify /projects and /app`.
 
 ## 6. Minimal Skeleton Checklist
 
 1. Backend: module project + `IModule` class + placeholder public/private endpoints.
 2. Frontend: `.module.tsx` file with `id`, one placeholder route metadata entry.
 3. No business logic beyond scaffold level.
+
+## 7. Deploy Smoke Validation
+
+Use:
+
+- `docs/module-deploy-smoke.md`
+- `platform/infra/server/deploy-module-smoke.sh`
