@@ -13,7 +13,12 @@ using Platform.WebAPI.Validation;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.SingleLine = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ ";
+});
 builder.Services.AddProblemDetails();
 builder.Services.AddRateLimiter(options =>
 {
@@ -87,14 +92,14 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-app.UseMiddleware<AdminAuditLoggingMiddleware>();
-app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCookiePolicy();
 app.UseRateLimiter();
 app.UseMiddleware<JwtAuthenticationMiddleware>();
 app.UseMiddleware<CsrfProtectionMiddleware>();
 app.UseAuthorization();
+app.UseMiddleware<AdminAuditLoggingMiddleware>();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 

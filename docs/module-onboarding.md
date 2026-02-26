@@ -52,6 +52,8 @@ access token TTL and refresh TTL are configured via `Jwt` options;
 refresh token must rotate and be returned via secure cookie only.
 17. For admin write actions in private API zone, ensure audit logging coverage:
 action must be recorded by audit middleware/table baseline.
+18. Preserve correlation traceability:
+do not remove/override `X-Correlation-ID` propagation in module endpoints.
 
 ## 4. Frontend Onboarding Steps
 
@@ -105,3 +107,4 @@ Use:
 - `platform/infra/server/deploy-module-smoke.sh`
 - `docs/security-phase7-baseline.md`
 - `docs/audit-logging.md`
+- `docs/correlation-id.md`

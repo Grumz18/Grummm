@@ -10,6 +10,7 @@
 - Auth brute-force limiter enabled for `POST /api/public/auth/login` (`5r/m`)
 - `proxy_pass` for `/api/*` to backend (`http://backend:8080`)
 - Static frontend serving from `/usr/share/nginx/html` with SPA fallback
+- Correlation ID propagation enabled (`X-Correlation-ID`) with fallback to `$request_id`
 
 ## TLS Modes
 
@@ -21,6 +22,12 @@
 - `platform/infra/nginx/default.conf`
 - `platform/infra/nginx/docker-entrypoint.sh`
 - `platform/infra/nginx/static/index.html`
+
+## Observability Baseline (Phase 7.5)
+
+- `nginx` forwards `X-Correlation-ID` to backend.
+- Response includes `X-Correlation-ID`.
+- Access log includes `corr_id`.
 
 ## CSP Baseline (Phase 7.1)
 

@@ -84,3 +84,12 @@ Status: BASELINE
 - Admin actions in `/api/app/*` must be written to audit log.
 - Audit storage table: `audit.admin_action_audit_logs`.
 - See: `docs/audit-logging.md`.
+
+## 9. Correlation ID
+
+- Correlation ID must propagate end-to-end:
+  - `nginx` -> backend request header
+  - backend middleware -> `HttpContext.TraceIdentifier`
+  - backend logs with scope
+  - response header + `nginx` access log
+- See: `docs/correlation-id.md`.
