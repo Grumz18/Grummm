@@ -17,6 +17,7 @@ public sealed class TaskTrackerModule : IModule
         services.AddSingleton<CreateTaskCommandHandler>();
         services.AddSingleton<CompleteTaskCommandHandler>();
         services.AddSingleton<GetTasksQueryHandler>();
+        services.AddSingleton<GetTaskByIdQueryHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder app)
@@ -42,9 +43,9 @@ public sealed class TaskTrackerModule : IModule
             message = "TaskTracker private API"
         }));
 
-        privateGroup.MapGet("/{ownerUserId}/items", async (HttpContext context, string ownerUserId, GetTasksQueryHandler queryHandler, CancellationToken cancellationToken) =>
+        privateGroup.MapGet("/{ownerUserId}", async (HttpContext context, string ownerUserId, GetTasksQueryHandler queryHandler, CancellationToken cancellationToken) =>
         {
-            if (!OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId))
+            if (!HasOwnerAccess(context, ownerUserId))
             {
                 return Results.Forbid();
             }
@@ -60,11 +61,27 @@ public sealed class TaskTrackerModule : IModule
             });
         });
 
-        privateGroup.MapPost("/{ownerUserId}/items", async (HttpContext context, string ownerUserId, CreateTaskRequest request, CreateTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
+        privateGroup.MapGet("/{ownerUserId}/{taskId:guid}", async (HttpContext context, string ownerUserId, Guid taskId, GetTaskByIdQueryHandler queryHandler, CancellationToken cancellationToken) =>
+        {
+            if (!HasOwnerAccess(context, ownerUserId))
+            {
+                return Results.Forbid();
+            }
+
+            var task = await queryHandler.HandleAsync(new GetTaskByIdQuery(ownerUserId, taskId), cancellationToken);
+            if (task is null)
+            {
+                return Results.NotFound();
+            }
+
+            return Results.Ok(TaskTrackerMappings.ToDto(task));
+        });
+
+        privateGroup.MapPost("/{ownerUserId}", async (HttpContext context, string ownerUserId, CreateTaskRequest request, CreateTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
         {
             ValidateDto(request);
 
-            if (!OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId))
+            if (!HasOwnerAccess(context, ownerUserId))
             {
                 return Results.Forbid();
             }
@@ -73,12 +90,12 @@ public sealed class TaskTrackerModule : IModule
             var created = await commandHandler.HandleAsync(command, cancellationToken);
             var dto = TaskTrackerMappings.ToDto(created);
 
-            return Results.Created($"/api/app/tasks/{ownerUserId}/items/{dto.Id}", dto);
+            return Results.Created($"/api/app/tasks/{ownerUserId}/{dto.Id}", dto);
         });
 
-        privateGroup.MapPatch("/{ownerUserId}/items/{taskId:guid}/complete", async (HttpContext context, string ownerUserId, Guid taskId, CompleteTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
+        privateGroup.MapPatch("/{ownerUserId}/{taskId:guid}/complete", async (HttpContext context, string ownerUserId, Guid taskId, CompleteTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
         {
-            if (!OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId))
+            if (!HasOwnerAccess(context, ownerUserId))
             {
                 return Results.Forbid();
             }
@@ -95,6 +112,11 @@ public sealed class TaskTrackerModule : IModule
                 item = TaskTrackerMappings.ToDto(completed)
             });
         });
+    }
+
+    private static bool HasOwnerAccess(HttpContext context, string ownerUserId)
+    {
+        return OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId);
     }
 
     private static void ValidateDto<T>(T request)

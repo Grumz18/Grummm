@@ -20,6 +20,7 @@ Endpoints:
 
 - `GET /api/public/tasks/` (public summary)
 - `GET /api/app/tasks/` (`AdminOnly`)
-- `GET /api/app/tasks/{ownerUserId}/items` (`AdminOnly` + owner/admin check)
-- `POST /api/app/tasks/{ownerUserId}/items` (`AdminOnly` + owner/admin check)
-- `PATCH /api/app/tasks/{ownerUserId}/items/{taskId}/complete` (`AdminOnly` + owner/admin check)
+- `GET /api/app/tasks/{ownerUserId}` (`AdminOnly` + owner/admin check)
+- `GET /api/app/tasks/{ownerUserId}/{taskId}` (`AdminOnly` + owner/admin check)
+- `POST /api/app/tasks/{ownerUserId}` (`AdminOnly` + owner/admin check)
+- `PATCH /api/app/tasks/{ownerUserId}/{taskId}/complete` (`AdminOnly` + owner/admin check)
