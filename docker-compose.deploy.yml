@@ -1,0 +1,12 @@
+services:
+  nginx:
+    image: ${NGINX_IMAGE:?NGINX_IMAGE is required}
+    build: null
+
+  backend:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    build: null
+
+  postgres:
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE is required}
+    build: null

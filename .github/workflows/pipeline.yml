@@ -1,4 +1,4 @@
-name: Platform CI/CD Skeleton
+name: Platform CI/CD
 
 on:
   push:
@@ -11,31 +11,153 @@ on:
       - develop
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: platform-cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
 jobs:
   ci:
-    name: Continuous Integration (Skeleton)
+    name: CI - Build Backend and Frontend
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate repository structure
-        run: echo "CI skeleton step: structure validation placeholder"
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
 
-      - name: Placeholder quality gate
-        run: echo "CI skeleton step: lint/test/build placeholders"
+      - name: Build backend
+        run: dotnet build platform/backend/src/WebAPI/WebAPI.csproj --configuration Release
 
-  cd:
-    name: Continuous Delivery (Skeleton)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build --workspace @platform/frontend
+
+  docker:
+    name: CD - Build and Push Images
     runs-on: ubuntu-latest
     needs: ci
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push'
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+      deploy_env: ${{ steps.vars.outputs.deploy_env }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Placeholder packaging
-        run: echo "CD skeleton step: package/image placeholder"
+      - name: Set image tags and environment
+        id: vars
+        shell: bash
+        run: |
+          echo "image_tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "deploy_env=production" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_env=staging" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Placeholder deploy
-        run: echo "CD skeleton step: deploy placeholder"
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: platform/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-backend:${{ steps.vars.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-backend:${{ steps.vars.outputs.deploy_env }}
+
+      - name: Build and push frontend image (nginx)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: platform/infra/nginx/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-frontend:${{ steps.vars.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-frontend:${{ steps.vars.outputs.deploy_env }}
+
+      - name: Build and push postgres image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: platform/infra/postgres/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-postgres:${{ steps.vars.outputs.image_tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/platform-postgres:${{ steps.vars.outputs.deploy_env }}
+
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Deploy via SSH (staging)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_SSH_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            DEPLOY_PATH="${{ vars.STAGING_DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
+            cd "$DEPLOY_PATH"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            export BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
+            export NGINX_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
+            export POSTGRES_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --remove-orphans
+
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Deploy via SSH (production)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PRODUCTION_SSH_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            DEPLOY_PATH="${{ vars.PRODUCTION_DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
+            cd "$DEPLOY_PATH"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            export BACKEND_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
+            export NGINX_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
+            export POSTGRES_IMAGE="ghcr.io/${{ github.repository_owner }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --remove-orphans
