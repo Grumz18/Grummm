@@ -6,7 +6,10 @@ public sealed record CreateTaskRequest(
     [property: Required, MinLength(1), MaxLength(120)] string Title,
     [property: MaxLength(2000)] string? Description);
 
-public sealed record CreateTaskCommand(
-    string OwnerUserId,
+public sealed record TaskItemDto(
+    Guid Id,
     string Title,
-    string? Description);
+    string? Description,
+    bool IsCompleted,
+    DateTime CreatedAtUtc,
+    DateTime? CompletedAtUtc);

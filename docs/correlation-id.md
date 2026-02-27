@@ -20,3 +20,26 @@ Status: BASELINE
 - `platform/infra/nginx/default.conf`
 - `platform/backend/src/WebAPI/Middleware/CorrelationIdMiddleware.cs`
 - `platform/backend/src/WebAPI/Program.cs`
+
+## Verification Examples
+
+Without incoming header:
+
+```bash
+curl -k -I https://grummm.ru/projects
+```
+
+Expected:
+
+- response contains `X-Correlation-ID`
+
+With incoming header:
+
+```bash
+curl -k -I -H "X-Correlation-ID: test-cid-123" https://grummm.ru/projects
+```
+
+Expected:
+
+- response contains `X-Correlation-ID`
+- value should be preserved as `test-cid-123`

@@ -1,7 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using Platform.Modules.TaskTracker.Application.Commands;
+using Platform.Modules.TaskTracker.Application.Queries;
+using Platform.Modules.TaskTracker.Application.Repositories;
 using Platform.Core.Contracts.Security;
 using Platform.Core.Contracts.Modules;
 using Platform.Modules.TaskTracker.Contracts;
+using Platform.Modules.TaskTracker.Infrastructure.Repositories;
 
 namespace Platform.Modules.TaskTracker;
 
@@ -9,7 +13,10 @@ public sealed class TaskTrackerModule : IModule
 {
     public void RegisterServices(IServiceCollection services)
     {
-        // Placeholder module: no business services yet.
+        services.AddSingleton<ITaskItemRepository, InMemoryTaskItemRepository>();
+        services.AddSingleton<CreateTaskCommandHandler>();
+        services.AddSingleton<CompleteTaskCommandHandler>();
+        services.AddSingleton<GetTasksQueryHandler>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder app)
@@ -17,36 +24,43 @@ public sealed class TaskTrackerModule : IModule
         var publicGroup = app.MapGroup("/api/public/tasks");
         var privateGroup = app.MapGroup("/api/app/tasks").RequireAuthorization("AdminOnly");
 
-        publicGroup.MapGet("/", () => Results.Ok(new
+        publicGroup.MapGet("/", async (ITaskItemRepository repository, CancellationToken cancellationToken) =>
         {
-            module = "TaskTracker",
-            area = "public",
-            message = "TaskTracker public placeholder endpoint"
-        }));
+            var total = await repository.CountAllAsync(cancellationToken);
+            return Results.Ok(new
+            {
+                module = "TaskTracker",
+                area = "public",
+                totalTasks = total
+            });
+        });
 
         privateGroup.MapGet("/", () => Results.Ok(new
         {
             module = "TaskTracker",
             area = "private",
-            message = "TaskTracker private placeholder endpoint"
+            message = "TaskTracker private API"
         }));
 
-        privateGroup.MapGet("/{ownerUserId}/items", (HttpContext context, string ownerUserId) =>
+        privateGroup.MapGet("/{ownerUserId}/items", async (HttpContext context, string ownerUserId, GetTasksQueryHandler queryHandler, CancellationToken cancellationToken) =>
         {
             if (!OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId))
             {
                 return Results.Forbid();
             }
 
+            var tasks = await queryHandler.HandleAsync(new GetTasksQuery(ownerUserId), cancellationToken);
+            var response = tasks.Select(TaskTrackerMappings.ToDto);
+
             return Results.Ok(new
             {
                 module = "TaskTracker",
                 ownerUserId,
-                items = Array.Empty<object>()
+                items = response
             });
         });
 
-        privateGroup.MapPost("/{ownerUserId}/items", (HttpContext context, string ownerUserId, CreateTaskRequest request) =>
+        privateGroup.MapPost("/{ownerUserId}/items", async (HttpContext context, string ownerUserId, CreateTaskRequest request, CreateTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
         {
             ValidateDto(request);
 
@@ -55,15 +69,30 @@ public sealed class TaskTrackerModule : IModule
                 return Results.Forbid();
             }
 
-            var command = TaskTrackerMappings.ToCommand(request, ownerUserId);
+            var command = TaskTrackerMappings.ToCreateCommand(request, ownerUserId);
+            var created = await commandHandler.HandleAsync(command, cancellationToken);
+            var dto = TaskTrackerMappings.ToDto(created);
+
+            return Results.Created($"/api/app/tasks/{ownerUserId}/items/{dto.Id}", dto);
+        });
+
+        privateGroup.MapPatch("/{ownerUserId}/items/{taskId:guid}/complete", async (HttpContext context, string ownerUserId, Guid taskId, CompleteTaskCommandHandler commandHandler, CancellationToken cancellationToken) =>
+        {
+            if (!OwnershipGuard.IsOwnerOrAdmin(context.User, ownerUserId))
+            {
+                return Results.Forbid();
+            }
+
+            var command = TaskTrackerMappings.ToCompleteCommand(taskId, ownerUserId);
+            var completed = await commandHandler.HandleAsync(command, cancellationToken);
+            if (completed is null)
+            {
+                return Results.NotFound();
+            }
 
             return Results.Ok(new
             {
-                module = "TaskTracker",
-                action = "create",
-                ownerUserId = command.OwnerUserId,
-                title = command.Title,
-                description = command.Description
+                item = TaskTrackerMappings.ToDto(completed)
             });
         });
     }

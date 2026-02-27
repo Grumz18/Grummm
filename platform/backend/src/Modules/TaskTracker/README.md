@@ -1,11 +1,25 @@
-# TaskTracker Module (Skeleton)
+# TaskTracker Module
 
-Minimal backend module scaffold without business logic.
+Backend implementation baseline with:
 
-- Implements `IModule`
-- Registers no services yet
-- Maps placeholder endpoints:
-  - `GET /api/public/tasks/`
-  - `GET /api/app/tasks/` (`AdminOnly`)
-  - `GET /api/app/tasks/{ownerUserId}/items` (owner/admin check)
-  - `POST /api/app/tasks/{ownerUserId}/items` (owner/admin check, DTO -> command mapping)
+- domain model: `TaskItem`
+- CQRS:
+  - commands: create/complete task
+  - query: list tasks by owner
+- validation:
+  - request DTO data annotations
+  - command validators
+- repository:
+  - `ITaskItemRepository`
+  - `InMemoryTaskItemRepository` (module-local baseline)
+- DTO and strict mappings:
+  - request DTO -> command
+  - domain -> response DTO
+
+Endpoints:
+
+- `GET /api/public/tasks/` (public summary)
+- `GET /api/app/tasks/` (`AdminOnly`)
+- `GET /api/app/tasks/{ownerUserId}/items` (`AdminOnly` + owner/admin check)
+- `POST /api/app/tasks/{ownerUserId}/items` (`AdminOnly` + owner/admin check)
+- `PATCH /api/app/tasks/{ownerUserId}/items/{taskId}/complete` (`AdminOnly` + owner/admin check)
