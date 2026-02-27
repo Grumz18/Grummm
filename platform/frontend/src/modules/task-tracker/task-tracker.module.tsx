@@ -1,5 +1,6 @@
 import type { FrontendModuleContract } from "../../core/plugin-registry";
 import { TaskTrackerBoardPage } from "./TaskTrackerBoardPage";
+import { TaskTrackerCreatePage } from "./TaskTrackerCreatePage";
 import { TaskTrackerPrivatePage } from "./TaskTrackerPrivatePage";
 import { TaskTrackerPublicPage } from "./TaskTrackerPublicPage";
 
@@ -10,13 +11,17 @@ const module: FrontendModuleContract = {
     component: TaskTrackerPublicPage
   },
   privateApp: {
-    path: "/app/task-tracker",
+    path: "/app/tasks",
     component: TaskTrackerPrivatePage
   },
   routes: [
     {
-      path: "/app/task-tracker/board",
+      path: "/app/tasks/board",
       component: TaskTrackerBoardPage
+    },
+    {
+      path: "/app/tasks/create",
+      component: TaskTrackerCreatePage
     }
   ],
   permissions: ["task-tracker:read"]

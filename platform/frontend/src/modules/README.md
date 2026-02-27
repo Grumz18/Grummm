@@ -6,3 +6,4 @@ Frontend modules live here and are auto-discovered by plugin registry.
 - Export default `module` object conforming to `FrontendModuleContract`
 - Do not manually register modules in routing or registry code
 - Public description pages should stay in public zone (for example `/projects/:id`).
+- Private module UI pages should stay in `/app/:module/*` (example: `/app/tasks/*`).
