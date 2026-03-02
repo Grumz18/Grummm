@@ -3,6 +3,8 @@
 ## Script
 
 - `platform/infra/server/postgres-backup.sh`
+- `platform/infra/server/postgres-backup-offsite.sh`
+- `platform/infra/server/postgres-restore-drill.sh`
 
 The script performs:
 
@@ -15,6 +17,16 @@ The script performs:
 ```bash
 chmod +x platform/infra/server/postgres-backup.sh
 ./platform/infra/server/postgres-backup.sh
+```
+
+## Offsite shipping
+
+```bash
+chmod +x platform/infra/server/postgres-backup-offsite.sh
+BACKUP_DIR=/opt/platform/backups/postgres \
+OFFSITE_TARGET='backup@backup-host:/srv/backups/platform-postgres' \
+OFFSITE_RETENTION_DAYS=30 \
+./platform/infra/server/postgres-backup-offsite.sh
 ```
 
 ## Optional parameters
@@ -33,9 +45,30 @@ RETENTION_DAYS=14 \
 10 3 * * * cd /opt/platform && /opt/platform/platform/infra/server/postgres-backup.sh >> /var/log/platform-postgres-backup.log 2>&1
 ```
 
+## Cron example for offsite sync (daily at 03:30 UTC)
+
+```cron
+30 3 * * * cd /opt && BACKUP_DIR=/opt/platform/backups/postgres OFFSITE_TARGET='backup@backup-host:/srv/backups/platform-postgres' /opt/platform/infra/server/postgres-backup-offsite.sh >> /var/log/platform-postgres-offsite.log 2>&1
+```
+
 ## Restore example
 
 ```bash
 gunzip -c /opt/platform/backups/postgres/platform_YYYYMMDDTHHMMSSZ.sql.gz \
   | docker compose exec -T postgres sh -lc 'PGPASSWORD="${POSTGRES_PASSWORD}" psql -U "${POSTGRES_USER}" -d "${POSTGRES_DB}"'
 ```
+
+## Restore drill (safe test DB)
+
+```bash
+chmod +x platform/infra/server/postgres-restore-drill.sh
+ROOT_DIR=/opt \
+COMPOSE_FILE=/opt/docker-compose.yml \
+BACKUP_DIR=/opt/platform/backups/postgres \
+./platform/infra/server/postgres-restore-drill.sh
+```
+
+Optional:
+
+- `BACKUP_FILE=/opt/platform/backups/postgres/platform_YYYYMMDDTHHMMSSZ.sql.gz`
+- `DROP_AFTER_CHECK=false` (to inspect restored DB before drop)

@@ -50,6 +50,12 @@ chmod +x platform/infra/server/postgres-backup.sh
 
 See backup details and cron setup in `docs/postgres-backup.md`.
 
+Offsite + restore drill:
+
+```bash
+chmod +x platform/infra/server/postgres-backup-offsite.sh platform/infra/server/postgres-restore-drill.sh
+```
+
 ## Collect Full Server State (single report file)
 
 ```bash
@@ -98,3 +104,8 @@ docker compose up -d --force-recreate nginx
 chmod +x platform/infra/server/phase9-smoke.sh
 BASE_URL=https://grummm.ru ROOT_DIR=/opt APP_DIR=/opt/platform ./platform/infra/server/phase9-smoke.sh
 ```
+
+## Phase 9.5 handover and launch
+
+- `docs/handover-checklist.md`
+- `docs/production-launch-runbook.md`
