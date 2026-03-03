@@ -6,12 +6,15 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Platform.Modules.ProjectPosts;
 using Platform.Modules.ProjectPosts.Application.Repositories;
+using Platform.Modules.ProjectPosts.Application.Security;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
 using Platform.WebAPI.Middleware;
@@ -22,19 +25,20 @@ namespace ProjectPosts.Tests;
 public sealed class UploadWithTemplateEndpointTests
 {
     [Fact]
-    public async Task PostUploadWithTemplate_InvalidFiles_Returns400()
+    public async Task PostUploadWithTemplate_VirusDetected_Returns400()
     {
-        await using var app = await CreateAppAsync();
-        await SeedProjectAsync(app.Services, "upload-invalid");
+        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(false, "EICAR-Test-Signature", "virus.txt")));
+        await SeedProjectAsync(app.Services, "upload-virus");
         var client = app.GetTestClient();
 
         var content = new MultipartFormDataContent
         {
             { new StringContent("JavaScript"), "templateType" },
-            { new ByteArrayContent(Encoding.UTF8.GetBytes("console.log('x');")), "backendFiles", "index.js" }
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("{\"name\":\"demo\"}")), "backendFiles", "package.json" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("virus-content")), "backendFiles", "virus.txt" }
         };
 
-        var response = await client.PostAsync("/api/app/projects/upload-invalid/upload-with-template", content);
+        var response = await client.PostAsync("/api/app/projects/upload-virus/upload-with-template", content);
         var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -43,30 +47,31 @@ public sealed class UploadWithTemplateEndpointTests
     }
 
     [Fact]
-    public async Task PostUploadWithTemplate_ValidFiles_UpdatesEntity()
+    public async Task PostUploadWithTemplate_ValidPythonFiles_UpdatesEntity()
     {
-        await using var app = await CreateAppAsync();
-        await SeedProjectAsync(app.Services, "upload-valid");
+        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(true)));
+        await SeedProjectAsync(app.Services, "upload-python-valid");
         var client = app.GetTestClient();
 
         var content = new MultipartFormDataContent
         {
-            { new StringContent("JavaScript"), "templateType" },
-            { new ByteArrayContent(Encoding.UTF8.GetBytes("{\"name\":\"demo\"}")), "backendFiles", "package.json" },
+            { new StringContent("Python"), "templateType" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("fastapi==0.110.0")), "backendFiles", "requirements.txt" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("print('ok')")), "backendFiles", "app/main.py" },
             { new ByteArrayContent(Encoding.UTF8.GetBytes("<html></html>")), "frontendFiles", "dist/index.html" }
         };
 
-        var response = await client.PostAsync("/api/app/projects/upload-valid/upload-with-template", content);
+        var response = await client.PostAsync("/api/app/projects/upload-python-valid/upload-with-template", content);
         var updated = await response.Content.ReadFromJsonAsync<ProjectPostDto>();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(updated);
-        Assert.Equal(TemplateType.JavaScript, updated!.Template);
-        Assert.Equal("/var/projects/upload-valid/frontend", updated.FrontendPath);
-        Assert.Equal("/var/projects/upload-valid/backend", updated.BackendPath);
+        Assert.Equal(TemplateType.Python, updated!.Template);
+        Assert.Equal("/var/projects/upload-python-valid/frontend", updated.FrontendPath);
+        Assert.Equal("/var/projects/upload-python-valid/backend", updated.BackendPath);
     }
 
-    private static async Task<WebApplication> CreateAppAsync()
+    private static async Task<WebApplication> CreateAppAsync(IProjectFileMalwareScanner scanner)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -84,6 +89,8 @@ public sealed class UploadWithTemplateEndpointTests
 
         var module = new ProjectPostsModule();
         module.RegisterServices(builder.Services);
+        builder.Services.RemoveAll<IProjectFileMalwareScanner>();
+        builder.Services.AddSingleton<IProjectFileMalwareScanner>(scanner);
 
         var app = builder.Build();
         app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -140,4 +147,12 @@ public sealed class UploadWithTemplateEndpointTests
     }
 
     private sealed record ProblemResponse(string Type, string Title, int Status, string TraceId);
+
+    private sealed class FakeScanner(ProjectFileScanResult result) : IProjectFileMalwareScanner
+    {
+        public Task<ProjectFileScanResult> ScanAsync(IEnumerable<IFormFile> files, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(result);
+        }
+    }
 }

@@ -29,9 +29,11 @@ public static class UploadWithTemplateCommandValidator
                 break;
             case TemplateType.Python:
                 RequireFile(command.BackendFiles, "requirements.txt", "Python template requires requirements.txt.");
+                RequireFileByExtension(command.BackendFiles, ".py", "Python template requires at least one .py file.");
                 break;
             case TemplateType.JavaScript:
                 RequireFile(command.BackendFiles, "package.json", "JavaScript template requires package.json.");
+                RejectExtension(command.BackendFiles.Concat(command.FrontendFiles), ".exe", "JavaScript template cannot include executable files (.exe).");
                 break;
         }
     }
@@ -54,6 +56,20 @@ public static class UploadWithTemplateCommandValidator
         });
 
         if (!found)
+        {
+            throw new ValidationException(message);
+        }
+    }
+
+    private static void RejectExtension(IEnumerable<IFormFile> files, string extension, string message)
+    {
+        var foundForbidden = files.Any(f =>
+        {
+            var fileName = Path.GetFileName(f.FileName);
+            return fileName.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
+        });
+
+        if (foundForbidden)
         {
             throw new ValidationException(message);
         }

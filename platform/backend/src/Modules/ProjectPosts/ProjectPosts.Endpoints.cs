@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using System.Security.Claims;
+using System.ComponentModel.DataAnnotations;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Contracts;
@@ -55,6 +57,11 @@ public sealed partial class ProjectPostsModule
                 UploadWithTemplateCommandHandler commandHandler,
                 CancellationToken cancellationToken) =>
             {
+                if (!httpRequest.HasFormContentType)
+                {
+                    throw new ValidationException("Content-Type must be multipart/form-data.");
+                }
+
                 var form = await httpRequest.ReadFormAsync(cancellationToken);
 
                 var request = new UploadWithTemplateRequest(
@@ -67,7 +74,12 @@ public sealed partial class ProjectPostsModule
                         .ToArray());
 
                 ValidateDto(request);
-                var command = UploadWithTemplateMappings.ToCommand(id, request);
+                var command = UploadWithTemplateMappings.ToCommand(
+                    id: id,
+                    request: request,
+                    correlationId: httpRequest.HttpContext.TraceIdentifier,
+                    performedByUserId: httpRequest.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown",
+                    performedByUserName: httpRequest.HttpContext.User.FindFirstValue(ClaimTypes.Name));
                 var updated = await commandHandler.HandleAsync(command, cancellationToken);
 
                 return updated is null ? Results.NotFound() : Results.Ok(updated);

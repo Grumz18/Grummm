@@ -87,6 +87,11 @@ Infra:
 - Для upload добавлен CQRS command:
   UploadWithTemplateCommand (Id, TemplateType, FrontendFiles, BackendFiles),
   включая template-aware validation (пример: JavaScript -> требуется package.json).
+- Дополнительные проверки структуры:
+  - Python: обязательны `requirements.txt` и минимум один `.py` файл;
+  - JavaScript: запрещены `.exe` файлы.
+- Перед сохранением upload проходит malware scan (ClamAV, секция ClamAv в appsettings),
+  при детекте файл отклоняется с 400 и фиксируется audit-запись.
 - Для БД добавлена миграция:
   platform/backend/src/Modules/ProjectPosts/Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql
 

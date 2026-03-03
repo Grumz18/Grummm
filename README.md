@@ -24,6 +24,7 @@ Tech stack:
 - `ProjectPosts` persistence via PostgreSQL repository (with in-memory fallback if DB is not configured)
 - Project template metadata in posts: `TemplateType`, `FrontendPath`, `BackendPath`
 - Admin upload endpoint for template bundles: `POST /api/app/projects/{id}/upload-with-template` (multipart, AdminOnly)
+- Upload flow includes template-aware structure validation and ClamAV malware scan before file save
 - JWT auth baseline, AdminOnly policy, CSRF/correlation/audit/rate-limit baselines
 
 ## Repository Layout

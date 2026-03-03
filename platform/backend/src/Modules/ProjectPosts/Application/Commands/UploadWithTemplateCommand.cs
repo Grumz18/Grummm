@@ -7,4 +7,7 @@ public sealed record UploadWithTemplateCommand(
     string Id,
     TemplateType TemplateType,
     IReadOnlyList<IFormFile> FrontendFiles,
-    IReadOnlyList<IFormFile> BackendFiles);
+    IReadOnlyList<IFormFile> BackendFiles,
+    string CorrelationId,
+    string PerformedByUserId,
+    string? PerformedByUserName);

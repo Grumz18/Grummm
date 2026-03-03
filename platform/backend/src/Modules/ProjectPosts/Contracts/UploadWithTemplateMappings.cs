@@ -7,7 +7,12 @@ namespace Platform.Modules.ProjectPosts.Contracts;
 
 public static class UploadWithTemplateMappings
 {
-    public static UploadWithTemplateCommand ToCommand(string id, UploadWithTemplateRequest request)
+    public static UploadWithTemplateCommand ToCommand(
+        string id,
+        UploadWithTemplateRequest request,
+        string correlationId,
+        string performedByUserId,
+        string? performedByUserName)
     {
         if (!Enum.TryParse<TemplateType>(request.TemplateType, ignoreCase: true, out var templateType))
         {
@@ -21,6 +26,9 @@ public static class UploadWithTemplateMappings
             Id: id.Trim(),
             TemplateType: templateType,
             FrontendFiles: frontendFiles.ToArray(),
-            BackendFiles: backendFiles.ToArray());
+            BackendFiles: backendFiles.ToArray(),
+            CorrelationId: correlationId,
+            PerformedByUserId: performedByUserId,
+            PerformedByUserName: performedByUserName);
     }
 }

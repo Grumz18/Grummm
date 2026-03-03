@@ -6,9 +6,11 @@ using Microsoft.Extensions.Hosting;
 using Platform.Core.Contracts.Modules;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Repositories;
+using Platform.Modules.ProjectPosts.Application.Security;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
 using Platform.Modules.ProjectPosts.Infrastructure.Repositories;
+using Platform.Modules.ProjectPosts.Infrastructure.Security;
 
 namespace Platform.Modules.ProjectPosts;
 
@@ -16,6 +18,10 @@ public sealed partial class ProjectPostsModule : IModule
 {
     public void RegisterServices(IServiceCollection services)
     {
+        services.AddOptions<ClamAvOptions>()
+            .BindConfiguration("ClamAv");
+        services.AddSingleton<IProjectFileMalwareScanner, ClamAvNetProjectFileMalwareScanner>();
+
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
