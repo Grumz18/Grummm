@@ -6,6 +6,7 @@ import { ProjectDetailPage } from "../../public/pages/ProjectDetailPage";
 import { ProjectsPage } from "../../public/pages/ProjectsPage";
 import { PreferencesProvider } from "../../public/preferences";
 import { AdminProjectsWorkspace } from "../pages/AdminProjectsWorkspace";
+import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
 import { AuthSessionProvider, type AuthSession } from "../auth/auth-session";
 import { PrivateAppLayout, PublicLayout } from "../layouts";
 import { moduleRegistry } from "../plugin-registry";
@@ -93,6 +94,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               {withPrivateLayout(<AdminProjectsWorkspace />)}
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/:slug"
+          element={
+            <ProtectedRoute adminOnly>
+              {withPrivateLayout(<DynamicProjectViewer />)}
             </ProtectedRoute>
           }
         />

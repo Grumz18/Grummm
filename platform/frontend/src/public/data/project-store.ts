@@ -81,6 +81,14 @@ function parseApiList(payload: unknown): PortfolioProject[] {
   return [];
 }
 
+function parseApiItem(payload: unknown): PortfolioProject | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  return payload as PortfolioProject;
+}
+
 function toApiPayload(input: PortfolioProject): PortfolioProject {
   const template = input.template ?? "None";
 
@@ -171,6 +179,53 @@ export async function fetchProjectsFromApi(): Promise<PortfolioProject[] | null>
   }
 
   return null;
+}
+
+export async function fetchProjectByIdFromApi(projectId: string): Promise<PortfolioProject | null> {
+  const token = getAccessToken();
+
+  if (token) {
+    try {
+      const privateResponse = await fetch(`${PRIVATE_API}/${projectId}`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (privateResponse.ok) {
+        const payload = (await privateResponse.json()) as unknown;
+        const item = parseApiItem(payload);
+        if (item) {
+          const current = readProjects().filter((p) => p.id !== item.id);
+          writeProjects([item, ...current]);
+          return item;
+        }
+      }
+    } catch {
+      // continue with fallback
+    }
+  }
+
+  try {
+    const publicResponse = await fetch(`${PUBLIC_API}/${projectId}`, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (publicResponse.ok) {
+      const payload = (await publicResponse.json()) as unknown;
+      const item = parseApiItem(payload);
+      if (item) {
+        const current = readProjects().filter((p) => p.id !== item.id);
+        writeProjects([item, ...current]);
+        return item;
+      }
+    }
+  } catch {
+    // ignore and fallback to local cache
+  }
+
+  return readProjects().find((project) => project.id === projectId) ?? null;
 }
 
 export async function createProject(input: PortfolioProject, upload?: ProjectUploadBundle): Promise<PortfolioProject[]> {

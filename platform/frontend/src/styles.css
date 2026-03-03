@@ -813,6 +813,30 @@ a {
   font-size: 0.85rem;
 }
 
+.dynamic-project-viewer {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.dynamic-project-viewer__header h1 {
+  margin: 0;
+}
+
+.dynamic-project-viewer__frame {
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
+.dynamic-project-viewer__module {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  padding: 0.75rem;
+}
+
 @media (max-width: 880px) {
   .hero {
     grid-template-columns: 1fr;
