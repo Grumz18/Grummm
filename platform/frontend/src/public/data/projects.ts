@@ -1,4 +1,4 @@
-import type { PortfolioProject } from "../types";
+﻿import type { PortfolioProject } from "../types";
 
 function svgCard(label: string, start: string, end: string, accent: string): string {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'>
@@ -11,12 +11,12 @@ function svgCard(label: string, start: string, end: string, accent: string): str
     <rect width='1280' height='720' fill='url(#g)'/>
     <circle cx='1120' cy='140' r='160' fill='${accent}' fill-opacity='0.22'/>
     <circle cx='180' cy='620' r='230' fill='${accent}' fill-opacity='0.18'/>
-    <text x='70' y='120' font-family='Space Grotesk, Arial, sans-serif' font-size='64' fill='white'>${label}</text>
+    <text x='70' y='120' font-family='Segoe UI, Arial, sans-serif' font-size='64' fill='white'>${label}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-export const portfolioProjects: PortfolioProject[] = [
+export const seedProjects: PortfolioProject[] = [
   {
     id: "task-tracker",
     title: {
@@ -81,7 +81,7 @@ export const portfolioProjects: PortfolioProject[] = [
     id: "chat-module",
     title: {
       en: "Chat Module",
-      ru: "Чат модуль"
+      ru: "Чат-модуль"
     },
     summary: {
       en: "Fast internal messaging with moderation controls.",
@@ -108,7 +108,3 @@ export const portfolioProjects: PortfolioProject[] = [
     ]
   }
 ];
-
-export function getProjectById(projectId: string): PortfolioProject | undefined {
-  return portfolioProjects.find((project) => project.id === projectId);
-}

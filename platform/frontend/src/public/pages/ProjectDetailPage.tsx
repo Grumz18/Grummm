@@ -1,6 +1,6 @@
 ﻿import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
-import { getProjectById } from "../data/projects";
+import { useProjectPost } from "../data/project-store";
 import { useSwipeBack } from "../hooks/useSwipeBack";
 import { usePreferences } from "../preferences";
 
@@ -12,7 +12,7 @@ export function ProjectDetailPage() {
 
   useSwipeBack(() => navigate(-1), { enabled: !canHover, edgeOnly: true });
 
-  const project = id ? getProjectById(id) : undefined;
+  const project = useProjectPost(id);
 
   if (!project) {
     return (

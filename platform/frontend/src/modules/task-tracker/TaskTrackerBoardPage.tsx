@@ -1,9 +1,9 @@
 export function TaskTrackerBoardPage() {
   return (
-    <section>
+    <section className="admin-card">
       <h2>Task Board</h2>
-      <p>Route: /app/tasks/board</p>
-      <div>
+      <p className="admin-muted">Route: /app/tasks/board</p>
+      <div className="admin-panel">
         <strong>Todo</strong>
         <ul>
           <li>Define real API client for /api/app/tasks/*</li>

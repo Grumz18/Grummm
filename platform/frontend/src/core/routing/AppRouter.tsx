@@ -5,13 +5,31 @@ import { LandingPage } from "../../public/pages/LandingPage";
 import { ProjectDetailPage } from "../../public/pages/ProjectDetailPage";
 import { ProjectsPage } from "../../public/pages/ProjectsPage";
 import { PreferencesProvider } from "../../public/preferences";
+import { AdminProjectsWorkspace } from "../pages/AdminProjectsWorkspace";
 import { AuthSessionProvider, type AuthSession } from "../auth/auth-session";
 import { PrivateAppLayout, PublicLayout } from "../layouts";
 import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 function PrivateAppHome(): ReactNode {
-  return <div>Private App Home</div>;
+  return (
+    <section className="admin-home">
+      <header className="admin-home__header">
+        <h1>Admin Hub</h1>
+        <p>Private operations area for module workflows and secure admin-only actions.</p>
+      </header>
+      <div className="admin-home__grid">
+        <article>
+          <h3>Task Tracker</h3>
+          <p>Owner-scoped tasks, board workflow, and create flow.</p>
+        </article>
+        <article>
+          <h3>Security</h3>
+          <p>AdminOnly guard + API zone split + audit/correlation protections.</p>
+        </article>
+      </div>
+    </section>
+  );
 }
 
 function NotFound(): ReactNode {
@@ -66,6 +84,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               {withPrivateLayout(<PrivateAppHome />)}
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/projects"
+          element={
+            <ProtectedRoute adminOnly>
+              {withPrivateLayout(<AdminProjectsWorkspace />)}
             </ProtectedRoute>
           }
         />

@@ -3,12 +3,13 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/ProjectCard";
 import { useSwipeBack } from "../hooks/useSwipeBack";
-import { portfolioProjects } from "../data/projects";
+import { useProjectPosts } from "../data/project-store";
 import { usePreferences } from "../preferences";
 
 export function ProjectsPage() {
   const navigate = useNavigate();
   const { theme, language } = usePreferences();
+  const projects = useProjectPosts();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const canHover = window.matchMedia?.("(hover: hover) and (pointer: fine)").matches ?? false;
 
@@ -36,7 +37,7 @@ export function ProjectsPage() {
       </header>
 
       <section className="portfolio-grid">
-        {portfolioProjects.map((project) => (
+        {projects.map((project) => (
           <ProjectCard
             key={project.id}
             project={project}

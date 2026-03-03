@@ -577,13 +577,192 @@ a {
 }
 
 .private-layout {
+  min-height: 100vh;
   padding: 1rem;
+  background:
+    radial-gradient(circle at 8% 8%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 36%),
+    radial-gradient(circle at 90% 16%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 34%),
+    var(--bg);
+}
+
+.private-layout__header {
+  max-width: 1180px;
+  margin: 0 auto 0.95rem;
+  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.private-layout__public-link {
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: color-mix(in srgb, var(--primary) 70%, var(--text));
 }
 
 .private-layout__shell {
+  max-width: 1180px;
+  margin: 0 auto;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 240px 1fr;
   gap: 1rem;
+}
+
+.private-layout__aside,
+.private-layout__main > * {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: var(--shadow);
+}
+
+.private-layout__aside {
+  padding: 0.95rem;
+}
+
+.private-layout__aside h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.private-layout__aside nav {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.private-nav-link {
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.54rem 0.65rem;
+  font-weight: 700;
+}
+
+.private-nav-link--active {
+  border-color: color-mix(in srgb, var(--primary) 64%, var(--border));
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.private-layout__main > * {
+  padding: 1.1rem;
+}
+
+.admin-home__header h1,
+.admin-card h1,
+.admin-card h2 {
+  margin-top: 0;
+}
+
+.admin-home__header p,
+.admin-muted,
+.admin-card p {
+  color: var(--text-soft);
+}
+
+.admin-home__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.admin-home__grid article,
+.admin-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-strong) 80%, transparent);
+  padding: 0.8rem;
+}
+
+.admin-chip-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.8rem 0;
+}
+
+.admin-chip-nav a {
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.28rem 0.62rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text);
+}
+
+.admin-chip-nav button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.28rem 0.62rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.admin-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.admin-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+}
+
+.admin-form input,
+.admin-form textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.52rem 0.62rem;
+  font: inherit;
+}
+
+.admin-form button {
+  justify-self: start;
+}
+
+.admin-projects__grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1rem;
+}
+
+.admin-projects__list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-projects__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-strong) 80%, transparent);
+  padding: 0.7rem;
+}
+
+.admin-projects__item p {
+  margin: 0.2rem 0 0;
+  color: var(--text-soft);
+  font-size: 0.85rem;
 }
 
 @media (max-width: 880px) {
@@ -596,6 +775,11 @@ a {
   }
 
   .private-layout__shell {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-projects__grid,
+  .admin-projects__item {
     grid-template-columns: 1fr;
   }
 }

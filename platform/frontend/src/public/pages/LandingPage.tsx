@@ -4,14 +4,15 @@ import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/ProjectCard";
 import { RotatingEarth } from "../components/RotatingEarth";
 import { SpaceBackground } from "../components/SpaceBackground";
-import { portfolioProjects } from "../data/projects";
+import { useProjectPosts } from "../data/project-store";
 import { usePreferences } from "../preferences";
 
 export function LandingPage() {
   const navigate = useNavigate();
   const { theme, language, toggleTheme, setLanguage } = usePreferences();
+  const projects = useProjectPosts();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const featured = portfolioProjects.slice(0, 3);
+  const featured = projects.slice(0, 3);
 
   return (
     <section className="landing">

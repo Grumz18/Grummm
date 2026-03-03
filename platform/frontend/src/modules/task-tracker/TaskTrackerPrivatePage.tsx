@@ -2,11 +2,12 @@ import { Link } from "react-router-dom";
 
 export function TaskTrackerPrivatePage() {
   return (
-    <section>
-      <h1>TaskTracker</h1>
+    <section className="admin-card">
+      <h1>Task Tracker</h1>
       <p>Private workspace for owner-scoped tasks.</p>
-      <nav>
-        <Link to="/app/tasks">Overview</Link> | <Link to="/app/tasks/board">Board</Link> |{" "}
+      <nav className="admin-chip-nav">
+        <Link to="/app/tasks">Overview</Link>
+        <Link to="/app/tasks/board">Board</Link>
         <Link to="/app/tasks/create">Create Task</Link>
       </nav>
       <ul>
