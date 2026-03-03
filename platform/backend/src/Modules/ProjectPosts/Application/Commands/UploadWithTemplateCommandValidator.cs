@@ -22,6 +22,7 @@ public static class UploadWithTemplateCommandValidator
         {
             case TemplateType.Static:
                 RequireFile(command.FrontendFiles, "index.html", "Static template requires frontend index.html.");
+                RequireNoFiles(command.BackendFiles, "Static template does not accept backend files.");
                 break;
             case TemplateType.CSharp:
                 RequireFileByExtension(command.BackendFiles, ".dll", "CSharp template requires at least one .dll file.");
@@ -70,6 +71,14 @@ public static class UploadWithTemplateCommandValidator
         });
 
         if (foundForbidden)
+        {
+            throw new ValidationException(message);
+        }
+    }
+
+    private static void RequireNoFiles(IEnumerable<IFormFile> files, string message)
+    {
+        if (files.Any())
         {
             throw new ValidationException(message);
         }

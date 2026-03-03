@@ -138,6 +138,58 @@ public sealed class UploadWithTemplateEndpointTests
         Assert.Contains("python-pong", payload, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task PostUploadWithTemplate_StaticTemplate_SavesFrontendOnly()
+    {
+        var csharpRuntime = new FakeCSharpRuntime();
+        var pythonRuntime = new FakePythonRuntime();
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: csharpRuntime,
+            pythonRuntime: pythonRuntime);
+        await SeedProjectAsync(app.Services, "static-sample");
+        var client = app.GetTestClient();
+
+        var content = new MultipartFormDataContent
+        {
+            { new StringContent("Static"), "templateType" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("<html><body>OK</body></html>")), "frontendFiles", "index.html" }
+        };
+
+        var response = await client.PostAsync("/api/app/projects/static-sample/upload-with-template", content);
+        var updated = await response.Content.ReadFromJsonAsync<ProjectPostDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(updated);
+        Assert.Equal(TemplateType.Static, updated!.Template);
+        Assert.Equal("/var/projects/static-sample/frontend", updated.FrontendPath);
+        Assert.Null(updated.BackendPath);
+        Assert.Equal(0, csharpRuntime.LoadCalls);
+        Assert.Equal(0, pythonRuntime.LoadCalls);
+    }
+
+    [Fact]
+    public async Task PostUploadWithTemplate_StaticTemplate_WithBackendFiles_Returns400()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedProjectAsync(app.Services, "static-invalid");
+        var client = app.GetTestClient();
+
+        var content = new MultipartFormDataContent
+        {
+            { new StringContent("Static"), "templateType" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("<html><body>OK</body></html>")), "frontendFiles", "index.html" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("not-needed")), "backendFiles", "ignored.txt" }
+        };
+
+        var response = await client.PostAsync("/api/app/projects/static-invalid/upload-with-template", content);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static async Task<WebApplication> CreateAppAsync(
         IProjectFileMalwareScanner scanner,
         ICSharpTemplatePluginRuntime csharpRuntime,
@@ -244,9 +296,11 @@ public sealed class UploadWithTemplateEndpointTests
     private sealed class FakeCSharpRuntime : ICSharpTemplatePluginRuntime
     {
         private readonly HashSet<string> _loaded = new(StringComparer.OrdinalIgnoreCase);
+        public int LoadCalls { get; private set; }
 
         public Task LoadForSlugAsync(string slug, string? backendPath, CancellationToken cancellationToken)
         {
+            LoadCalls++;
             _loaded.Add(slug);
             return Task.CompletedTask;
         }
@@ -271,9 +325,11 @@ public sealed class UploadWithTemplateEndpointTests
     private sealed class FakePythonRuntime : IPythonTemplateRuntime
     {
         private readonly HashSet<string> _loaded = new(StringComparer.OrdinalIgnoreCase);
+        public int LoadCalls { get; private set; }
 
         public Task LoadForSlugAsync(string slug, string? backendPath, CancellationToken cancellationToken)
         {
+            LoadCalls++;
             _loaded.Add(slug);
             return Task.CompletedTask;
         }

@@ -113,6 +113,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             return null;
         }
 
+        var isStaticTemplate = command.TemplateType == TemplateType.Static;
         var projectRoot = Path.Combine(_storageRootPath, command.Id);
         var frontendFolder = Path.Combine(projectRoot, "frontend");
         var backendFolder = Path.Combine(projectRoot, "backend");
@@ -123,13 +124,16 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         }
 
         await SaveFilesAsync(frontendFolder, command.FrontendFiles, cancellationToken);
-        await SaveFilesAsync(backendFolder, command.BackendFiles, cancellationToken);
+        if (!isStaticTemplate)
+        {
+            await SaveFilesAsync(backendFolder, command.BackendFiles, cancellationToken);
+        }
 
         var updated = existing with
         {
             Template = command.TemplateType,
             FrontendPath = $"/var/projects/{command.Id}/frontend",
-            BackendPath = $"/var/projects/{command.Id}/backend"
+            BackendPath = isStaticTemplate ? null : $"/var/projects/{command.Id}/backend"
         };
 
         await UpsertAsync(updated, cancellationToken);
