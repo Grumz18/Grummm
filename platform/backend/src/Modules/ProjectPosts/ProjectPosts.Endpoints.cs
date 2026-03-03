@@ -94,6 +94,7 @@ public sealed partial class ProjectPostsModule
                 string? pluginPath,
                 HttpContext httpContext,
                 ICSharpTemplatePluginRuntime pluginRuntime,
+                IPythonTemplateRuntime pythonRuntime,
                 CancellationToken cancellationToken) =>
             {
                 if (string.Equals(slug, "projects", StringComparison.OrdinalIgnoreCase)
@@ -112,16 +113,30 @@ public sealed partial class ProjectPostsModule
                     httpContext,
                     cancellationToken);
 
-                return dispatchResult ?? Results.NotFound();
+                if (dispatchResult is not null)
+                {
+                    return dispatchResult;
+                }
+
+                var pythonResult = await pythonRuntime.DispatchAsync(
+                    slug,
+                    dispatchPath,
+                    httpContext.Request.Method,
+                    httpContext,
+                    cancellationToken);
+
+                return pythonResult ?? Results.NotFound();
             });
 
         privateGroup.MapDelete("/{id}", async (
             string id,
             IProjectPostRepository repository,
             ICSharpTemplatePluginRuntime pluginRuntime,
+            IPythonTemplateRuntime pythonRuntime,
             CancellationToken cancellationToken) =>
         {
             await pluginRuntime.UnloadForSlugAsync(id, cancellationToken);
+            await pythonRuntime.UnloadForSlugAsync(id, cancellationToken);
             var deleted = await repository.DeleteAsync(id, cancellationToken);
             return deleted ? Results.NoContent() : Results.NotFound();
         });

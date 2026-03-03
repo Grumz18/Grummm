@@ -96,6 +96,11 @@ Infra:
   - DLL грузится через McMaster.NETCore.Plugins в collectible context;
   - dynamic dispatch endpoint: /api/app/{slug}/* (AdminOnly);
   - при удалении поста вызывается unload plugin runtime.
+- Для Python шаблона добавлен runtime embedding:
+  - Python.Runtime + инициализация CPython runtime;
+  - установка зависимостей через `python3 -m pip install -r requirements.txt`;
+  - restricted imports policy для sandbox-бейзлайна;
+  - dynamic dispatch endpoint: /api/app/{slug}/* (AdminOnly).
 - Для БД добавлена миграция:
   platform/backend/src/Modules/ProjectPosts/Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql
 

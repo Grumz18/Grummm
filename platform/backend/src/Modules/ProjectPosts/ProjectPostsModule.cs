@@ -19,11 +19,17 @@ public sealed partial class ProjectPostsModule : IModule
 {
     public void RegisterServices(IServiceCollection services)
     {
+        services.AddReverseProxy();
+
         services.AddOptions<ClamAvOptions>()
             .BindConfiguration("ClamAv");
+        services.AddOptions<PythonTemplateRuntimeOptions>()
+            .BindConfiguration("PythonRuntime");
         services.AddSingleton<IProjectFileMalwareScanner, ClamAvNetProjectFileMalwareScanner>();
         services.AddSingleton<ICSharpTemplatePluginRuntime, CSharpTemplatePluginRuntime>();
+        services.AddSingleton<IPythonTemplateRuntime, PythonTemplateRuntime>();
         services.AddHostedService<CSharpTemplatePluginBootstrapHostedService>();
+        services.AddHostedService<PythonTemplatePluginBootstrapHostedService>();
 
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {

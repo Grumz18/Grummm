@@ -29,7 +29,10 @@ public sealed class UploadWithTemplateEndpointTests
     [Fact]
     public async Task PostUploadWithTemplate_VirusDetected_Returns400()
     {
-        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(false, "EICAR-Test-Signature", "virus.txt")));
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(false, "EICAR-Test-Signature", "virus.txt")),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
         await SeedProjectAsync(app.Services, "upload-virus");
         var client = app.GetTestClient();
 
@@ -51,7 +54,10 @@ public sealed class UploadWithTemplateEndpointTests
     [Fact]
     public async Task PostUploadWithTemplate_ValidPythonFiles_UpdatesEntity()
     {
-        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(true)));
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
         await SeedProjectAsync(app.Services, "upload-python-valid");
         var client = app.GetTestClient();
 
@@ -76,7 +82,10 @@ public sealed class UploadWithTemplateEndpointTests
     [Fact]
     public async Task PostUploadWithTemplate_ValidCSharpPlugin_LoadsAndServesEndpoint()
     {
-        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(true)));
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
         await SeedProjectAsync(app.Services, "plugin-sample");
         var client = app.GetTestClient();
 
@@ -103,7 +112,36 @@ public sealed class UploadWithTemplateEndpointTests
         Assert.Contains("plugin-pong", payload, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task<WebApplication> CreateAppAsync(IProjectFileMalwareScanner scanner)
+    [Fact]
+    public async Task PostUploadWithTemplate_FlaskStylePythonApp_DispatchesEndpoint()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedProjectAsync(app.Services, "python-flask-sample");
+        var client = app.GetTestClient();
+
+        var uploadContent = new MultipartFormDataContent
+        {
+            { new StringContent("Python"), "templateType" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("flask==3.0.0")), "backendFiles", "requirements.txt" },
+            { new ByteArrayContent(Encoding.UTF8.GetBytes("def main(method,path,body): return {'status':200,'body':'flask-ok'}")), "backendFiles", "app.py" }
+        };
+
+        var uploadResponse = await client.PostAsync("/api/app/projects/python-flask-sample/upload-with-template", uploadContent);
+        Assert.Equal(HttpStatusCode.OK, uploadResponse.StatusCode);
+
+        var pluginResponse = await client.GetAsync("/api/app/python-flask-sample/ping");
+        var payload = await pluginResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, pluginResponse.StatusCode);
+        Assert.Contains("python-pong", payload, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task<WebApplication> CreateAppAsync(
+        IProjectFileMalwareScanner scanner,
+        ICSharpTemplatePluginRuntime csharpRuntime,
+        IPythonTemplateRuntime pythonRuntime)
     {
         var builder = WebApplication.CreateBuilder();
         builder.WebHost.UseTestServer();
@@ -122,7 +160,11 @@ public sealed class UploadWithTemplateEndpointTests
         var module = new ProjectPostsModule();
         module.RegisterServices(builder.Services);
         builder.Services.RemoveAll<IProjectFileMalwareScanner>();
+        builder.Services.RemoveAll<ICSharpTemplatePluginRuntime>();
+        builder.Services.RemoveAll<IPythonTemplateRuntime>();
         builder.Services.AddSingleton<IProjectFileMalwareScanner>(scanner);
+        builder.Services.AddSingleton<ICSharpTemplatePluginRuntime>(csharpRuntime);
+        builder.Services.AddSingleton<IPythonTemplateRuntime>(pythonRuntime);
 
         var app = builder.Build();
         app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -196,6 +238,60 @@ public sealed class UploadWithTemplateEndpointTests
         public Task<IResult> HandleAsync(HttpContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(Results.Ok(new { message = "plugin-pong" }));
+        }
+    }
+
+    private sealed class FakeCSharpRuntime : ICSharpTemplatePluginRuntime
+    {
+        private readonly HashSet<string> _loaded = new(StringComparer.OrdinalIgnoreCase);
+
+        public Task LoadForSlugAsync(string slug, string? backendPath, CancellationToken cancellationToken)
+        {
+            _loaded.Add(slug);
+            return Task.CompletedTask;
+        }
+
+        public Task UnloadForSlugAsync(string slug, CancellationToken cancellationToken)
+        {
+            _loaded.Remove(slug);
+            return Task.CompletedTask;
+        }
+
+        public Task<IResult?> DispatchAsync(string slug, string path, string method, HttpContext context, CancellationToken cancellationToken)
+        {
+            if (!_loaded.Contains(slug) || !string.Equals(path, "/ping", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IResult?>(null);
+            }
+
+            return Task.FromResult<IResult?>(Results.Ok(new { message = "plugin-pong" }));
+        }
+    }
+
+    private sealed class FakePythonRuntime : IPythonTemplateRuntime
+    {
+        private readonly HashSet<string> _loaded = new(StringComparer.OrdinalIgnoreCase);
+
+        public Task LoadForSlugAsync(string slug, string? backendPath, CancellationToken cancellationToken)
+        {
+            _loaded.Add(slug);
+            return Task.CompletedTask;
+        }
+
+        public Task UnloadForSlugAsync(string slug, CancellationToken cancellationToken)
+        {
+            _loaded.Remove(slug);
+            return Task.CompletedTask;
+        }
+
+        public Task<IResult?> DispatchAsync(string slug, string path, string method, HttpContext context, CancellationToken cancellationToken)
+        {
+            if (!_loaded.Contains(slug) || !string.Equals(path, "/ping", StringComparison.OrdinalIgnoreCase))
+            {
+                return Task.FromResult<IResult?>(null);
+            }
+
+            return Task.FromResult<IResult?>(Results.Ok(new { message = "python-pong" }));
         }
     }
 }

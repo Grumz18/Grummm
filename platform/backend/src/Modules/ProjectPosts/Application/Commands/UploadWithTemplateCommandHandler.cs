@@ -12,6 +12,7 @@ namespace Platform.Modules.ProjectPosts.Application.Commands;
 public sealed class UploadWithTemplateCommandHandler(
     IProjectPostRepository repository,
     ICSharpTemplatePluginRuntime pluginRuntime,
+    IPythonTemplateRuntime pythonRuntime,
     IProjectFileMalwareScanner malwareScanner,
     IAuditLogWriter auditLogWriter,
     ILogger<UploadWithTemplateCommandHandler> logger)
@@ -59,6 +60,11 @@ public sealed class UploadWithTemplateCommandHandler(
         if (updated is not null && command.TemplateType == Domain.Entities.TemplateType.CSharp)
         {
             await pluginRuntime.LoadForSlugAsync(updated.Id, updated.BackendPath, cancellationToken);
+        }
+
+        if (updated is not null && command.TemplateType == Domain.Entities.TemplateType.Python)
+        {
+            await pythonRuntime.LoadForSlugAsync(updated.Id, updated.BackendPath, cancellationToken);
         }
 
         return updated;

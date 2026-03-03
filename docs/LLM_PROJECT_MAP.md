@@ -98,15 +98,17 @@ platform/backend/
 - `Contracts/UploadWithTemplateMappings.cs`: explicit DTO -> command mapping (mass-assignment protection).
 - `Application/Commands/UploadWithTemplateCommand*.cs`: command, handler and template-aware validation.
 - `Application/Plugins/ICSharpTemplate*.cs`: plugin contracts for C# template endpoint embedding.
+- `Application/Plugins/IPythonTemplateRuntime.cs`: Python template runtime contract.
 - `Infrastructure/Security/ClamAv*.cs`: ClamAV options and malware scanner integration for upload flow.
 - `Infrastructure/Plugins/CSharpTemplatePluginRuntime.cs`: runtime load/unload and dispatch for plugin endpoints under `/api/app/{slug}/*`.
+- `Infrastructure/Plugins/PythonTemplateRuntime*.cs`: Python runtime embedding, requirements install, and dispatch.
 - `Infrastructure/Repositories/PostgresProjectPostRepository.cs`: PostgreSQL persistence.
 - `Infrastructure/Repositories/InMemoryProjectPostRepository.cs`: fallback persistence + seed.
 - `Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql`: DB migration for `template`, `frontend_path`, `backend_path`.
 
 ### `platform/backend/tests`
 - `ProjectPosts.Tests/InMemoryProjectPostRepositoryTests.cs`: baseline test for `TemplateType` + path persistence.
-- `ProjectPosts.Tests/UploadWithTemplateEndpointTests.cs`: multipart upload endpoint tests for invalid(400), valid Python and C# plugin load/dispatch flows.
+- `ProjectPosts.Tests/UploadWithTemplateEndpointTests.cs`: multipart upload endpoint tests for invalid(400), valid Python, Python dispatch and C# plugin load/dispatch flows.
 
 ## 5. Frontend Map (`platform/frontend`)
 
