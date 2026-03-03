@@ -23,6 +23,7 @@ Tech stack:
 - Backend `ProjectPosts` module with public read + admin CRUD endpoints
 - `ProjectPosts` persistence via PostgreSQL repository (with in-memory fallback if DB is not configured)
 - Project template metadata in posts: `TemplateType`, `FrontendPath`, `BackendPath`
+- Admin upload endpoint for template bundles: `POST /api/app/projects/{id}/upload-with-template` (multipart, AdminOnly)
 - JWT auth baseline, AdminOnly policy, CSRF/correlation/audit/rate-limit baselines
 
 ## Repository Layout

@@ -90,15 +90,20 @@ platform/backend/
 
 ### `src/Modules/ProjectPosts`
 - `ProjectPostsModule.cs`: module entry, endpoint mapping, DTO normalization/validation.
+- `ProjectPosts.Endpoints.cs`: route mapping including `POST /api/app/projects/{id}/upload-with-template`.
 - `Domain/Entities/ProjectPost.cs`: project post entity and `TemplateType` enum.
 - `Contracts/ProjectPostDtos.cs`: API contracts including template metadata fields.
 - `Contracts/ProjectPostMappings.cs`: mapping between domain entity and DTO.
+- `Contracts/UploadWithTemplateRequest.cs`: explicit upload DTO for multipart fields.
+- `Contracts/UploadWithTemplateMappings.cs`: explicit DTO -> command mapping (mass-assignment protection).
+- `Application/Commands/UploadWithTemplateCommand*.cs`: command, handler and template-aware validation.
 - `Infrastructure/Repositories/PostgresProjectPostRepository.cs`: PostgreSQL persistence.
 - `Infrastructure/Repositories/InMemoryProjectPostRepository.cs`: fallback persistence + seed.
 - `Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql`: DB migration for `template`, `frontend_path`, `backend_path`.
 
 ### `platform/backend/tests`
 - `ProjectPosts.Tests/InMemoryProjectPostRepositoryTests.cs`: baseline test for `TemplateType` + path persistence.
+- `ProjectPosts.Tests/UploadWithTemplateEndpointTests.cs`: multipart upload endpoint tests for invalid(400)/valid(update metadata) flows.
 
 ## 5. Frontend Map (`platform/frontend`)
 

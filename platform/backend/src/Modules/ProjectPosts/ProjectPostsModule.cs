@@ -1,10 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Platform.Core.Contracts.Modules;
+using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
@@ -12,69 +12,27 @@ using Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 
 namespace Platform.Modules.ProjectPosts;
 
-public sealed class ProjectPostsModule : IModule
+public sealed partial class ProjectPostsModule : IModule
 {
     public void RegisterServices(IServiceCollection services)
     {
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
             var connectionString = configuration.GetConnectionString("Platform");
 
             if (string.IsNullOrWhiteSpace(connectionString))
             {
-                return new InMemoryProjectPostRepository();
+                return new InMemoryProjectPostRepository(environment.ContentRootPath);
             }
 
-            return new PostgresProjectPostRepository(connectionString);
+            return new PostgresProjectPostRepository(connectionString, environment.ContentRootPath);
         });
+        services.AddSingleton<UploadWithTemplateCommandHandler>();
     }
 
-    public void MapEndpoints(IEndpointRouteBuilder app)
-    {
-        var publicGroup = app.MapGroup("/api/public/projects");
-        var privateGroup = app.MapGroup("/api/app/projects").RequireAuthorization("AdminOnly");
-
-        publicGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            var items = await repository.ListAsync(cancellationToken);
-            return Results.Ok(new { items });
-        });
-
-        publicGroup.MapGet("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            var item = await repository.GetByIdAsync(id, cancellationToken);
-            return item is null ? Results.NotFound() : Results.Ok(item);
-        });
-
-        privateGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            var items = await repository.ListAsync(cancellationToken);
-            return Results.Ok(new { items });
-        });
-
-        privateGroup.MapPost("/", async (UpsertProjectPostRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            ValidateDto(request);
-            var normalized = Normalize(request);
-            var created = await repository.UpsertAsync(normalized, cancellationToken);
-            return Results.Created($"/api/app/projects/{created.Id}", created);
-        });
-
-        privateGroup.MapPut("/{id}", async (string id, UpsertProjectPostRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            ValidateDto(request);
-            var normalized = Normalize(request) with { Id = id.Trim() };
-            var updated = await repository.UpsertAsync(normalized, cancellationToken);
-            return Results.Ok(updated);
-        });
-
-        privateGroup.MapDelete("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            var deleted = await repository.DeleteAsync(id, cancellationToken);
-            return deleted ? Results.NoContent() : Results.NotFound();
-        });
-    }
+    public partial void MapEndpoints(IEndpointRouteBuilder app);
 
     private static ProjectPostDto Normalize(UpsertProjectPostRequest request)
     {

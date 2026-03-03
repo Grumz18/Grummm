@@ -74,6 +74,7 @@ Infra:
   - POST /api/app/projects
   - PUT /api/app/projects/{id}
   - DELETE /api/app/projects/{id}
+  - POST /api/app/projects/{id}/upload-with-template (multipart upload для шаблонов)
 
 Хранение данных:
 - Основной репозиторий: PostgreSQL (таблица public.project_posts).
@@ -83,6 +84,9 @@ Infra:
 - TemplateType enum: None, Static, CSharp, Python, JavaScript.
 - Поля: frontend_path, backend_path.
 - В API/DTO: template, frontendPath, backendPath.
+- Для upload добавлен CQRS command:
+  UploadWithTemplateCommand (Id, TemplateType, FrontendFiles, BackendFiles),
+  включая template-aware validation (пример: JavaScript -> требуется package.json).
 - Для БД добавлена миграция:
   platform/backend/src/Modules/ProjectPosts/Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql
 

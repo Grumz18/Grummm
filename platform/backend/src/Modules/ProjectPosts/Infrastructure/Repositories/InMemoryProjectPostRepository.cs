@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Http;
+using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
@@ -8,9 +11,12 @@ namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 public sealed class InMemoryProjectPostRepository : IProjectPostRepository
 {
     private readonly ConcurrentDictionary<string, ProjectPost> _storage = new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _storageRootPath;
 
-    public InMemoryProjectPostRepository()
+    public InMemoryProjectPostRepository(string? contentRootPath = null)
     {
+        _storageRootPath = Path.Combine(contentRootPath ?? AppContext.BaseDirectory, "var", "projects");
+
         foreach (var seed in SeedPosts())
         {
             _storage[seed.Id] = ProjectPostMappings.ToDomain(seed);
@@ -37,6 +43,36 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
     {
         _storage[post.Id] = ProjectPostMappings.ToDomain(post);
         return Task.FromResult(post);
+    }
+
+    public async Task<ProjectPostDto?> UploadWithTemplateAsync(UploadWithTemplateCommand command, CancellationToken cancellationToken)
+    {
+        if (!_storage.TryGetValue(command.Id, out var existing))
+        {
+            return null;
+        }
+
+        var projectRoot = Path.Combine(_storageRootPath, command.Id);
+        var frontendFolder = Path.Combine(projectRoot, "frontend");
+        var backendFolder = Path.Combine(projectRoot, "backend");
+
+        if (Directory.Exists(projectRoot))
+        {
+            Directory.Delete(projectRoot, recursive: true);
+        }
+
+        await SaveFilesAsync(frontendFolder, command.FrontendFiles, cancellationToken);
+        await SaveFilesAsync(backendFolder, command.BackendFiles, cancellationToken);
+
+        var updated = ProjectPostMappings.ToDto(existing) with
+        {
+            Template = command.TemplateType,
+            FrontendPath = $"/var/projects/{command.Id}/frontend",
+            BackendPath = $"/var/projects/{command.Id}/backend"
+        };
+
+        _storage[command.Id] = ProjectPostMappings.ToDomain(updated);
+        return updated;
     }
 
     public Task<bool> DeleteAsync(string id, CancellationToken cancellationToken)
@@ -70,5 +106,46 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             Template: TemplateType.None,
             FrontendPath: null,
             BackendPath: null);
+    }
+
+    private static async Task SaveFilesAsync(string baseFolder, IEnumerable<IFormFile> files, CancellationToken cancellationToken)
+    {
+        Directory.CreateDirectory(baseFolder);
+
+        foreach (var file in files)
+        {
+            var relativePath = SanitizeRelativePath(file.FileName);
+            var fullPath = Path.Combine(baseFolder, relativePath);
+            var directory = Path.GetDirectoryName(fullPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await using var stream = File.Create(fullPath);
+            await file.CopyToAsync(stream, cancellationToken);
+        }
+    }
+
+    private static string SanitizeRelativePath(string rawFileName)
+    {
+        var normalized = rawFileName.Replace('\\', '/');
+        var parts = normalized
+            .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(part => part != ".");
+
+        if (parts.Any(part => part == ".."))
+        {
+            throw new ValidationException("Invalid relative file path.");
+        }
+
+        var segments = parts.ToArray();
+        if (segments.Length == 0)
+        {
+            throw new ValidationException("File path is empty.");
+        }
+
+        var safePath = Path.Combine(segments);
+        return safePath;
     }
 }
