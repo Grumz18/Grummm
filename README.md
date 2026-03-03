@@ -18,6 +18,7 @@ Tech stack:
 - Public projects catalog + project detail page
 - Admin UI shell with private routes
 - Admin projects workspace (`/app/projects`) to create/edit/delete posts and upload media
+- Admin project form supports template selection (`TemplateType`) and conditional frontend/backend upload dropzones
 - TaskTracker private pages (`/app/tasks/*`)
 - Backend `ProjectPosts` module with public read + admin CRUD endpoints
 - `ProjectPosts` persistence via PostgreSQL repository (with in-memory fallback if DB is not configured)

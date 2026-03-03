@@ -11,6 +11,8 @@ export interface ThemedAsset {
   dark: string;
 }
 
+export type TemplateType = "None" | "Static" | "CSharp" | "Python" | "JavaScript";
+
 export interface PortfolioProject {
   id: string;
   title: LocalizedText;
@@ -20,4 +22,7 @@ export interface PortfolioProject {
   heroImage: ThemedAsset;
   screenshots: ThemedAsset[];
   videoUrl?: string;
+  template?: TemplateType;
+  frontendPath?: string;
+  backendPath?: string;
 }

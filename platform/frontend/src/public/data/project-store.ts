@@ -1,12 +1,32 @@
 import { useEffect, useState } from "react";
 import { seedProjects } from "./projects";
-import type { PortfolioProject } from "../types";
+import type { PortfolioProject, TemplateType } from "../types";
 
 const STORAGE_KEY = "platform.projects.posts.v1";
 const UPDATE_EVENT = "platform:projects:updated";
 const PUBLIC_API = "/api/public/projects";
 const PRIVATE_API = "/api/app/projects";
 const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
+const DEFAULT_FRONTEND_PATH: Record<TemplateType, string | undefined> = {
+  None: undefined,
+  Static: "/templates/static",
+  CSharp: "/templates/csharp",
+  Python: "/templates/python",
+  JavaScript: "/templates/js"
+};
+const DEFAULT_BACKEND_PATH: Record<TemplateType, string | undefined> = {
+  None: undefined,
+  Static: "/services/static",
+  CSharp: "/services/csharp",
+  Python: "/services/python",
+  JavaScript: "/services/js"
+};
+
+export interface ProjectUploadBundle {
+  templateType: TemplateType;
+  frontendFiles: File[];
+  backendFiles: File[];
+}
 
 function normalizeId(raw: string): string {
   const slug = raw
@@ -61,6 +81,51 @@ function parseApiList(payload: unknown): PortfolioProject[] {
   return [];
 }
 
+function toApiPayload(input: PortfolioProject): PortfolioProject {
+  const template = input.template ?? "None";
+
+  return {
+    ...input,
+    template,
+    frontendPath: input.frontendPath ?? DEFAULT_FRONTEND_PATH[template],
+    backendPath: input.backendPath ?? DEFAULT_BACKEND_PATH[template]
+  };
+}
+
+async function tryMultipartUpsert(
+  method: "POST" | "PUT",
+  endpoint: string,
+  token: string,
+  payload: PortfolioProject,
+  upload?: ProjectUploadBundle
+): Promise<boolean> {
+  if (!upload || (upload.frontendFiles.length === 0 && upload.backendFiles.length === 0)) {
+    return false;
+  }
+
+  const body = new FormData();
+  body.append("payload", JSON.stringify(toApiPayload(payload)));
+  body.append("templateType", upload.templateType);
+
+  for (const file of upload.frontendFiles) {
+    body.append("frontendFiles", file, file.webkitRelativePath || file.name);
+  }
+
+  for (const file of upload.backendFiles) {
+    body.append("backendFiles", file, file.webkitRelativePath || file.name);
+  }
+
+  const response = await fetch(endpoint, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body
+  });
+
+  return response.ok;
+}
+
 export function readProjects(): PortfolioProject[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -108,7 +173,7 @@ export async function fetchProjectsFromApi(): Promise<PortfolioProject[] | null>
   return null;
 }
 
-export async function createProject(input: PortfolioProject): Promise<PortfolioProject[]> {
+export async function createProject(input: PortfolioProject, upload?: ProjectUploadBundle): Promise<PortfolioProject[]> {
   const current = readProjects();
   const baseId = normalizeId(input.id || input.title.en || input.title.ru);
   let uniqueId = baseId;
@@ -117,21 +182,25 @@ export async function createProject(input: PortfolioProject): Promise<PortfolioP
     uniqueId = `${baseId}-${idx++}`;
   }
 
-  const payload = { ...input, id: uniqueId };
+  const payload = toApiPayload({ ...input, id: uniqueId });
   const token = getAccessToken();
 
   if (token) {
     try {
-      const response = await fetch(PRIVATE_API, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      let responseOk = await tryMultipartUpsert("POST", PRIVATE_API, token, payload, upload);
+      if (!responseOk) {
+        const response = await fetch(PRIVATE_API, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        responseOk = response.ok;
+      }
 
-      if (response.ok) {
+      if (responseOk) {
         const synced = await fetchProjectsFromApi();
         if (synced) {
           return synced;
@@ -147,23 +216,31 @@ export async function createProject(input: PortfolioProject): Promise<PortfolioP
   return next;
 }
 
-export async function updateProject(projectId: string, patch: PortfolioProject): Promise<PortfolioProject[]> {
+export async function updateProject(
+  projectId: string,
+  patch: PortfolioProject,
+  upload?: ProjectUploadBundle
+): Promise<PortfolioProject[]> {
   const current = readProjects();
-  const payload = { ...patch, id: projectId };
+  const payload = toApiPayload({ ...patch, id: projectId });
   const token = getAccessToken();
 
   if (token) {
     try {
-      const response = await fetch(`${PRIVATE_API}/${projectId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      let responseOk = await tryMultipartUpsert("PUT", `${PRIVATE_API}/${projectId}`, token, payload, upload);
+      if (!responseOk) {
+        const response = await fetch(`${PRIVATE_API}/${projectId}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(payload)
+        });
+        responseOk = response.ok;
+      }
 
-      if (response.ok) {
+      if (responseOk) {
         const synced = await fetchProjectsFromApi();
         if (synced) {
           return synced;

@@ -121,6 +121,7 @@ platform/frontend/
 - `routing/ProtectedRoute.tsx`: private route guard for `/app/*`.
 - `layouts/PublicLayout.tsx`: public shell.
 - `layouts/PrivateAppLayout.tsx`: private app shell.
+- `pages/AdminProjectsWorkspace.tsx`: admin CRUD UI for project posts, template dropdown, conditional upload instructions, frontend/backend dropzones.
 - `plugin-registry/module-contract.ts`: frontend module contract.
 - `plugin-registry/registry.ts`: auto-discovery via `import.meta.glob`.
 - `README.md`: frontend core baseline notes.
@@ -132,8 +133,10 @@ platform/frontend/
 - `components/RotatingEarth.tsx`: CSS/DOM animated 2D Earth with orbit labels (no 3D libs).
 - `components/ProjectCard.tsx`: responsive expandable project cards.
 - `data/projects.ts`: bilingual portfolio data and themed assets.
+- `data/project-store.ts`: public/admin project data store, API sync, multipart upload attempt (FormData) + JSON fallback.
 - `preferences.tsx`: public theme/language state and persistence.
 - `hooks/useSwipeBack.ts`: mobile swipe-back helper for public pages.
+- `types.ts`: shared `PortfolioProject` type including template metadata fields (`template`, `frontendPath`, `backendPath`).
 
 ### `src/modules/task-tracker`
 - `task-tracker.module.tsx`: module registration metadata.
@@ -144,6 +147,9 @@ platform/frontend/
 
 ### `src/modules/README.md`
 - Rules for adding new frontend modules and route boundaries.
+
+### Frontend Tests
+- `src/core/pages/AdminProjectsWorkspace.test.tsx`: verifies conditional template UI rendering (example: `Python` instructions).
 
 ## 6. Infra Map (`platform/infra`)
 

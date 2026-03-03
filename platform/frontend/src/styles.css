@@ -723,7 +723,8 @@ a {
 }
 
 .admin-form input,
-.admin-form textarea {
+.admin-form textarea,
+.admin-form select {
   width: 100%;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--surface) 90%, transparent);
@@ -735,6 +736,53 @@ a {
 
 .admin-form button {
   justify-self: start;
+}
+
+.admin-template-accordion {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-strong) 75%, transparent);
+  padding: 0.65rem;
+}
+
+.admin-template-accordion summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.admin-dropzone-wrap {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.admin-dropzone {
+  border: 1px dashed color-mix(in srgb, var(--primary) 50%, var(--border));
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+  cursor: pointer;
+}
+
+.admin-dropzone.is-active {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+
+.admin-dropzone p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.88rem;
+}
+
+.admin-file-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  display: grid;
+  gap: 0.22rem;
 }
 
 .admin-projects__grid {

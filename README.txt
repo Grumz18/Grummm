@@ -49,11 +49,18 @@ Infra:
   - редактирование поста,
   - удаление поста,
   - загрузка медиа (обложка, скриншоты, видео),
-  - поля текста для EN/RU.
+  - поля текста для EN/RU,
+  - выбор TemplateType (None/Static/CSharp/Python/JavaScript),
+  - условные секции загрузки шаблонов:
+    frontend dropzone ("Drag dist here"),
+    backend dropzone (отдельная зона под runtime/service файлы).
 
 3.3 Источник данных проектов
 - Frontend использует store, который пытается читать/писать через API.
 - Если API недоступен или нет токена - есть fallback на localStorage.
+- Для /app/projects добавлен multipart submit путь:
+  - payload + templateType + frontendFiles + backendFiles в FormData;
+  - если multipart endpoint недоступен, используется JSON fallback.
 
 4) Что сделано по backend
 -------------------------
@@ -85,10 +92,11 @@ Infra:
 5) Что нужно доделать (ближайшие шаги)
 --------------------------------------
 
-1. Добавить backend-тесты на PostgreSQL-репозиторий и AdminOnly авторизацию.
-2. Добавить валидацию template/path на уровне command/handler.
-3. После стабилизации API убрать/сузить localStorage fallback.
-4. Прогнать deploy smoke для сценария /app/projects -> /projects.
+1. Добавить backend endpoint/handler для полноценного приема multipart (template uploads) без fallback.
+2. Добавить backend-тесты на PostgreSQL-репозиторий и AdminOnly авторизацию.
+3. Добавить валидацию template/path и файлового состава на уровне command/handler.
+4. После стабилизации API убрать/сузить localStorage fallback.
+5. Прогнать deploy smoke для сценария /app/projects -> /projects.
 
 6) Структура репозитория
 ------------------------
