@@ -92,6 +92,10 @@ Infra:
   - JavaScript: запрещены `.exe` файлы.
 - Перед сохранением upload проходит malware scan (ClamAV, секция ClamAv в appsettings),
   при детекте файл отклоняется с 400 и фиксируется audit-запись.
+- Для CSharp шаблона добавлен runtime embedding:
+  - DLL грузится через McMaster.NETCore.Plugins в collectible context;
+  - dynamic dispatch endpoint: /api/app/{slug}/* (AdminOnly);
+  - при удалении поста вызывается unload plugin runtime.
 - Для БД добавлена миграция:
   platform/backend/src/Modules/ProjectPosts/Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql
 

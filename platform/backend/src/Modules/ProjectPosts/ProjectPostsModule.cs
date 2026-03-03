@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Platform.Core.Contracts.Modules;
 using Platform.Modules.ProjectPosts.Application.Commands;
+using Platform.Modules.ProjectPosts.Application.Plugins;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Application.Security;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
+using Platform.Modules.ProjectPosts.Infrastructure.Plugins;
 using Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 using Platform.Modules.ProjectPosts.Infrastructure.Security;
 
@@ -20,6 +22,8 @@ public sealed partial class ProjectPostsModule : IModule
         services.AddOptions<ClamAvOptions>()
             .BindConfiguration("ClamAv");
         services.AddSingleton<IProjectFileMalwareScanner, ClamAvNetProjectFileMalwareScanner>();
+        services.AddSingleton<ICSharpTemplatePluginRuntime, CSharpTemplatePluginRuntime>();
+        services.AddHostedService<CSharpTemplatePluginBootstrapHostedService>();
 
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {

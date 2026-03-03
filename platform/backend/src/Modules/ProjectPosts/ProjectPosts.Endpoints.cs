@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Routing;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 using Platform.Modules.ProjectPosts.Application.Commands;
+using Platform.Modules.ProjectPosts.Application.Plugins;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Contracts;
 
@@ -85,8 +86,42 @@ public sealed partial class ProjectPostsModule
                 return updated is null ? Results.NotFound() : Results.Ok(updated);
             });
 
-        privateGroup.MapDelete("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        var dynamicPluginGroup = app.MapGroup("/api/app/{slug}").RequireAuthorization("AdminOnly");
+        dynamicPluginGroup.MapMethods("/{**pluginPath}",
+            ["GET", "POST", "PUT", "PATCH", "DELETE"],
+            async (
+                string slug,
+                string? pluginPath,
+                HttpContext httpContext,
+                ICSharpTemplatePluginRuntime pluginRuntime,
+                CancellationToken cancellationToken) =>
+            {
+                if (string.Equals(slug, "projects", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(slug, "tasks", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(slug, "auth", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(slug, "security", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.NotFound();
+                }
+
+                var dispatchPath = "/" + (pluginPath ?? string.Empty);
+                var dispatchResult = await pluginRuntime.DispatchAsync(
+                    slug,
+                    dispatchPath,
+                    httpContext.Request.Method,
+                    httpContext,
+                    cancellationToken);
+
+                return dispatchResult ?? Results.NotFound();
+            });
+
+        privateGroup.MapDelete("/{id}", async (
+            string id,
+            IProjectPostRepository repository,
+            ICSharpTemplatePluginRuntime pluginRuntime,
+            CancellationToken cancellationToken) =>
         {
+            await pluginRuntime.UnloadForSlugAsync(id, cancellationToken);
             var deleted = await repository.DeleteAsync(id, cancellationToken);
             return deleted ? Results.NoContent() : Results.NotFound();
         });

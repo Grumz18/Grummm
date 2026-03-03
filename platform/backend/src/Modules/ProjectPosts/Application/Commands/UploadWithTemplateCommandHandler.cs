@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Platform.Core.Contracts.Audit;
+using Platform.Modules.ProjectPosts.Application.Plugins;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Application.Security;
 using Platform.Modules.ProjectPosts.Contracts;
@@ -10,6 +11,7 @@ namespace Platform.Modules.ProjectPosts.Application.Commands;
 
 public sealed class UploadWithTemplateCommandHandler(
     IProjectPostRepository repository,
+    ICSharpTemplatePluginRuntime pluginRuntime,
     IProjectFileMalwareScanner malwareScanner,
     IAuditLogWriter auditLogWriter,
     ILogger<UploadWithTemplateCommandHandler> logger)
@@ -53,6 +55,12 @@ public sealed class UploadWithTemplateCommandHandler(
             }
         }
 
-        return await repository.UploadWithTemplateAsync(command, cancellationToken);
+        var updated = await repository.UploadWithTemplateAsync(command, cancellationToken);
+        if (updated is not null && command.TemplateType == Domain.Entities.TemplateType.CSharp)
+        {
+            await pluginRuntime.LoadForSlugAsync(updated.Id, updated.BackendPath, cancellationToken);
+        }
+
+        return updated;
     }
 }

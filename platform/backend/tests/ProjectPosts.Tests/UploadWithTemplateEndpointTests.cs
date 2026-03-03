@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Platform.Modules.ProjectPosts;
 using Platform.Modules.ProjectPosts.Application.Repositories;
+using Platform.Modules.ProjectPosts.Application.Plugins;
 using Platform.Modules.ProjectPosts.Application.Security;
 using Platform.Modules.ProjectPosts.Contracts;
 using Platform.Modules.ProjectPosts.Domain.Entities;
@@ -69,6 +71,36 @@ public sealed class UploadWithTemplateEndpointTests
         Assert.Equal(TemplateType.Python, updated!.Template);
         Assert.Equal("/var/projects/upload-python-valid/frontend", updated.FrontendPath);
         Assert.Equal("/var/projects/upload-python-valid/backend", updated.BackendPath);
+    }
+
+    [Fact]
+    public async Task PostUploadWithTemplate_ValidCSharpPlugin_LoadsAndServesEndpoint()
+    {
+        await using var app = await CreateAppAsync(new FakeScanner(new ProjectFileScanResult(true)));
+        await SeedProjectAsync(app.Services, "plugin-sample");
+        var client = app.GetTestClient();
+
+        var testAssemblyPath = Assembly.GetExecutingAssembly().Location;
+        var dllBytes = await File.ReadAllBytesAsync(testAssemblyPath);
+        var depsPath = Path.ChangeExtension(testAssemblyPath, ".deps.json");
+        var depsBytes = File.Exists(depsPath)
+            ? await File.ReadAllBytesAsync(depsPath)
+            : Encoding.UTF8.GetBytes("{}");
+
+        var uploadContent = new MultipartFormDataContent
+        {
+            { new StringContent("CSharp"), "templateType" },
+            { new ByteArrayContent(dllBytes), "backendFiles", "plugin-sample.dll" },
+            { new ByteArrayContent(depsBytes), "backendFiles", "plugin-sample.deps.json" }
+        };
+
+        var uploadResponse = await client.PostAsync("/api/app/projects/plugin-sample/upload-with-template", uploadContent);
+        Assert.Equal(HttpStatusCode.OK, uploadResponse.StatusCode);
+
+        var pluginResponse = await client.GetAsync("/api/app/plugin-sample/ping");
+        var payload = await pluginResponse.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, pluginResponse.StatusCode);
+        Assert.Contains("plugin-pong", payload, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<WebApplication> CreateAppAsync(IProjectFileMalwareScanner scanner)
@@ -153,6 +185,17 @@ public sealed class UploadWithTemplateEndpointTests
         public Task<ProjectFileScanResult> ScanAsync(IEnumerable<IFormFile> files, CancellationToken cancellationToken)
         {
             return Task.FromResult(result);
+        }
+    }
+
+    public sealed class SamplePluginPingEndpoint : ICSharpTemplateEndpoint
+    {
+        public string Method => "GET";
+        public string Path => "/ping";
+
+        public Task<IResult> HandleAsync(HttpContext context, CancellationToken cancellationToken)
+        {
+            return Task.FromResult(Results.Ok(new { message = "plugin-pong" }));
         }
     }
 }

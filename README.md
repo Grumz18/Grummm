@@ -26,6 +26,7 @@ Tech stack:
 - Admin upload endpoint for template bundles: `POST /api/app/projects/{id}/upload-with-template` (multipart, AdminOnly)
 - Upload flow includes template-aware structure validation and ClamAV malware scan before file save
 - Nginx serves uploaded dynamic frontend assets from shared volume `/var/projects` via `/app/{slug}/...`
+- C# template backend embedding via `McMaster.NETCore.Plugins` with isolated collectible contexts and dynamic API dispatch under `/api/app/{slug}/*`
 - JWT auth baseline, AdminOnly policy, CSRF/correlation/audit/rate-limit baselines
 
 ## Repository Layout
