@@ -3,16 +3,16 @@ import { Link } from "react-router-dom";
 export function TaskTrackerPrivatePage() {
   return (
     <section className="admin-card">
-      <h1>Task Tracker</h1>
-      <p>Private workspace for owner-scoped tasks.</p>
+      <h1>Трекер задач</h1>
+      <p>Приватное рабочее пространство для управления задачами.</p>
       <nav className="admin-chip-nav">
-        <Link to="/app/tasks">Overview</Link>
-        <Link to="/app/tasks/board">Board</Link>
-        <Link to="/app/tasks/create">Create Task</Link>
+        <Link to="/app/tasks">Обзор</Link>
+        <Link to="/app/tasks/board">Доска</Link>
+        <Link to="/app/tasks/create">Создать задачу</Link>
       </nav>
       <ul>
-        <li>Ownership checks are enforced in backend private API.</li>
-        <li>AdminOnly guard is enforced by application routing.</li>
+        <li>Проверка прав владельца включена на backend в приватном API.</li>
+        <li>Guard `AdminOnly` применяется на уровне маршрутизации приложения.</li>
       </ul>
     </section>
   );

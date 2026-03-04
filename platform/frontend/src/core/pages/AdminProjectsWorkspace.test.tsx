@@ -5,7 +5,7 @@ import { AdminProjectsWorkspace } from "./AdminProjectsWorkspace";
 
 jest.mock("../../public/data/project-store", () => ({
   useProjectPosts: () => [],
-  createProject: jest.fn(),
+  createProjectWithOptions: jest.fn(),
   updateProject: jest.fn(),
   deleteProject: jest.fn()
 }));
@@ -20,12 +20,12 @@ describe("AdminProjectsWorkspace", () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByText(/Upload Python service files/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Загрузите Python-файлы сервиса/i)).not.toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText(/Template Type/i), "Python");
+    await user.selectOptions(screen.getByLabelText(/Тип шаблона/i), "Python");
 
-    expect(screen.getByText(/Upload Python service files/i)).toBeInTheDocument();
-    expect(screen.getByText(/Drag dist here/i)).toBeInTheDocument();
+    expect(screen.getByText(/Загрузите Python-файлы сервиса/i)).toBeInTheDocument();
+    expect(screen.getByText(/Перетащите сюда frontend-сборку/i)).toBeInTheDocument();
   });
 });
 

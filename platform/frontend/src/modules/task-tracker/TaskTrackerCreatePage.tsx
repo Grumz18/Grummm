@@ -1,18 +1,18 @@
 export function TaskTrackerCreatePage() {
   return (
     <section className="admin-card">
-      <h2>Create Task</h2>
-      <p className="admin-muted">Route: /app/tasks/create</p>
+      <h2>Создание задачи</h2>
+      <p className="admin-muted">Маршрут: /app/tasks/create</p>
       <form className="admin-form">
         <label>
-          Title
-          <input name="title" placeholder="Task title" />
+          Заголовок
+          <input name="title" placeholder="Название задачи" />
         </label>
         <label>
-          Description
-          <textarea name="description" placeholder="Task description" rows={4} />
+          Описание
+          <textarea name="description" placeholder="Описание задачи" rows={4} />
         </label>
-        <button type="button">Create (placeholder)</button>
+        <button type="button">Создать (заглушка)</button>
       </form>
     </section>
   );

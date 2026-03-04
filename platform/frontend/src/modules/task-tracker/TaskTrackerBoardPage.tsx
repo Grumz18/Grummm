@@ -1,13 +1,13 @@
 export function TaskTrackerBoardPage() {
   return (
     <section className="admin-card">
-      <h2>Task Board</h2>
-      <p className="admin-muted">Route: /app/tasks/board</p>
+      <h2>Доска задач</h2>
+      <p className="admin-muted">Маршрут: /app/tasks/board</p>
       <div className="admin-panel">
-        <strong>Todo</strong>
+        <strong>План</strong>
         <ul>
-          <li>Define real API client for /api/app/tasks/*</li>
-          <li>Load owner tasks from backend</li>
+          <li>Подключить реальный API-клиент для `/api/app/tasks/*`</li>
+          <li>Загружать задачи владельца с backend</li>
         </ul>
       </div>
     </section>

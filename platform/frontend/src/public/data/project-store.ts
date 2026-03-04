@@ -28,6 +28,10 @@ export interface ProjectUploadBundle {
   backendFiles: File[];
 }
 
+export interface AdminMutationOptions {
+  serverOnly?: boolean;
+}
+
 function normalizeId(raw: string): string {
   const slug = raw
     .toLowerCase()
@@ -62,6 +66,14 @@ function getAccessToken(): string | null {
   } catch {
     return null;
   }
+}
+
+function ensureAccessToken(serverOnly: boolean): string | null {
+  const token = getAccessToken();
+  if (serverOnly && !token) {
+    throw new Error("Нет access token. Повторно войдите в админ-панель.");
+  }
+  return token;
 }
 
 function parseApiList(payload: unknown): PortfolioProject[] {
@@ -144,7 +156,7 @@ export function readProjects(): PortfolioProject[] {
     }
 
     const parsed = JSON.parse(raw) as PortfolioProject[];
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    if (!Array.isArray(parsed)) {
       const initial = cloneSeed();
       writeProjects(initial);
       return initial;
@@ -170,10 +182,8 @@ export async function fetchProjectsFromApi(): Promise<PortfolioProject[] | null>
 
     const payload = (await response.json()) as unknown;
     const projects = parseApiList(payload);
-    if (projects.length > 0) {
-      writeProjects(projects);
-      return projects;
-    }
+    writeProjects(projects);
+    return projects;
   } catch {
     // offline or API unavailable
   }
@@ -229,6 +239,14 @@ export async function fetchProjectByIdFromApi(projectId: string): Promise<Portfo
 }
 
 export async function createProject(input: PortfolioProject, upload?: ProjectUploadBundle): Promise<PortfolioProject[]> {
+  return createProjectWithOptions(input, upload, {});
+}
+
+export async function createProjectWithOptions(
+  input: PortfolioProject,
+  upload?: ProjectUploadBundle,
+  options: AdminMutationOptions = {}
+): Promise<PortfolioProject[]> {
   const current = readProjects();
   const baseId = normalizeId(input.id || input.title.en || input.title.ru);
   let uniqueId = baseId;
@@ -238,7 +256,7 @@ export async function createProject(input: PortfolioProject, upload?: ProjectUpl
   }
 
   const payload = toApiPayload({ ...input, id: uniqueId });
-  const token = getAccessToken();
+  const token = ensureAccessToken(Boolean(options.serverOnly));
 
   if (token) {
     try {
@@ -257,13 +275,23 @@ export async function createProject(input: PortfolioProject, upload?: ProjectUpl
 
       if (responseOk) {
         const synced = await fetchProjectsFromApi();
-        if (synced) {
+        if (synced !== null) {
           return synced;
         }
+        if (options.serverOnly) {
+          throw new Error("Сервер не вернул обновленный список проектов.");
+        }
+      } else if (options.serverOnly) {
+        throw new Error("Ошибка создания проекта на сервере.");
       }
     } catch {
+      if (options.serverOnly) {
+        throw new Error("Не удалось создать проект на сервере.");
+      }
       // fallback to local
     }
+  } else if (options.serverOnly) {
+    throw new Error("Нет доступа к серверу для создания проекта.");
   }
 
   const next = [payload, ...current];
@@ -274,11 +302,12 @@ export async function createProject(input: PortfolioProject, upload?: ProjectUpl
 export async function updateProject(
   projectId: string,
   patch: PortfolioProject,
-  upload?: ProjectUploadBundle
+  upload?: ProjectUploadBundle,
+  options: AdminMutationOptions = {}
 ): Promise<PortfolioProject[]> {
   const current = readProjects();
   const payload = toApiPayload({ ...patch, id: projectId });
-  const token = getAccessToken();
+  const token = ensureAccessToken(Boolean(options.serverOnly));
 
   if (token) {
     try {
@@ -297,13 +326,23 @@ export async function updateProject(
 
       if (responseOk) {
         const synced = await fetchProjectsFromApi();
-        if (synced) {
+        if (synced !== null) {
           return synced;
         }
+        if (options.serverOnly) {
+          throw new Error("Сервер не вернул обновленный список проектов.");
+        }
+      } else if (options.serverOnly) {
+        throw new Error("Ошибка обновления проекта на сервере.");
       }
     } catch {
+      if (options.serverOnly) {
+        throw new Error("Не удалось обновить проект на сервере.");
+      }
       // fallback to local
     }
+  } else if (options.serverOnly) {
+    throw new Error("Нет доступа к серверу для обновления проекта.");
   }
 
   const next = current.map((project) => (project.id === projectId ? payload : project));
@@ -311,9 +350,9 @@ export async function updateProject(
   return next;
 }
 
-export async function deleteProject(projectId: string): Promise<PortfolioProject[]> {
+export async function deleteProject(projectId: string, options: AdminMutationOptions = {}): Promise<PortfolioProject[]> {
   const current = readProjects();
-  const token = getAccessToken();
+  const token = ensureAccessToken(Boolean(options.serverOnly));
 
   if (token) {
     try {
@@ -326,17 +365,27 @@ export async function deleteProject(projectId: string): Promise<PortfolioProject
 
       if (response.ok) {
         const synced = await fetchProjectsFromApi();
-        if (synced) {
+        if (synced !== null) {
           return synced;
         }
+        if (options.serverOnly) {
+          throw new Error("Сервер не вернул обновленный список проектов.");
+        }
+      } else if (options.serverOnly) {
+        throw new Error("Ошибка удаления проекта на сервере.");
       }
     } catch {
+      if (options.serverOnly) {
+        throw new Error("Не удалось удалить проект на сервере.");
+      }
       // fallback to local
     }
+  } else if (options.serverOnly) {
+    throw new Error("Нет доступа к серверу для удаления проекта.");
   }
 
   const next = current.filter((project) => project.id !== projectId);
-  writeProjects(next.length > 0 ? next : cloneSeed());
+  writeProjects(next);
   return next;
 }
 

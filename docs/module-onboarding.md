@@ -1,7 +1,7 @@
 # Module Onboarding Guide (Backend + Frontend)
 
-Last Updated: 2026-02-25
-Version: 1.0
+Last Updated: 2026-03-04
+Version: 1.1
 Status: BASELINE
 
 ## 1. Goal
@@ -54,6 +54,8 @@ refresh token must rotate and be returned via secure cookie only.
 action must be recorded by audit middleware/table baseline.
 18. Preserve correlation traceability:
 do not remove/override `X-Correlation-ID` propagation in module endpoints.
+19. Data access rule:
+no raw SQL string concatenation is allowed; if direct SQL is needed, use constant query text + parameterized commands only.
 
 ## 4. Frontend Onboarding Steps
 
@@ -80,8 +82,31 @@ Use only `src/core` and `src/shared` cross-cutting dependencies.
 use antiforgery flow (`GET /api/public/security/csrf` + `X-CSRF-TOKEN`).
 12. For private module routes under `/app`, align frontend ownership UI with backend ownership checks.
 13. Use access token from API response; refresh flow relies on cookie transport.
+14. For template-based modules (`/app/projects` workspace), keep upload contracts explicit:
+`templateType`, `frontendFiles`, `backendFiles`; never bind server-owned paths directly from multipart fields.
 
-## 5. Definition of Done (Baseline)
+## 5. Template-Based Project Posts (ProjectPosts)
+
+If a module uses project templates, follow this baseline:
+
+1. Select `TemplateType` explicitly (`Static`, `JavaScript`, `CSharp`, `Python`).
+2. Validate file structure per template in command validator.
+3. Save uploaded artifacts under `/var/projects/{slug}/frontend|backend`.
+4. `Static` template is frontend-only fallback:
+   - do not load backend runtime;
+   - serve `/app/{slug}/index.html` via Nginx.
+5. `JavaScript` template:
+   - require `package.json`,
+   - reject forbidden executable artifacts.
+6. `CSharp` template:
+   - require `.dll` + `.deps.json`,
+   - load plugin in isolated collectible context.
+7. `Python` template:
+   - require `requirements.txt` + `.py`,
+   - apply restricted-import policy and runtime validation.
+8. All upload endpoints remain in `/api/app/*` with `AdminOnly`, audit logging, correlation-id, and malware scan.
+
+## 6. Definition of Done (Baseline)
 
 1. Module compiles in solution/workspace.
 2. Backend module implements `IModule` and maps only allowed API prefixes.
@@ -91,15 +116,15 @@ use antiforgery flow (`GET /api/public/security/csrf` + `X-CSRF-TOKEN`).
 6. Context files updated:
 `dev-state.md`, `ai-context.md`, and if constraints changed `architecture-lock.md`.
 7. Deploy smoke flow is passed:
-`commit -> build -> docker restart -> verify /projects and /app`.
+`commit -> build -> docker restart -> verify /projects, /app and /app/{slug}`.
 
-## 6. Minimal Skeleton Checklist
+## 7. Minimal Skeleton Checklist
 
 1. Backend: module project + `IModule` class + placeholder public/private endpoints.
 2. Frontend: `.module.tsx` file with `id`, one placeholder route metadata entry.
 3. No business logic beyond scaffold level.
 
-## 7. Deploy Smoke Validation
+## 8. Deploy Smoke Validation
 
 Use:
 
@@ -109,7 +134,7 @@ Use:
 - `docs/audit-logging.md`
 - `docs/correlation-id.md`
 
-## 8. Public Landing + Portfolio Notes
+## 9. Public Landing + Portfolio Notes
 
 If onboarding changes public experience (`/`, `/projects`, `/projects/:id`), verify:
 

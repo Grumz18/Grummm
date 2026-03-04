@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/ProjectCard";
 import { RotatingEarth } from "../components/RotatingEarth";
 import { SpaceBackground } from "../components/SpaceBackground";
+import { useLandingContent } from "../data/landing-content-store";
 import { useProjectPosts } from "../data/project-store";
 import { usePreferences } from "../preferences";
 
@@ -11,6 +12,7 @@ export function LandingPage() {
   const navigate = useNavigate();
   const { theme, language, toggleTheme, setLanguage } = usePreferences();
   const projects = useProjectPosts();
+  const landingContent = useLandingContent();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const featured = projects.slice(0, 3);
 
@@ -25,17 +27,9 @@ export function LandingPage() {
         transition={{ duration: 0.45 }}
       >
         <div className="hero__content">
-          <p className="hero__eyebrow">Grummm Platform</p>
-          <h1>
-            {language === "ru"
-              ? "Чистый минимализм. Живая витрина модулей."
-              : "Minimal shell. Living module portfolio."}
-          </h1>
-          <p>
-            {language === "ru"
-              ? "Landing показывает проекты, тему и язык в реальном времени, сохраняя строгие архитектурные границы платформы."
-              : "The landing presents projects, theme and language in real-time while preserving strict architecture boundaries."}
-          </p>
+          <p className="hero__eyebrow">{landingContent.heroEyebrow[language]}</p>
+          <h1>{landingContent.heroTitle[language]}</h1>
+          <p>{landingContent.heroDescription[language]}</p>
           <div className="hero__actions">
             <button type="button" onClick={toggleTheme}>
               {theme === "dark"
@@ -55,6 +49,29 @@ export function LandingPage() {
           </div>
         </div>
         <RotatingEarth />
+      </motion.section>
+
+      <motion.section
+        className="landing-about"
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.42, delay: 0.08 }}
+      >
+        <div className="landing-about__photo-wrap">
+          {landingContent.aboutPhoto ? (
+            <img className="landing-about__photo" src={landingContent.aboutPhoto} alt="Profile" />
+          ) : (
+            <div className="landing-about__photo landing-about__photo--placeholder">
+              {language === "ru" ? "Ваше фото" : "Your photo"}
+            </div>
+          )}
+        </div>
+        <div className="landing-about__content">
+          <h2>{landingContent.aboutTitle[language]}</h2>
+          <p>{landingContent.aboutText[language]}</p>
+          <h3>{landingContent.portfolioTitle[language]}</h3>
+          <p>{landingContent.portfolioText[language]}</p>
+        </div>
       </motion.section>
 
       <section className="portfolio-grid-wrap">

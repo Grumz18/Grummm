@@ -18,7 +18,7 @@ describe("Admin project workspace and dynamic viewer", () => {
 
     cy.get('[data-testid="template-type-select"]').select("Python");
     cy.get('[data-testid="template-instructions"]').should("be.visible");
-    cy.contains("Upload Python service files").should("be.visible");
+    cy.contains("Загрузите Python-файлы сервиса").should("be.visible");
   });
 
   it("renders iframe viewer in /app/:slug for template project", () => {
@@ -51,4 +51,3 @@ describe("Admin project workspace and dynamic viewer", () => {
       .and("have.attr", "src", "/app/qr-generator/index.html");
   });
 });
-

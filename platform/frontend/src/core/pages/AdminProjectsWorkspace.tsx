@@ -1,13 +1,18 @@
-import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+﻿import { useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { useDropzone, type DropEvent } from "react-dropzone";
 import { Link } from "react-router-dom";
 import {
-  createProject,
+  createProjectWithOptions,
   deleteProject,
   updateProject,
   useProjectPosts,
   type ProjectUploadBundle
 } from "../../public/data/project-store";
+import {
+  readLandingContent,
+  saveLandingContent,
+  type LandingContent
+} from "../../public/data/landing-content-store";
 import type { PortfolioProject, TemplateType } from "../../public/types";
 
 interface DraftProject {
@@ -28,9 +33,11 @@ interface DraftProject {
   backendFiles: File[];
 }
 
+interface LandingDraft extends LandingContent {}
+
 const TEMPLATE_OPTIONS: Array<{ value: TemplateType; label: string }> = [
-  { value: "None", label: "None" },
-  { value: "Static", label: "Static" },
+  { value: "None", label: "Без шаблона" },
+  { value: "Static", label: "Статический" },
   { value: "CSharp", label: "C#" },
   { value: "Python", label: "Python" },
   { value: "JavaScript", label: "JavaScript" }
@@ -38,20 +45,20 @@ const TEMPLATE_OPTIONS: Array<{ value: TemplateType; label: string }> = [
 
 const TEMPLATE_INSTRUCTIONS: Record<Exclude<TemplateType, "None">, { frontend: string; backend: string }> = {
   Static: {
-    frontend: "Drag dist here (index.html + assets).",
-    backend: "Backend archive optional for static template."
+    frontend: "Перетащите сюда папку dist (обязательно index.html + assets).",
+    backend: "Не требуется. Для статического шаблона backend-файлы запрещены."
   },
   CSharp: {
-    frontend: "Drag dist here (SPA bundle for dashboard/client).",
-    backend: "Upload compiled DLL + deps.json (+ runtimeconfig if needed)."
+    frontend: "Перетащите сюда frontend-сборку (обычно dist для клиентской части).",
+    backend: "Загрузите собранные DLL + .deps.json (и .runtimeconfig.json при необходимости)."
   },
   Python: {
-    frontend: "Drag dist here (optional static client).",
-    backend: "Upload Python service files (app package, requirements.txt, entrypoint)."
+    frontend: "Перетащите сюда frontend-сборку (если есть клиентская часть).",
+    backend: "Загрузите Python-файлы сервиса: app.py, requirements.txt и остальные .py."
   },
   JavaScript: {
-    frontend: "Drag dist here (bundled frontend build).",
-    backend: "Upload backend runtime files (Node service, package metadata)."
+    frontend: "Перетащите сюда frontend-сборку (dist/index.html + assets).",
+    backend: "Загрузите backend-файлы Node.js, включая package.json."
   }
 };
 
@@ -95,7 +102,7 @@ function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error("Failed to read file."));
+    reader.onerror = () => reject(new Error("Не удалось прочитать файл."));
     reader.readAsDataURL(file);
   });
 }
@@ -263,20 +270,20 @@ function TemplateDropzone({ title, hint, files, onFilesChange }: TemplateDropzon
       <p className="admin-muted">{hint}</p>
       <div className={`admin-dropzone ${isDragActive ? "is-active" : ""}`} {...getRootProps()}>
         <input {...getInputProps()} />
-        <p>{isDragActive ? "Release to upload files" : "Drag files/folder or click to select"}</p>
+        <p>{isDragActive ? "Отпустите, чтобы загрузить файлы" : "Перетащите файлы/папку или нажмите для выбора"}</p>
       </div>
-      <p className="admin-muted">Selected files: {files.length}</p>
+      <p className="admin-muted">Выбрано файлов: {files.length}</p>
       {files.length > 0 ? (
         <ul className="admin-file-list">
           {files.slice(0, 6).map((file) => (
             <li key={`${file.webkitRelativePath || file.name}:${file.size}`}>{file.webkitRelativePath || file.name}</li>
           ))}
-          {files.length > 6 ? <li>...and {files.length - 6} more</li> : null}
+          {files.length > 6 ? <li>...и еще {files.length - 6}</li> : null}
         </ul>
       ) : null}
       {files.length > 0 ? (
         <button type="button" onClick={() => onFilesChange([])}>
-          Clear files
+          Очистить файлы
         </button>
       ) : null}
     </section>
@@ -287,7 +294,9 @@ export function AdminProjectsWorkspace() {
   const projects = useProjectPosts();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftProject>(() => emptyDraft());
+  const [landingDraft, setLandingDraft] = useState<LandingDraft>(() => readLandingContent());
   const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState<string>("");
 
   const sorted = useMemo(() => [...projects].sort((a, b) => a.title.en.localeCompare(b.title.en)), [projects]);
 
@@ -331,9 +340,20 @@ export function AdminProjectsWorkspace() {
     setDraft((current) => ({ ...current, videoUrl: dataUrl }));
   }
 
+  async function handleLandingPhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const dataUrl = await fileToDataUrl(file);
+    setLandingDraft((current) => ({ ...current, aboutPhoto: dataUrl }));
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
+    setServerError("");
 
     const project = fromDraft(draft);
     const upload: ProjectUploadBundle = {
@@ -342,46 +362,75 @@ export function AdminProjectsWorkspace() {
       backendFiles: draft.backendFiles
     };
 
-    if (editingId) {
-      await updateProject(editingId, project, upload);
-    } else {
-      await createProject(project, upload);
-    }
+    try {
+      if (editingId) {
+        await updateProject(editingId, project, upload, { serverOnly: true });
+      } else {
+        await createProjectWithOptions(project, upload, { serverOnly: true });
+      }
 
-    setBusy(false);
-    setEditingId(null);
-    setDraft(emptyDraft());
+      setEditingId(null);
+      setDraft(emptyDraft());
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "Ошибка синхронизации с сервером.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleDelete(projectId: string) {
-    if (!window.confirm("Delete this project post?")) {
+    if (!window.confirm("Удалить этот пост проекта?")) {
       return;
     }
-    await deleteProject(projectId);
-    if (editingId === projectId) {
-      setEditingId(null);
-      setDraft(emptyDraft());
+    setServerError("");
+    try {
+      await deleteProject(projectId, { serverOnly: true });
+      if (editingId === projectId) {
+        setEditingId(null);
+        setDraft(emptyDraft());
+      }
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "Ошибка удаления на сервере.");
     }
+  }
+
+  function handleLandingSave(event: FormEvent) {
+    event.preventDefault();
+    const saved = saveLandingContent(landingDraft);
+    setLandingDraft(saved);
   }
 
   const templateDetails = draft.templateType === "None" ? null : TEMPLATE_INSTRUCTIONS[draft.templateType];
 
   return (
     <section className="admin-projects">
-      <header className="admin-card">
-        <h1>Projects Workspace</h1>
-        <p>Manage project posts shown in public `/projects` and `/projects/:id`.</p>
-        <button type="button" onClick={startCreate}>
-          New Project Post
-        </button>
-      </header>
+      <article className="admin-projects__workspace">
+        <header className="admin-projects__hero">
+          <h1>Рабочее пространство проектов</h1>
+          <p>Управляйте публикациями и шаблонами: создавайте посты, загружайте сборки и открывайте результат в `/app/&lt;slug&gt;`.</p>
+          {serverError ? <p className="admin-error">{serverError}</p> : null}
+        </header>
 
-      <div className="admin-projects__grid">
-        <article className="admin-card">
-          <h2>{editingId ? "Edit Post" : "Create Post"}</h2>
+        <div className="admin-projects__workspace-grid">
+          <section className="admin-card admin-projects__actions admin-projects__nav-panel">
+            <h2>Действия</h2>
+            <button type="button" onClick={startCreate}>Новый пост проекта</button>
+            <p className="admin-muted">Нажмите кнопку, чтобы очистить форму и начать создание нового проекта.</p>
+          </section>
+
+          <article className="admin-card admin-projects__editor">
+          <h2>{editingId ? "Редактирование поста" : "Создание поста"}</h2>
+          <p className="admin-muted">
+            Как загрузить проект: 
+            <br />1) выберите тип шаблона, 
+            <br />2) заполните тексты и медиа, 
+            <br />3) добавьте файлы frontend/backend,
+            <br />4) нажмите «{editingId ? "Сохранить изменения" : "Создать пост"}». 
+            <br />После сохранения frontend доступен по`/app/&lt;slug&gt;/index.html`.
+          </p>
           <form className="admin-form" onSubmit={handleSubmit}>
             <label>
-              Slug (optional for create)
+              Slug (для нового поста можно оставить пустым)
               <input
                 value={draft.id}
                 onChange={(e) => setDraft((c) => ({ ...c, id: e.target.value }))}
@@ -389,7 +438,7 @@ export function AdminProjectsWorkspace() {
               />
             </label>
             <label>
-              Template Type
+              Тип шаблона
               <select
                 data-testid="template-type-select"
                 value={draft.templateType}
@@ -406,15 +455,15 @@ export function AdminProjectsWorkspace() {
             {templateDetails ? (
               <section className="admin-template-accordion" data-testid="template-instructions">
                 <details open>
-                  <summary>Template Upload Instructions</summary>
+                  <summary>Инструкции по загрузке шаблона</summary>
                   <TemplateDropzone
-                    title="Frontend Bundle"
+                    title="Frontend пакет"
                     hint={templateDetails.frontend}
                     files={draft.frontendFiles}
                     onFilesChange={(files) => setDraft((current) => ({ ...current, frontendFiles: files }))}
                   />
                   <TemplateDropzone
-                    title="Backend Bundle"
+                    title="Backend пакет"
                     hint={templateDetails.backend}
                     files={draft.backendFiles}
                     onFilesChange={(files) => setDraft((current) => ({ ...current, backendFiles: files }))}
@@ -424,54 +473,31 @@ export function AdminProjectsWorkspace() {
             ) : null}
 
             <label>
-              Title (EN)
-              <input
-                required
-                value={draft.titleEn}
-                onChange={(e) => setDraft((c) => ({ ...c, titleEn: e.target.value }))}
-              />
+              Заголовок (EN)
+              <input required value={draft.titleEn} onChange={(e) => setDraft((c) => ({ ...c, titleEn: e.target.value }))} />
             </label>
             <label>
-              Title (RU)
-              <input
-                value={draft.titleRu}
-                onChange={(e) => setDraft((c) => ({ ...c, titleRu: e.target.value }))}
-              />
+              Заголовок (RU)
+              <input value={draft.titleRu} onChange={(e) => setDraft((c) => ({ ...c, titleRu: e.target.value }))} />
             </label>
             <label>
-              Summary (EN)
-              <textarea
-                rows={2}
-                value={draft.summaryEn}
-                onChange={(e) => setDraft((c) => ({ ...c, summaryEn: e.target.value }))}
-              />
+              Краткое описание (EN)
+              <textarea rows={2} value={draft.summaryEn} onChange={(e) => setDraft((c) => ({ ...c, summaryEn: e.target.value }))} />
             </label>
             <label>
-              Summary (RU)
-              <textarea
-                rows={2}
-                value={draft.summaryRu}
-                onChange={(e) => setDraft((c) => ({ ...c, summaryRu: e.target.value }))}
-              />
+              Краткое описание (RU)
+              <textarea rows={2} value={draft.summaryRu} onChange={(e) => setDraft((c) => ({ ...c, summaryRu: e.target.value }))} />
             </label>
             <label>
-              Description (EN)
-              <textarea
-                rows={4}
-                value={draft.descriptionEn}
-                onChange={(e) => setDraft((c) => ({ ...c, descriptionEn: e.target.value }))}
-              />
+              Полное описание (EN)
+              <textarea rows={4} value={draft.descriptionEn} onChange={(e) => setDraft((c) => ({ ...c, descriptionEn: e.target.value }))} />
             </label>
             <label>
-              Description (RU)
-              <textarea
-                rows={4}
-                value={draft.descriptionRu}
-                onChange={(e) => setDraft((c) => ({ ...c, descriptionRu: e.target.value }))}
-              />
+              Полное описание (RU)
+              <textarea rows={4} value={draft.descriptionRu} onChange={(e) => setDraft((c) => ({ ...c, descriptionRu: e.target.value }))} />
             </label>
             <label>
-              Tags (comma separated)
+              Теги (через запятую)
               <input
                 value={draft.tags}
                 onChange={(e) => setDraft((c) => ({ ...c, tags: e.target.value }))}
@@ -479,51 +505,242 @@ export function AdminProjectsWorkspace() {
               />
             </label>
             <label>
-              Cover Image (Light)
+              Обложка (светлая тема)
               <input type="file" accept="image/*" onChange={(e) => void handleSingleImage(e, "heroLight")} />
             </label>
             <label>
-              Cover Image (Dark)
+              Обложка (темная тема)
               <input type="file" accept="image/*" onChange={(e) => void handleSingleImage(e, "heroDark")} />
             </label>
             <label>
-              Screenshots (multiple)
+              Скриншоты (можно несколько)
               <input type="file" accept="image/*" multiple onChange={(e) => void handleScreenshots(e)} />
             </label>
             <label>
-              Video
+              Видео
               <input type="file" accept="video/*" onChange={(e) => void handleVideo(e)} />
             </label>
             <button type="submit" disabled={busy} data-testid="project-submit">
-              {editingId ? "Save Changes" : "Create Post"}
+              {editingId ? "Сохранить изменения" : "Создать пост"}
             </button>
           </form>
-        </article>
+          </article>
+        </div>
 
-        <article className="admin-card">
-          <h2>Existing Posts</h2>
-          <div className="admin-projects__list">
-            {sorted.map((project) => (
-              <div key={project.id} className="admin-projects__item">
-                <div>
-                  <strong>{project.title.en}</strong>
-                  <p>{project.id}</p>
-                </div>
-                <div className="admin-chip-nav">
-                  <button type="button" onClick={() => startEdit(project)}>
-                    Edit
-                  </button>
-                  <button type="button" onClick={() => void handleDelete(project.id)}>
-                    Delete
-                  </button>
-                  <Link to={`/projects/${project.id}`}>View</Link>
-                </div>
-              </div>
-            ))}
-          </div>
+        <article className="admin-card admin-landing-editor">
+          <h2>Контент главной страницы</h2>
+          <p className="admin-muted">
+            Здесь вы настраиваете первый экран и блок «Обо мне» на двух языках. Изменения сразу применяются на `/`.
+          </p>
+          <form className="admin-form" onSubmit={handleLandingSave}>
+            <label>
+              Hero (RU): надзаголовок
+              <input
+                value={landingDraft.heroEyebrow.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroEyebrow: { ...current.heroEyebrow, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Hero (EN): eyebrow
+              <input
+                value={landingDraft.heroEyebrow.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroEyebrow: { ...current.heroEyebrow, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Hero (RU): заголовок
+              <textarea
+                rows={2}
+                value={landingDraft.heroTitle.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroTitle: { ...current.heroTitle, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Hero (EN): title
+              <textarea
+                rows={2}
+                value={landingDraft.heroTitle.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroTitle: { ...current.heroTitle, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Hero (RU): описание
+              <textarea
+                rows={3}
+                value={landingDraft.heroDescription.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroDescription: { ...current.heroDescription, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Hero (EN): description
+              <textarea
+                rows={3}
+                value={landingDraft.heroDescription.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    heroDescription: { ...current.heroDescription, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+
+            <label>
+              Обо мне (RU): заголовок
+              <input
+                value={landingDraft.aboutTitle.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    aboutTitle: { ...current.aboutTitle, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              About me (EN): title
+              <input
+                value={landingDraft.aboutTitle.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    aboutTitle: { ...current.aboutTitle, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Обо мне (RU): текст
+              <textarea
+                rows={3}
+                value={landingDraft.aboutText.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    aboutText: { ...current.aboutText, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              About me (EN): text
+              <textarea
+                rows={3}
+                value={landingDraft.aboutText.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    aboutText: { ...current.aboutText, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+
+            <label>
+              Портфолио (RU): заголовок
+              <input
+                value={landingDraft.portfolioTitle.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    portfolioTitle: { ...current.portfolioTitle, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Portfolio (EN): title
+              <input
+                value={landingDraft.portfolioTitle.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    portfolioTitle: { ...current.portfolioTitle, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Портфолио (RU): текст
+              <textarea
+                rows={3}
+                value={landingDraft.portfolioText.ru}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    portfolioText: { ...current.portfolioText, ru: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Portfolio (EN): text
+              <textarea
+                rows={3}
+                value={landingDraft.portfolioText.en}
+                onChange={(e) =>
+                  setLandingDraft((current) => ({
+                    ...current,
+                    portfolioText: { ...current.portfolioText, en: e.target.value }
+                  }))
+                }
+              />
+            </label>
+            <label>
+              Фото для блока «Обо мне»
+              <input type="file" accept="image/*" onChange={(e) => void handleLandingPhoto(e)} />
+            </label>
+            {landingDraft.aboutPhoto ? (
+              <img className="admin-landing-editor__preview" src={landingDraft.aboutPhoto} alt="about-preview" />
+            ) : null}
+            <button type="submit">Сохранить контент главной</button>
+          </form>
         </article>
-      </div>
+      </article>
+
+      <aside className="admin-card admin-projects__posts-panel admin-projects__nav-panel">
+        <h2>Существующие посты</h2>
+        <div className="admin-projects__list admin-projects__list--sidebar">
+          {sorted.map((project) => (
+            <div key={project.id} className="admin-projects__item admin-projects__item--sidebar">
+              <div>
+                <strong>{project.title.en}</strong>
+                <p>{project.id}</p>
+              </div>
+              <div className="admin-chip-nav">
+                <button type="button" onClick={() => startEdit(project)}>Редактировать</button>
+                <button type="button" onClick={() => void handleDelete(project.id)}>Удалить</button>
+                <Link to={`/projects/${project.id}`}>Открыть</Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
     </section>
   );
 }
-

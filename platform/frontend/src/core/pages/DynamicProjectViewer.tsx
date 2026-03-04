@@ -53,7 +53,7 @@ export function DynamicProjectViewer() {
   if (loading) {
     return (
       <section className="dynamic-project-viewer admin-card">
-        <h1>Loading project workspace...</h1>
+        <h1>Загрузка рабочего пространства проекта...</h1>
       </section>
     );
   }
@@ -61,9 +61,9 @@ export function DynamicProjectViewer() {
   if (!project || !hasTemplate) {
     return (
       <section className="dynamic-project-viewer admin-card">
-        <h1>Interactive workspace unavailable</h1>
+        <h1>Интерактивное пространство недоступно</h1>
         <p className="admin-muted">
-          Project `{slug}` was not found or does not have an interactive template bundle.
+          Проект `{slug}` не найден или для него не загружен интерактивный шаблон.
         </p>
       </section>
     );
@@ -73,7 +73,7 @@ export function DynamicProjectViewer() {
     <section className="dynamic-project-viewer admin-card">
       <header className="dynamic-project-viewer__header">
         <h1>{project.title.en}</h1>
-        <p className="admin-muted">Template: {project.template}</p>
+        <p className="admin-muted">Шаблон: {project.template}</p>
       </header>
       {renderViewer(project)}
     </section>
