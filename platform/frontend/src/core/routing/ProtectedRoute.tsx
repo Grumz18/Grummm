@@ -1,5 +1,5 @@
 ﻿import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuthSession } from "../auth/auth-session";
 
 interface ProtectedRouteProps {
@@ -9,9 +9,10 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, adminOnly = false }: ProtectedRouteProps) {
   const session = useAuthSession();
+  const location = useLocation();
 
   if (!session.isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (adminOnly && session.role !== "Admin") {

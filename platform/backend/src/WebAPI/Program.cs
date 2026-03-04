@@ -9,6 +9,7 @@ using Platform.Infrastructure.Extensions;
 using Platform.Infrastructure.Security;
 using Platform.WebAPI.Contracts;
 using Platform.WebAPI.Extensions;
+using Platform.WebAPI.Security;
 using Platform.WebAPI.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -56,6 +57,28 @@ builder.Services.AddRateLimiter(options =>
                 AutoReplenishment = true,
                 QueueLimit = 0
             }));
+
+    options.AddPolicy("auth-email-code", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(10),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("auth-change-password", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 3,
+                Window = TimeSpan.FromMinutes(10),
+                AutoReplenishment = true,
+                QueueLimit = 0
+            }));
 });
 builder.Services.AddAntiforgery(options =>
 {
@@ -76,9 +99,13 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<IValidateOptions<JwtOptions>, JwtOptionsValidator>();
 builder.Services.Configure<AuthCookieOptions>(builder.Configuration.GetSection("AuthCookies"));
+builder.Services.Configure<AdminSecurityOptions>(builder.Configuration.GetSection("AdminSecurity"));
+builder.Services.Configure<EmailVerificationOptions>(builder.Configuration.GetSection("EmailVerification"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
+builder.Services.AddSingleton<IAdminSecurityService, AdminSecurityService>();
+builder.Services.AddSingleton<ILoginAttemptService, InMemoryLoginAttemptService>();
 builder.Services.AddModuleDatabaseRegistry();
 builder.Services.AddAuditLogging(builder.Configuration);
 builder.Services.AddPlatformModules();
@@ -172,10 +199,35 @@ publicSecurity.MapGet("/csrf", (HttpContext context, IAntiforgery antiforgery) =
     });
 });
 
-publicAuth.MapPost("/login", async (HttpContext context, LoginRequest request, IRefreshTokenService refreshTokenService, IOptions<AuthCookieOptions> authCookieOptions) =>
+publicAuth.MapPost("/login", async (
+    HttpContext context,
+    LoginRequest request,
+    IRefreshTokenService refreshTokenService,
+    IOptions<AuthCookieOptions> authCookieOptions,
+    IAdminSecurityService adminSecurityService,
+    ILoginAttemptService loginAttemptService) =>
 {
     RequestValidator.Validate(request);
     var command = AuthMappings.ToCommand(request);
+    var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+    if (loginAttemptService.IsBlocked(remoteIp, out var retryAfterSeconds))
+    {
+        return Results.Json(new
+        {
+            error = "login_temporarily_blocked",
+            retryAfterSeconds
+        }, statusCode: StatusCodes.Status429TooManyRequests);
+    }
+
+    var isValidCredentials = adminSecurityService.ValidateCredentials(command.UserName, command.Password);
+    if (!isValidCredentials)
+    {
+        loginAttemptService.RegisterFailure(remoteIp);
+        return Results.Unauthorized();
+    }
+
+    loginAttemptService.Reset(remoteIp);
 
     var user = new AuthUser(
         UserId: Guid.NewGuid().ToString("N"),
@@ -237,6 +289,41 @@ privateAuth.MapPost("/logout", async (HttpContext context, RefreshRequest? reque
     context.Response.DeleteRefreshTokenCookie(authCookieOptions);
     return revoked ? Results.NoContent() : Results.NotFound();
 });
+
+privateAuth.MapPost("/request-email-code", async (
+    HttpContext context,
+    RequestEmailCodeRequest request,
+    IAdminSecurityService adminSecurityService,
+    CancellationToken cancellationToken) =>
+{
+    RequestValidator.Validate(request);
+    var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    var sent = await adminSecurityService.RequestEmailCodeAsync(request.Email, remoteIp, cancellationToken);
+    if (!sent)
+    {
+        return Results.BadRequest(new { error = "email_code_request_failed" });
+    }
+
+    return Results.Ok(new { status = "email_code_sent" });
+}).RequireRateLimiting("auth-email-code");
+
+privateAuth.MapPost("/change-password", (HttpContext context, ChangePasswordRequest request, IAdminSecurityService adminSecurityService) =>
+{
+    RequestValidator.Validate(request);
+    var userName = context.User.Identity?.Name ?? string.Empty;
+    var result = adminSecurityService.ChangePassword(
+        userName: userName,
+        oldPassword: request.OldPassword,
+        newPassword: request.NewPassword,
+        emailCode: request.EmailCode);
+
+    if (!result.Success)
+    {
+        return Results.BadRequest(new { error = result.ErrorCode ?? "change_password_failed" });
+    }
+
+    return Results.Ok(new { status = "password_changed" });
+}).RequireRateLimiting("auth-change-password");
 
 app.MapModules();
 

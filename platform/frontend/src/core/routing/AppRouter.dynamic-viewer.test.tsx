@@ -40,7 +40,7 @@ jest.mock("../../public/data/project-store", () => ({
 describe("DynamicProjectViewer /app/:slug", () => {
   test("loads viewer for admin route /app/:slug", async () => {
     render(
-      <AuthSessionProvider value={{ isAuthenticated: true, role: "Admin" }}>
+      <AuthSessionProvider value={{ isAuthenticated: true, role: "Admin", signIn: () => undefined, signOut: () => undefined }}>
         <MemoryRouter initialEntries={["/app/qr-generator"]}>
           <Routes>
             <Route

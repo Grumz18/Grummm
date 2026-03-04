@@ -1,6 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import type { AuthSession } from "./core/auth/auth-session";
+import {
+  AUTH_ACCESS_TOKEN_STORAGE_KEY,
+  AUTH_SESSION_STORAGE_KEY,
+  type AuthSession
+} from "./core/auth/auth-session";
 import { AppRouter } from "./core/routing";
 import "./styles.css";
 
@@ -14,7 +18,8 @@ function getInitialSession(): AuthSession {
   const fallback: AuthSession = { isAuthenticated: false };
 
   try {
-    const raw = window.localStorage.getItem("platform.auth.session");
+    const raw = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
+    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY) ?? undefined;
     if (!raw) {
       return fallback;
     }
@@ -25,9 +30,9 @@ function getInitialSession(): AuthSession {
     }
 
     if (parsed.role === "Admin" || parsed.role === "User") {
-      return { isAuthenticated: true, role: parsed.role };
+      return { isAuthenticated: true, role: parsed.role, accessToken };
     }
-
+    return { isAuthenticated: true, accessToken };
     return { isAuthenticated: true };
   } catch {
     return fallback;

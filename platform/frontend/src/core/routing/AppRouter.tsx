@@ -1,13 +1,22 @@
 ﻿import { AnimatePresence } from "framer-motion";
-import { createElement, type ReactNode } from "react";
+import { createElement, useMemo, useState, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LandingPage } from "../../public/pages/LandingPage";
 import { ProjectDetailPage } from "../../public/pages/ProjectDetailPage";
 import { ProjectsPage } from "../../public/pages/ProjectsPage";
 import { PreferencesProvider } from "../../public/preferences";
+import {
+  AUTH_ACCESS_TOKEN_STORAGE_KEY,
+  AUTH_SESSION_STORAGE_KEY,
+  AuthSessionProvider,
+  type AuthSession,
+  type AuthSessionContextValue,
+  type SignInPayload
+} from "../auth/auth-session";
 import { AdminProjectsWorkspace } from "../pages/AdminProjectsWorkspace";
+import { AdminLoginPage } from "../pages/AdminLoginPage";
+import { AdminSecurityPage } from "../pages/AdminSecurityPage";
 import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
-import { AuthSessionProvider, type AuthSession } from "../auth/auth-session";
 import { PrivateAppLayout, PublicLayout } from "../layouts";
 import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -16,17 +25,17 @@ function PrivateAppHome(): ReactNode {
   return (
     <section className="admin-home">
       <header className="admin-home__header">
-        <h1>Admin Hub</h1>
-        <p>Private operations area for module workflows and secure admin-only actions.</p>
+        <h1>Центр администрирования</h1>
+        <p>Приватная зона для управления модулями и административных действий.</p>
       </header>
       <div className="admin-home__grid">
         <article>
-          <h3>Task Tracker</h3>
-          <p>Owner-scoped tasks, board workflow, and create flow.</p>
+          <h3>Трекер задач</h3>
+          <p>Управление задачами, доской и созданием новых карточек.</p>
         </article>
         <article>
-          <h3>Security</h3>
-          <p>AdminOnly guard + API zone split + audit/correlation protections.</p>
+          <h3>Безопасность</h3>
+          <p>AdminOnly-доступ, разделение API-зон, аудит и correlation-id.</p>
         </article>
       </div>
     </section>
@@ -34,7 +43,7 @@ function PrivateAppHome(): ReactNode {
 }
 
 function NotFound(): ReactNode {
-  return <div>Not Found</div>;
+  return <div>Страница не найдена</div>;
 }
 
 const publicModuleRoutes = moduleRegistry
@@ -68,6 +77,7 @@ function AppRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={withPublicLayout(<LandingPage />)} />
+        <Route path="/login" element={withPublicLayout(<AdminLoginPage />)} />
         <Route path="/projects" element={withPublicLayout(<ProjectsPage />)} />
 
         {publicModuleRoutes.map((route) => (
@@ -94,6 +104,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               {withPrivateLayout(<AdminProjectsWorkspace />)}
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/app/security"
+          element={
+            <ProtectedRoute adminOnly>
+              {withPrivateLayout(<AdminSecurityPage />)}
             </ProtectedRoute>
           }
         />
@@ -150,8 +169,32 @@ function AppRoutes() {
 }
 
 export function AppRouter({ session = { isAuthenticated: false } }: AppRouterProps) {
+  const [authSession, setAuthSession] = useState<AuthSession>(session);
+
+  const sessionValue = useMemo<AuthSessionContextValue>(() => ({
+    ...authSession,
+    signIn: (payload: SignInPayload) => {
+      const next: AuthSession = { isAuthenticated: true, role: payload.role, accessToken: payload.accessToken };
+      setAuthSession(next);
+      try {
+        window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, JSON.stringify({ isAuthenticated: true, role: payload.role }));
+        window.localStorage.setItem(AUTH_ACCESS_TOKEN_STORAGE_KEY, payload.accessToken);
+      } catch {
+        // ignore storage errors
+      }
+    },
+    signOut: () => {
+      setAuthSession({ isAuthenticated: false });
+      try {
+        window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
+        window.localStorage.removeItem(AUTH_ACCESS_TOKEN_STORAGE_KEY);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }), [authSession]);
   return (
-    <AuthSessionProvider value={session}>
+    <AuthSessionProvider value={sessionValue}>
       <PreferencesProvider>
         <BrowserRouter>
           <AppRoutes />

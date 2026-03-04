@@ -8,3 +8,11 @@ public sealed record LoginRequest(
 
 public sealed record RefreshRequest(
     [property: Required, MinLength(16), MaxLength(512)] string RefreshToken);
+
+public sealed record RequestEmailCodeRequest(
+    [property: Required, EmailAddress, MaxLength(256)] string Email);
+
+public sealed record ChangePasswordRequest(
+    [property: Required, MinLength(8), MaxLength(128)] string OldPassword,
+    [property: Required, MinLength(8), MaxLength(128)] string NewPassword,
+    [property: Required, MinLength(4), MaxLength(12)] string EmailCode);
