@@ -31,8 +31,8 @@ function PrivateAppHome(): ReactNode {
       </header>
       <div className="admin-home__grid">
         <article>
-          <h3>Трекер задач</h3>
-          <p>Управление задачами, доской и созданием новых карточек.</p>
+          <h3>Посты</h3>
+          <p>Управление постами портфолио без runtime-загрузки шаблонов.</p>
         </article>
         <article>
           <h3>Безопасность</h3>
@@ -105,6 +105,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               {withPrivateLayout(<AdminProjectsWorkspace />)}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/app/posts"
+          element={
+            <ProtectedRoute adminOnly>
+              {withPrivateLayout(<AdminProjectsWorkspace mode="posts" />)}
             </ProtectedRoute>
           }
         />

@@ -3,6 +3,9 @@ import type { LocalizedText } from "../types";
 
 const STORAGE_KEY = "platform.landing.content.v1";
 const UPDATE_EVENT = "platform:landing:updated";
+const PUBLIC_API = "/api/public/content/landing";
+const PRIVATE_API = "/api/app/content/landing";
+const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 
 export interface LandingContent {
   heroEyebrow: LocalizedText;
@@ -65,6 +68,23 @@ function writeLandingContent(next: LandingContent) {
   window.dispatchEvent(new Event(UPDATE_EVENT));
 }
 
+function getAccessToken(): string | null {
+  try {
+    const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    return token && token.trim().length > 0 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+function ensureAccessToken(serverOnly: boolean): string | null {
+  const token = getAccessToken();
+  if (serverOnly && !token) {
+    throw new Error("Нет access token. Повторно войдите в админ-панель.");
+  }
+  return token;
+}
+
 export function readLandingContent(): LandingContent {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -101,6 +121,85 @@ export function saveLandingContent(content: LandingContent): LandingContent {
   return normalized;
 }
 
+export interface LandingMutationOptions {
+  serverOnly?: boolean;
+}
+
+export async function fetchLandingContentFromApi(): Promise<LandingContent | null> {
+  try {
+    const response = await fetch(PUBLIC_API, {
+      headers: { Accept: "application/json" }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as LandingContent;
+    const normalized: LandingContent = {
+      ...cloneSeed(),
+      ...payload
+    };
+    writeLandingContent(normalized);
+    return normalized;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLandingContentToServer(
+  content: LandingContent,
+  options: LandingMutationOptions = {}
+): Promise<LandingContent> {
+  const normalized: LandingContent = {
+    ...cloneSeed(),
+    ...content
+  };
+
+  const token = ensureAccessToken(Boolean(options.serverOnly));
+
+  if (!token) {
+    if (options.serverOnly) {
+      throw new Error("Нет доступа к серверу для сохранения контента.");
+    }
+    writeLandingContent(normalized);
+    return normalized;
+  }
+
+  try {
+    const response = await fetch(PRIVATE_API, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(normalized)
+    });
+
+    if (!response.ok) {
+      if (options.serverOnly) {
+        throw new Error("Ошибка сохранения контента на сервере.");
+      }
+      writeLandingContent(normalized);
+      return normalized;
+    }
+
+    const payload = (await response.json()) as LandingContent;
+    const synced: LandingContent = {
+      ...cloneSeed(),
+      ...payload
+    };
+    writeLandingContent(synced);
+    return synced;
+  } catch {
+    if (options.serverOnly) {
+      throw new Error("Не удалось сохранить контент главной на сервере.");
+    }
+    writeLandingContent(normalized);
+    return normalized;
+  }
+}
+
 export function useLandingContent(): LandingContent {
   const [content, setContent] = useState<LandingContent>(() =>
     typeof window === "undefined" ? cloneSeed() : readLandingContent()
@@ -108,6 +207,11 @@ export function useLandingContent(): LandingContent {
 
   useEffect(() => {
     const sync = () => setContent(readLandingContent());
+    void fetchLandingContentFromApi().then((next) => {
+      if (next) {
+        setContent(next);
+      }
+    });
     window.addEventListener(UPDATE_EVENT, sync);
     window.addEventListener("storage", sync);
     return () => {

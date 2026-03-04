@@ -1,137 +1,140 @@
-﻿GRUMMM - ОПИСАНИЕ ПРОЕКТА (АКТУАЛЬНО НА 2026-03-03)
-====================================================
+﻿GRUMMM - ПОДРОБНОЕ ОПИСАНИЕ ПРОЕКТА
+====================================
 
 1) Что это за проект
--------------------
+--------------------
 
-Grummm - это платформенный монорепозиторий с архитектурой Modular Monolith.
+Grummm — платформенный монорепозиторий с архитектурой **Modular Monolith**.
 
-Проект состоит из двух продуктовых зон:
-- Публичная зона (витрина):
-  - /
-  - /projects
-  - /projects/:id
-- Приватная админ-зона:
-  - /app/*
+Основная идея:
+- публично показывать портфолио;
+- управлять контентом через приватную админ-зону;
+- сохранять строгие границы между public/private маршрутами и API.
 
-Назначение проекта:
-- показывать портфолио/проекты в публичной части;
-- управлять этими проектами через админку;
-- соблюдать строгие архитектурные и security-границы между public/private.
+Зоны приложения:
+- Публичная:
+  - `/`
+  - `/projects`
+  - `/projects/:id`
+- Приватная (только для админа):
+  - `/app/*`
 
-2) Стек и инфраструктура
-------------------------
+2) Технологический стек
+-----------------------
 
 Backend:
 - ASP.NET Core 9 / .NET 9
+- модульная архитектура с авто-регистрацией модулей
+- JWT-аутентификация
+- аудит админ-действий и correlation-id
 
 Frontend:
-- React + TypeScript + Vite
+- React 18
+- TypeScript
+- Vite
+- Jest + Testing Library
+- Cypress (базовые e2e)
 
 Infra:
-- Nginx
 - Docker Compose
-- PostgreSQL baseline
+- Nginx (reverse proxy, TLS termination, security headers, rate limiting)
+- PostgreSQL
 
-3) Как это работает на текущий момент
--------------------------------------
+3) Как устроен проект
+---------------------
 
-3.1 Публичная часть
-- Landing на / с 2D-анимацией «земли» и орбитами технологий.
-- Каталог проектов на /projects.
-- Детальная страница проекта на /projects/:id.
-- Переключение темы и языка в публичной зоне.
+3.1 Структура репозитория
+- `platform/backend`   — backend, WebAPI, модули
+- `platform/frontend`  — публичный UI + админка
+- `platform/infra`     — nginx, postgres image, server scripts
+- `docs`               — runbook-и, smoke/checklist-документация
 
-3.2 Админская часть
-- Приватный shell /app с навигацией.
-- Workspace для постов /app/projects:
-  - создание поста,
-  - редактирование поста,
-  - удаление поста,
-  - загрузка медиа (обложка, скриншоты, видео),
-  - поля текста для EN/RU,
-  - выбор TemplateType (None/Static/CSharp/Python/JavaScript),
-  - условные секции загрузки шаблонов:
-    frontend dropzone ("Drag dist here"),
-    backend dropzone (отдельная зона под runtime/service файлы).
+3.2 Архитектурные границы
+- Public API: `/api/public/*`
+- Private API: `/api/app/*` (с policy `AdminOnly`)
+- Бизнес-логика не должна уезжать в контроллеры/лейауты.
+- Модульные границы соблюдаются строго.
 
-3.3 Источник данных проектов
-- Frontend использует store, который пытается читать/писать через API.
-- Если API недоступен или нет токена - есть fallback на localStorage.
-- Для /app/projects добавлен multipart submit путь:
-  - payload + templateType + frontendFiles + backendFiles в FormData;
-  - если multipart endpoint недоступен, используется JSON fallback.
+3.3 Ключевые backend-модули
+- `ProjectPosts`:
+  - публичное чтение проектов,
+  - админский CRUD,
+  - upload template bundles,
+  - динамический dispatch для runtime-шаблонов.
+- `TaskTracker`:
+  - модуль трекера задач (как отдельная модульная часть платформы).
 
-4) Что сделано по backend
--------------------------
+4) Ключевой функционал
+----------------------
 
-Добавлен модуль ProjectPosts:
-- Public read:
-  - GET /api/public/projects
-  - GET /api/public/projects/{id}
-- Admin CRUD (AdminOnly):
-  - GET /api/app/projects
-  - POST /api/app/projects
-  - PUT /api/app/projects/{id}
-  - DELETE /api/app/projects/{id}
-  - POST /api/app/projects/{id}/upload-with-template (multipart upload для шаблонов)
+4.1 Публичная часть
+- Landing page с визуальным блоком.
+- Список проектов и карточки.
+- Страница деталей проекта.
+- Переключение языка/темы.
 
-Хранение данных:
-- Основной репозиторий: PostgreSQL (таблица public.project_posts).
-- Fallback: in-memory, если connection string отсутствует.
+4.2 Админская часть
+- Логин администратора.
+- Раздел проектов: `/app/projects`
+  - create/edit/delete,
+  - медиа (обложка, скриншоты, видео),
+  - шаблоны (Static/CSharp/Python/JavaScript),
+  - загрузка frontend/backend файлов для template-режима.
+- Раздел постов: `/app/posts`
+  - похожая форма контента, но без runtime/template upload-потока.
+- Редактор контента главной: `/app/content`
+  - изменения сохраняются через backend API.
 
-Добавлено metadata для шаблонов поста:
-- TemplateType enum: None, Static, CSharp, Python, JavaScript.
-- Поля: frontend_path, backend_path.
-- В API/DTO: template, frontendPath, backendPath.
-- Для upload добавлен CQRS command:
-  UploadWithTemplateCommand (Id, TemplateType, FrontendFiles, BackendFiles),
-  включая template-aware validation (пример: JavaScript -> требуется package.json).
-- Дополнительные проверки структуры:
-  - Python: обязательны `requirements.txt` и минимум один `.py` файл;
-  - JavaScript: запрещены `.exe` файлы.
-- Перед сохранением upload проходит malware scan (ClamAV, секция ClamAv в appsettings),
-  при детекте файл отклоняется с 400 и фиксируется audit-запись.
-- Для CSharp шаблона добавлен runtime embedding:
-  - DLL грузится через McMaster.NETCore.Plugins в collectible context;
-  - dynamic dispatch endpoint: /api/app/{slug}/* (AdminOnly);
-  - при удалении поста вызывается unload plugin runtime.
-- Для Python шаблона добавлен runtime embedding:
-  - Python.Runtime + инициализация CPython runtime;
-  - установка зависимостей через `python3 -m pip install -r requirements.txt`;
-  - restricted imports policy для sandbox-бейзлайна;
-  - dynamic dispatch endpoint: /api/app/{slug}/* (AdminOnly).
-- Для БД добавлена миграция:
-  platform/backend/src/Modules/ProjectPosts/Infrastructure/Persistence/Migrations/20260303_add_template_metadata.sql
+4.3 Landing content
+- Публичное чтение: `GET /api/public/content/landing`
+- Приватное сохранение: `PUT /api/app/content/landing`
 
-Тест:
-- Добавлен backend-тест (xUnit) на сохранение поста с Template=JavaScript и путями.
+4.4 Проекты и runtime
+- Публичное чтение:
+  - `GET /api/public/projects`
+  - `GET /api/public/projects/{id}`
+- Приватный CRUD:
+  - `GET /api/app/projects`
+  - `POST /api/app/projects`
+  - `PUT /api/app/projects/{id}`
+  - `DELETE /api/app/projects/{id}`
+- Upload endpoint:
+  - `POST /api/app/projects/{id}/upload-with-template`
+- Динамические runtime-маршруты:
+  - `/api/app/{slug}/*`
+- Раздача загруженного frontend-контента через nginx:
+  - `/app/{slug}/...`
 
-5) Что нужно доделать (ближайшие шаги)
---------------------------------------
+5) Локальная разработка
+-----------------------
 
-1. Добавить backend endpoint/handler для полноценного приема multipart (template uploads) без fallback.
-2. Добавить backend-тесты на PostgreSQL-репозиторий и AdminOnly авторизацию.
-3. Добавить валидацию template/path и файлового состава на уровне command/handler.
-4. После стабилизации API убрать/сузить localStorage fallback.
-5. Прогнать deploy smoke для сценария /app/projects -> /projects.
+Frontend:
+- dev:
+  - `npm run dev --workspace @platform/frontend`
+- проверки:
+  - `npm run typecheck --workspace @platform/frontend`
+  - `npm run test --workspace @platform/frontend -- --runInBand`
+  - `npm run build --workspace @platform/frontend`
 
-6) Структура репозитория
-------------------------
+Docker stack:
+- поднять:
+  - `docker compose up -d --build`
+- проверить:
+  - `docker compose ps`
 
-- platform/backend   : backend, модули, WebAPI
-- platform/frontend  : frontend (public + admin)
-- platform/infra     : nginx, server scripts, postgres image
-- docs               : runbook-и, onboarding, проверки
+6) Эксплуатационные заметки (без секретов)
+------------------------------------------
 
-7) Ключевые файлы контекста
----------------------------
+- Контейнеры стоит запускать в detached-режиме (`-d`).
+- В production-подобном окружении важно использовать restart policy (`unless-stopped`).
+- Наружу публикуется nginx; backend и postgres остаются внутренними сервисами compose-сети.
+- Конфиденциальные значения (пароли, ключи, токены, SMTP и т.д.) должны задаваться через env/config, а не в документации.
 
-- ai-context.md        : полный снимок архитектуры и состояния
-- dev-state.md         : активные задачи и приоритеты
-- architecture-lock.md : зафиксированные архитектурные ограничения
+7) Полезные документы
+---------------------
 
-8) Быстрая команда сборки фронтенда
------------------------------------
-
-npm run build --workspace @platform/frontend
+- `docs/README.md` — индекс документации
+- `docs/LLM_PROJECT_MAP.md` — карта кода
+- `architecture-lock.md` — архитектурные ограничения
+- `module-contract.md` — контракт модулей
+- `llm-rules.md` — жесткие правила для изменений

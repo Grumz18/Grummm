@@ -9,6 +9,7 @@ namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 public sealed class InMemoryProjectPostRepository : IProjectPostRepository
 {
     private readonly ConcurrentDictionary<string, ProjectPost> _storage = new(StringComparer.OrdinalIgnoreCase);
+    private LandingContentDto _landingContent = SeedLandingContent();
 
     public InMemoryProjectPostRepository(string? contentRootPath = null)
     {
@@ -72,6 +73,17 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
         return Task.FromResult(removed);
     }
 
+    public Task<LandingContentDto> GetLandingContentAsync(CancellationToken cancellationToken)
+    {
+        return Task.FromResult(_landingContent);
+    }
+
+    public Task<LandingContentDto> UpsertLandingContentAsync(LandingContentDto content, CancellationToken cancellationToken)
+    {
+        _landingContent = content;
+        return Task.FromResult(_landingContent);
+    }
+
     private static IEnumerable<ProjectPostDto> SeedPosts()
     {
         yield return new ProjectPostDto(
@@ -97,6 +109,27 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             Template: TemplateType.None,
             FrontendPath: null,
             BackendPath: null);
+    }
+
+    private static LandingContentDto SeedLandingContent()
+    {
+        return new LandingContentDto(
+            HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
+            HeroTitle: new LocalizedTextDto(
+                "A platform where projects become live demonstrations.",
+                "Платформа, где проекты превращаются в живые демонстрации."),
+            HeroDescription: new LocalizedTextDto(
+                "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
+                "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом."),
+            AboutTitle: new LocalizedTextDto("About Me", "Обо мне"),
+            AboutText: new LocalizedTextDto(
+                "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my latest work and architecture approach.",
+                "Я создаю прикладные веб-проекты: от идеи и интерфейса до backend-логики и деплоя. На этой странице вы видите мои актуальные работы и подход к архитектуре."),
+            PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
+            PortfolioText: new LocalizedTextDto(
+                "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action.",
+                "В портфолио — проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе."),
+            AboutPhoto: null);
     }
 
 }

@@ -523,6 +523,11 @@ a {
   color: var(--text-soft);
 }
 
+.landing-about__paragraph {
+  margin: 0 0 0.65rem;
+  color: var(--text-soft);
+}
+
 .portfolio-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -601,6 +606,11 @@ a {
   margin: 0 0 0.35rem;
 }
 
+.project-card__detail-paragraph {
+  min-height: auto;
+  margin: 0 0 0.35rem;
+}
+
 .project-card__details strong {
   font-size: 0.78rem;
   color: color-mix(in srgb, var(--primary) 62%, var(--text));
@@ -643,6 +653,11 @@ a {
 }
 
 .project-detail p {
+  margin: 0.45rem 0 0;
+  color: var(--text-soft);
+}
+
+.project-detail__paragraph {
   margin: 0.45rem 0 0;
   color: var(--text-soft);
 }
@@ -742,6 +757,9 @@ a {
 }
 
 .private-nav-link {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   text-decoration: none;
   color: var(--text);
   border: 1px solid var(--border);
@@ -1129,6 +1147,11 @@ a {
 
   .private-layout__shell {
     grid-template-columns: 1fr;
+  }
+
+  .private-layout__aside {
+    width: 100%;
+    min-width: 0;
   }
 
   .admin-projects,

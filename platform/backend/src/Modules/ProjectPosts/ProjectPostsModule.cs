@@ -76,6 +76,19 @@ public sealed partial class ProjectPostsModule : IModule
             BackendPath: string.IsNullOrWhiteSpace(request.BackendPath) ? null : request.BackendPath.Trim());
     }
 
+    private static LandingContentDto Normalize(UpsertLandingContentRequest request)
+    {
+        return new LandingContentDto(
+            HeroEyebrow: new LocalizedTextDto(request.HeroEyebrow.En.Trim(), request.HeroEyebrow.Ru.Trim()),
+            HeroTitle: new LocalizedTextDto(request.HeroTitle.En.Trim(), request.HeroTitle.Ru.Trim()),
+            HeroDescription: new LocalizedTextDto(request.HeroDescription.En.Trim(), request.HeroDescription.Ru.Trim()),
+            AboutTitle: new LocalizedTextDto(request.AboutTitle.En.Trim(), request.AboutTitle.Ru.Trim()),
+            AboutText: new LocalizedTextDto(request.AboutText.En.Trim(), request.AboutText.Ru.Trim()),
+            PortfolioTitle: new LocalizedTextDto(request.PortfolioTitle.En.Trim(), request.PortfolioTitle.Ru.Trim()),
+            PortfolioText: new LocalizedTextDto(request.PortfolioText.En.Trim(), request.PortfolioText.Ru.Trim()),
+            AboutPhoto: string.IsNullOrWhiteSpace(request.AboutPhoto) ? null : request.AboutPhoto.Trim());
+    }
+
     private static void ValidateDto<T>(T request)
     {
         var context = new ValidationContext(request!);

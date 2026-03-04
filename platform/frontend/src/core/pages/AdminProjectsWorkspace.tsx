@@ -284,14 +284,25 @@ function TemplateDropzone({ title, hint, files, onFilesChange }: TemplateDropzon
   );
 }
 
-export function AdminProjectsWorkspace() {
+interface AdminProjectsWorkspaceProps {
+  mode?: "projects" | "posts";
+}
+
+export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorkspaceProps) {
+  const isPostsMode = mode === "posts";
   const projects = useProjectPosts();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftProject>(() => emptyDraft());
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string>("");
 
-  const sorted = useMemo(() => [...projects].sort((a, b) => a.title.en.localeCompare(b.title.en)), [projects]);
+  const sorted = useMemo(
+    () =>
+      [...projects]
+        .filter((project) => !isPostsMode || (project.template ?? "None") === "None")
+        .sort((a, b) => a.title.en.localeCompare(b.title.en)),
+    [projects, isPostsMode]
+  );
 
   function startCreate() {
     setEditingId(null);
@@ -339,12 +350,21 @@ export function AdminProjectsWorkspace() {
     setBusy(true);
     setServerError("");
 
-    const project = fromDraft(draft);
-    const upload: ProjectUploadBundle = {
-      templateType: draft.templateType,
-      frontendFiles: draft.frontendFiles,
-      backendFiles: draft.backendFiles
-    };
+    const project = isPostsMode
+      ? {
+          ...fromDraft({ ...draft, templateType: "None", frontendFiles: [], backendFiles: [] }),
+          template: "None" as TemplateType,
+          frontendPath: undefined,
+          backendPath: undefined
+        }
+      : fromDraft(draft);
+    const upload: ProjectUploadBundle | undefined = isPostsMode
+      ? undefined
+      : {
+          templateType: draft.templateType,
+          frontendFiles: draft.frontendFiles,
+          backendFiles: draft.backendFiles
+        };
 
     try {
       if (editingId) {
@@ -385,27 +405,44 @@ export function AdminProjectsWorkspace() {
     <section className="admin-projects">
       <article className="admin-projects__workspace">
         <header className="admin-projects__hero">
-          <h1>Рабочее пространство проектов</h1>
-          <p>Управляйте публикациями и шаблонами: создавайте посты, загружайте сборки и открывайте результат в `/app/&lt;slug&gt;`.</p>
+          <h1>{isPostsMode ? "Рабочее пространство постов" : "Рабочее пространство проектов"}</h1>
+          <p>
+            {isPostsMode
+              ? "Создавайте и редактируйте посты без загрузки шаблонов frontend/backend."
+              : "Управляйте публикациями и шаблонами: создавайте посты, загружайте сборки и открывайте результат в `/app/&lt;slug&gt;`."}
+          </p>
           {serverError ? <p className="admin-error">{serverError}</p> : null}
         </header>
 
         <div className="admin-projects__workspace-grid">
           <section className="admin-card admin-projects__actions admin-projects__nav-panel">
             <h2>Действия</h2>
-            <button type="button" onClick={startCreate}>Новый пост проекта</button>
-            <p className="admin-muted">Нажмите кнопку, чтобы очистить форму и начать создание нового проекта.</p>
+            <button type="button" onClick={startCreate}>{isPostsMode ? "Новый пост" : "Новый пост проекта"}</button>
+            <p className="admin-muted">
+              {isPostsMode
+                ? "Нажмите кнопку, чтобы очистить форму и начать создание нового поста."
+                : "Нажмите кнопку, чтобы очистить форму и начать создание нового проекта."}
+            </p>
           </section>
 
           <article className="admin-card admin-projects__editor">
           <h2>{editingId ? "Редактирование поста" : "Создание поста"}</h2>
           <p className="admin-muted">
-            Как загрузить проект: 
-            <br />1) выберите тип шаблона, 
-            <br />2) заполните тексты и медиа, 
-            <br />3) добавьте файлы frontend/backend,
-            <br />4) нажмите «{editingId ? "Сохранить изменения" : "Создать пост"}». 
-            <br />После сохранения frontend доступен по`/app/&lt;slug&gt;/index.html`.
+            {isPostsMode ? (
+              <>
+                Заполните тексты и медиа, затем нажмите «{editingId ? "Сохранить изменения" : "Создать пост"}».
+                <br />В этом разделе шаблоны и runtime-загрузка отключены.
+              </>
+            ) : (
+              <>
+                Как загрузить проект:
+                <br />1) выберите тип шаблона,
+                <br />2) заполните тексты и медиа,
+                <br />3) добавьте файлы frontend/backend,
+                <br />4) нажмите «{editingId ? "Сохранить изменения" : "Создать пост"}».
+                <br />После сохранения frontend доступен по `/app/&lt;slug&gt;/index.html`.
+              </>
+            )}
           </p>
           <form className="admin-form" onSubmit={handleSubmit}>
             <label>
@@ -416,22 +453,24 @@ export function AdminProjectsWorkspace() {
                 placeholder="finance-tracker"
               />
             </label>
-            <label>
-              Тип шаблона
-              <select
-                data-testid="template-type-select"
-                value={draft.templateType}
-                onChange={(e) => setDraft((c) => ({ ...c, templateType: e.target.value as TemplateType }))}
-              >
-                {TEMPLATE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!isPostsMode ? (
+              <label>
+                Тип шаблона
+                <select
+                  data-testid="template-type-select"
+                  value={draft.templateType}
+                  onChange={(e) => setDraft((c) => ({ ...c, templateType: e.target.value as TemplateType }))}
+                >
+                  {TEMPLATE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
 
-            {templateDetails ? (
+            {!isPostsMode && templateDetails ? (
               <section className="admin-template-accordion" data-testid="template-instructions">
                 <details open>
                   <summary>Инструкции по загрузке шаблона</summary>
@@ -470,10 +509,12 @@ export function AdminProjectsWorkspace() {
             <label>
               Полное описание (EN)
               <textarea rows={4} value={draft.descriptionEn} onChange={(e) => setDraft((c) => ({ ...c, descriptionEn: e.target.value }))} />
+              <small className="admin-muted">Пустая строка = новый абзац.</small>
             </label>
             <label>
               Полное описание (RU)
               <textarea rows={4} value={draft.descriptionRu} onChange={(e) => setDraft((c) => ({ ...c, descriptionRu: e.target.value }))} />
+              <small className="admin-muted">Пустая строка = новый абзац.</small>
             </label>
             <label>
               Теги (через запятую)

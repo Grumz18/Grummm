@@ -16,6 +16,8 @@ public sealed partial class ProjectPostsModule
     {
         var publicGroup = app.MapGroup("/api/public/projects");
         var privateGroup = app.MapGroup("/api/app/projects").RequireAuthorization("AdminOnly");
+        var publicContentGroup = app.MapGroup("/api/public/content");
+        var privateContentGroup = app.MapGroup("/api/app/content").RequireAuthorization("AdminOnly");
 
         publicGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
         {
@@ -33,6 +35,20 @@ public sealed partial class ProjectPostsModule
         {
             var items = await repository.ListAsync(cancellationToken);
             return Results.Ok(new { items });
+        });
+
+        publicContentGroup.MapGet("/landing", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        {
+            var content = await repository.GetLandingContentAsync(cancellationToken);
+            return Results.Ok(content);
+        });
+
+        privateContentGroup.MapPut("/landing", async (UpsertLandingContentRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        {
+            ValidateDto(request);
+            var normalized = Normalize(request);
+            var updated = await repository.UpsertLandingContentAsync(normalized, cancellationToken);
+            return Results.Ok(updated);
         });
 
         privateGroup.MapPost("/", async (UpsertProjectPostRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>

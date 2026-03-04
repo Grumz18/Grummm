@@ -1,5 +1,6 @@
 ﻿import { motion } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
+import { ParagraphText } from "../components/ParagraphText";
 import { useProjectPost } from "../data/project-store";
 import { useSwipeBack } from "../hooks/useSwipeBack";
 import { usePreferences } from "../preferences";
@@ -56,7 +57,7 @@ export function ProjectDetailPage() {
       </section>
 
       <section className="project-detail__text">
-        <p>{project.description[language]}</p>
+        <ParagraphText text={project.description[language]} className="project-detail__paragraph" />
       </section>
 
       <section className="project-detail__screens">

@@ -2,6 +2,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ProjectCard } from "../components/ProjectCard";
+import { ParagraphText } from "../components/ParagraphText";
 import { RotatingEarth } from "../components/RotatingEarth";
 import { SpaceBackground } from "../components/SpaceBackground";
 import { useLandingContent } from "../data/landing-content-store";
@@ -70,7 +71,7 @@ export function LandingPage() {
           <h2>{landingContent.aboutTitle[language]}</h2>
           <p>{landingContent.aboutText[language]}</p>
           <h3>{landingContent.portfolioTitle[language]}</h3>
-          <p>{landingContent.portfolioText[language]}</p>
+          <ParagraphText text={landingContent.portfolioText[language]} className="landing-about__paragraph" />
         </div>
       </motion.section>
 

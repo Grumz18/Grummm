@@ -10,6 +10,7 @@ namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 public sealed class PostgresProjectPostRepository(string connectionString) : IProjectPostRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private const string LandingContentId = "main";
 
     public async Task<IReadOnlyList<ProjectPostDto>> ListAsync(CancellationToken cancellationToken)
     {
@@ -23,6 +24,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
 
         await using var command = new NpgsqlCommand(sql, connection);
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -48,6 +50,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("id", id);
@@ -94,6 +97,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
 
         await using var command = new NpgsqlCommand(sql, connection);
         BindUpsertParameters(command, post);
@@ -135,11 +139,100 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         await using var connection = new NpgsqlConnection(connectionString);
         await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
 
         await using var command = new NpgsqlCommand(sql, connection);
         command.Parameters.AddWithValue("id", id);
         var affected = await command.ExecuteNonQueryAsync(cancellationToken);
         return affected > 0;
+    }
+
+    public async Task<LandingContentDto> GetLandingContentAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           select hero_eyebrow_en, hero_eyebrow_ru,
+                                  hero_title_en, hero_title_ru,
+                                  hero_description_en, hero_description_ru,
+                                  about_title_en, about_title_ru,
+                                  about_text_en, about_text_ru,
+                                  portfolio_title_en, portfolio_title_ru,
+                                  portfolio_text_en, portfolio_text_ru,
+                                  about_photo
+                           from landing_content
+                           where id = @id;
+                           """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", LandingContentId);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (await reader.ReadAsync(cancellationToken))
+        {
+            return ReadLandingContent(reader);
+        }
+
+        var seed = SeedLandingContent();
+        await UpsertLandingContentAsync(seed, cancellationToken);
+        return seed;
+    }
+
+    public async Task<LandingContentDto> UpsertLandingContentAsync(LandingContentDto content, CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           insert into landing_content (
+                               id,
+                               hero_eyebrow_en, hero_eyebrow_ru,
+                               hero_title_en, hero_title_ru,
+                               hero_description_en, hero_description_ru,
+                               about_title_en, about_title_ru,
+                               about_text_en, about_text_ru,
+                               portfolio_title_en, portfolio_title_ru,
+                               portfolio_text_en, portfolio_text_ru,
+                               about_photo,
+                               created_at, updated_at
+                           )
+                           values (
+                               @id,
+                               @hero_eyebrow_en, @hero_eyebrow_ru,
+                               @hero_title_en, @hero_title_ru,
+                               @hero_description_en, @hero_description_ru,
+                               @about_title_en, @about_title_ru,
+                               @about_text_en, @about_text_ru,
+                               @portfolio_title_en, @portfolio_title_ru,
+                               @portfolio_text_en, @portfolio_text_ru,
+                               @about_photo,
+                               now(), now()
+                           )
+                           on conflict (id) do update set
+                               hero_eyebrow_en = excluded.hero_eyebrow_en,
+                               hero_eyebrow_ru = excluded.hero_eyebrow_ru,
+                               hero_title_en = excluded.hero_title_en,
+                               hero_title_ru = excluded.hero_title_ru,
+                               hero_description_en = excluded.hero_description_en,
+                               hero_description_ru = excluded.hero_description_ru,
+                               about_title_en = excluded.about_title_en,
+                               about_title_ru = excluded.about_title_ru,
+                               about_text_en = excluded.about_text_en,
+                               about_text_ru = excluded.about_text_ru,
+                               portfolio_title_en = excluded.portfolio_title_en,
+                               portfolio_title_ru = excluded.portfolio_title_ru,
+                               portfolio_text_en = excluded.portfolio_text_en,
+                               portfolio_text_ru = excluded.portfolio_text_ru,
+                               about_photo = excluded.about_photo,
+                               updated_at = now();
+                           """;
+
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+        await EnsureSchemaAsync(connection, cancellationToken);
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        BindLandingParameters(command, content);
+        await command.ExecuteNonQueryAsync(cancellationToken);
+        return content;
     }
 
     private static void BindUpsertParameters(NpgsqlCommand command, ProjectPostDto post)
@@ -192,6 +285,125 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             BackendPath: reader.IsDBNull(reader.GetOrdinal("backend_path"))
                 ? null
                 : reader.GetString(reader.GetOrdinal("backend_path")));
+    }
+
+    private static LandingContentDto ReadLandingContent(NpgsqlDataReader reader)
+    {
+        return new LandingContentDto(
+            HeroEyebrow: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("hero_eyebrow_en")),
+                Ru: reader.GetString(reader.GetOrdinal("hero_eyebrow_ru"))),
+            HeroTitle: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("hero_title_en")),
+                Ru: reader.GetString(reader.GetOrdinal("hero_title_ru"))),
+            HeroDescription: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("hero_description_en")),
+                Ru: reader.GetString(reader.GetOrdinal("hero_description_ru"))),
+            AboutTitle: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("about_title_en")),
+                Ru: reader.GetString(reader.GetOrdinal("about_title_ru"))),
+            AboutText: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("about_text_en")),
+                Ru: reader.GetString(reader.GetOrdinal("about_text_ru"))),
+            PortfolioTitle: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("portfolio_title_en")),
+                Ru: reader.GetString(reader.GetOrdinal("portfolio_title_ru"))),
+            PortfolioText: new LocalizedTextDto(
+                En: reader.GetString(reader.GetOrdinal("portfolio_text_en")),
+                Ru: reader.GetString(reader.GetOrdinal("portfolio_text_ru"))),
+            AboutPhoto: reader.IsDBNull(reader.GetOrdinal("about_photo"))
+                ? null
+                : reader.GetString(reader.GetOrdinal("about_photo")));
+    }
+
+    private static void BindLandingParameters(NpgsqlCommand command, LandingContentDto content)
+    {
+        command.Parameters.AddWithValue("id", LandingContentId);
+        command.Parameters.AddWithValue("hero_eyebrow_en", content.HeroEyebrow.En);
+        command.Parameters.AddWithValue("hero_eyebrow_ru", content.HeroEyebrow.Ru);
+        command.Parameters.AddWithValue("hero_title_en", content.HeroTitle.En);
+        command.Parameters.AddWithValue("hero_title_ru", content.HeroTitle.Ru);
+        command.Parameters.AddWithValue("hero_description_en", content.HeroDescription.En);
+        command.Parameters.AddWithValue("hero_description_ru", content.HeroDescription.Ru);
+        command.Parameters.AddWithValue("about_title_en", content.AboutTitle.En);
+        command.Parameters.AddWithValue("about_title_ru", content.AboutTitle.Ru);
+        command.Parameters.AddWithValue("about_text_en", content.AboutText.En);
+        command.Parameters.AddWithValue("about_text_ru", content.AboutText.Ru);
+        command.Parameters.AddWithValue("portfolio_title_en", content.PortfolioTitle.En);
+        command.Parameters.AddWithValue("portfolio_title_ru", content.PortfolioTitle.Ru);
+        command.Parameters.AddWithValue("portfolio_text_en", content.PortfolioText.En);
+        command.Parameters.AddWithValue("portfolio_text_ru", content.PortfolioText.Ru);
+        command.Parameters.AddWithValue("about_photo", (object?)content.AboutPhoto ?? DBNull.Value);
+    }
+
+    private static LandingContentDto SeedLandingContent()
+    {
+        return new LandingContentDto(
+            HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
+            HeroTitle: new LocalizedTextDto(
+                "A platform where projects become live demonstrations.",
+                "Платформа, где проекты превращаются в живые демонстрации."),
+            HeroDescription: new LocalizedTextDto(
+                "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
+                "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом."),
+            AboutTitle: new LocalizedTextDto("About Me", "Обо мне"),
+            AboutText: new LocalizedTextDto(
+                "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my latest work and architecture approach.",
+                "Я создаю прикладные веб-проекты: от идеи и интерфейса до backend-логики и деплоя. На этой странице вы видите мои актуальные работы и подход к архитектуре."),
+            PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
+            PortfolioText: new LocalizedTextDto(
+                "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action.",
+                "В портфолио — проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе."),
+            AboutPhoto: null);
+    }
+
+    private static async Task EnsureSchemaAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           create table if not exists project_posts (
+                               id text primary key,
+                               title_en text not null,
+                               title_ru text not null,
+                               summary_en text not null,
+                               summary_ru text not null,
+                               description_en text not null,
+                               description_ru text not null,
+                               tags text[] not null default '{}',
+                               hero_image_light text not null,
+                               hero_image_dark text not null,
+                               screenshots jsonb not null default '[]'::jsonb,
+                               video_url text null,
+                               template smallint not null default 0,
+                               frontend_path text null,
+                               backend_path text null,
+                               created_at timestamptz not null default now(),
+                               updated_at timestamptz not null default now()
+                           );
+
+                           create table if not exists landing_content (
+                               id text primary key,
+                               hero_eyebrow_en text not null,
+                               hero_eyebrow_ru text not null,
+                               hero_title_en text not null,
+                               hero_title_ru text not null,
+                               hero_description_en text not null,
+                               hero_description_ru text not null,
+                               about_title_en text not null,
+                               about_title_ru text not null,
+                               about_text_en text not null,
+                               about_text_ru text not null,
+                               portfolio_title_en text not null,
+                               portfolio_title_ru text not null,
+                               portfolio_text_en text not null,
+                               portfolio_text_ru text not null,
+                               about_photo text null,
+                               created_at timestamptz not null default now(),
+                               updated_at timestamptz not null default now()
+                           );
+                           """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
 }

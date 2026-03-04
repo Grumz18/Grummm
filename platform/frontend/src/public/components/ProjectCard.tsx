@@ -1,5 +1,6 @@
 import { useMemo, useRef } from "react";
 import { motion } from "framer-motion";
+import { ParagraphText } from "./ParagraphText";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
 interface ProjectCardProps {
@@ -85,7 +86,7 @@ export function ProjectCard({
           ))}
         </ul>
         <div className={`project-card__details${isExpanded ? " is-open" : ""}`}>
-          <p>{description}</p>
+          <ParagraphText text={description} className="project-card__detail-paragraph" />
           <strong>{language === "ru" ? "Повторный тап откроет страницу" : "Tap once more to open"}</strong>
         </div>
       </div>

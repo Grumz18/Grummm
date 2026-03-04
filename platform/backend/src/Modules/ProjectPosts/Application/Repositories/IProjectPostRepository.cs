@@ -10,4 +10,6 @@ public interface IProjectPostRepository
     Task<ProjectPostDto> UpsertAsync(ProjectPostDto post, CancellationToken cancellationToken);
     Task<ProjectPostDto?> UploadWithTemplateAsync(UploadWithTemplateCommand command, CancellationToken cancellationToken);
     Task<bool> DeleteAsync(string id, CancellationToken cancellationToken);
+    Task<LandingContentDto> GetLandingContentAsync(CancellationToken cancellationToken);
+    Task<LandingContentDto> UpsertLandingContentAsync(LandingContentDto content, CancellationToken cancellationToken);
 }

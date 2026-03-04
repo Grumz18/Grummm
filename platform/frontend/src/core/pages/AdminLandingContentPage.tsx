@@ -1,7 +1,7 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import {
   readLandingContent,
-  saveLandingContent,
+  saveLandingContentToServer,
   type LandingContent
 } from "../../public/data/landing-content-store";
 
@@ -18,6 +18,8 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function AdminLandingContentPage() {
   const [landingDraft, setLandingDraft] = useState<LandingDraft>(() => readLandingContent());
+  const [busy, setBusy] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   async function handleLandingPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -29,10 +31,18 @@ export function AdminLandingContentPage() {
     setLandingDraft((current) => ({ ...current, aboutPhoto: dataUrl }));
   }
 
-  function handleLandingSave(event: FormEvent) {
+  async function handleLandingSave(event: FormEvent) {
     event.preventDefault();
-    const saved = saveLandingContent(landingDraft);
-    setLandingDraft(saved);
+    setBusy(true);
+    setServerError("");
+    try {
+      const saved = await saveLandingContentToServer(landingDraft, { serverOnly: true });
+      setLandingDraft(saved);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "Ошибка синхронизации с сервером.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -42,6 +52,7 @@ export function AdminLandingContentPage() {
         <p className="admin-muted">
           Отдельный блок для настройки первого экрана и секции «Обо мне» на двух языках.
         </p>
+        {serverError ? <p className="admin-error">{serverError}</p> : null}
         <form className="admin-form" onSubmit={handleLandingSave}>
           <label>
             Hero (RU): надзаголовок
@@ -205,6 +216,7 @@ export function AdminLandingContentPage() {
                 }))
               }
             />
+            <small className="admin-muted">Пустая строка = новый абзац.</small>
           </label>
           <label>
             Portfolio (EN): text
@@ -218,6 +230,7 @@ export function AdminLandingContentPage() {
                 }))
               }
             />
+            <small className="admin-muted">Blank line = new paragraph.</small>
           </label>
           <label>
             Фото для блока «Обо мне»
@@ -226,7 +239,7 @@ export function AdminLandingContentPage() {
           {landingDraft.aboutPhoto ? (
             <img className="admin-landing-editor__preview" src={landingDraft.aboutPhoto} alt="about-preview" />
           ) : null}
-          <button type="submit">Сохранить контент главной</button>
+          <button type="submit" disabled={busy}>{busy ? "Сохранение..." : "Сохранить контент главной"}</button>
         </form>
       </article>
     </section>
