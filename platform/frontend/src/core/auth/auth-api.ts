@@ -6,6 +6,9 @@ async function parseError(response: Response): Promise<string> {
   try {
     const payload = (await response.json()) as { error?: string };
     if (payload.error) {
+      if (payload.error === "mailru_app_password_required") {
+        return "Для mail.ru нужен пароль приложения (не обычный пароль почты). Обновите EmailVerification__SmtpPassword.";
+      }
       return payload.error;
     }
   } catch {
@@ -51,7 +54,7 @@ export async function logoutAdmin(accessToken?: string): Promise<void> {
   });
 }
 
-export async function requestPasswordEmailCode(email: string, accessToken: string): Promise<void> {
+export async function requestPasswordEmailCode(email: string, accessToken: string): Promise<string | undefined> {
   const response = await fetch("/api/app/auth/request-email-code", {
     method: "POST",
     headers: {
@@ -65,6 +68,9 @@ export async function requestPasswordEmailCode(email: string, accessToken: strin
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
+
+  const payload = (await response.json()) as { debugCode?: string };
+  return payload.debugCode;
 }
 
 export async function changeAdminPassword(

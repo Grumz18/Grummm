@@ -8,11 +8,6 @@ import {
   useProjectPosts,
   type ProjectUploadBundle
 } from "../../public/data/project-store";
-import {
-  readLandingContent,
-  saveLandingContent,
-  type LandingContent
-} from "../../public/data/landing-content-store";
 import type { PortfolioProject, TemplateType } from "../../public/types";
 
 interface DraftProject {
@@ -33,7 +28,6 @@ interface DraftProject {
   backendFiles: File[];
 }
 
-interface LandingDraft extends LandingContent {}
 
 const TEMPLATE_OPTIONS: Array<{ value: TemplateType; label: string }> = [
   { value: "None", label: "Без шаблона" },
@@ -294,7 +288,6 @@ export function AdminProjectsWorkspace() {
   const projects = useProjectPosts();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftProject>(() => emptyDraft());
-  const [landingDraft, setLandingDraft] = useState<LandingDraft>(() => readLandingContent());
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState<string>("");
 
@@ -340,15 +333,6 @@ export function AdminProjectsWorkspace() {
     setDraft((current) => ({ ...current, videoUrl: dataUrl }));
   }
 
-  async function handleLandingPhoto(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const dataUrl = await fileToDataUrl(file);
-    setLandingDraft((current) => ({ ...current, aboutPhoto: dataUrl }));
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -394,11 +378,6 @@ export function AdminProjectsWorkspace() {
     }
   }
 
-  function handleLandingSave(event: FormEvent) {
-    event.preventDefault();
-    const saved = saveLandingContent(landingDraft);
-    setLandingDraft(saved);
-  }
 
   const templateDetails = draft.templateType === "None" ? null : TEMPLATE_INSTRUCTIONS[draft.templateType];
 
@@ -527,200 +506,6 @@ export function AdminProjectsWorkspace() {
           </article>
         </div>
 
-        <article className="admin-card admin-landing-editor">
-          <h2>Контент главной страницы</h2>
-          <p className="admin-muted">
-            Здесь вы настраиваете первый экран и блок «Обо мне» на двух языках. Изменения сразу применяются на `/`.
-          </p>
-          <form className="admin-form" onSubmit={handleLandingSave}>
-            <label>
-              Hero (RU): надзаголовок
-              <input
-                value={landingDraft.heroEyebrow.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroEyebrow: { ...current.heroEyebrow, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Hero (EN): eyebrow
-              <input
-                value={landingDraft.heroEyebrow.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroEyebrow: { ...current.heroEyebrow, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Hero (RU): заголовок
-              <textarea
-                rows={2}
-                value={landingDraft.heroTitle.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroTitle: { ...current.heroTitle, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Hero (EN): title
-              <textarea
-                rows={2}
-                value={landingDraft.heroTitle.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroTitle: { ...current.heroTitle, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Hero (RU): описание
-              <textarea
-                rows={3}
-                value={landingDraft.heroDescription.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroDescription: { ...current.heroDescription, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Hero (EN): description
-              <textarea
-                rows={3}
-                value={landingDraft.heroDescription.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    heroDescription: { ...current.heroDescription, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              Обо мне (RU): заголовок
-              <input
-                value={landingDraft.aboutTitle.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    aboutTitle: { ...current.aboutTitle, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              About me (EN): title
-              <input
-                value={landingDraft.aboutTitle.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    aboutTitle: { ...current.aboutTitle, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Обо мне (RU): текст
-              <textarea
-                rows={3}
-                value={landingDraft.aboutText.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    aboutText: { ...current.aboutText, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              About me (EN): text
-              <textarea
-                rows={3}
-                value={landingDraft.aboutText.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    aboutText: { ...current.aboutText, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              Портфолио (RU): заголовок
-              <input
-                value={landingDraft.portfolioTitle.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    portfolioTitle: { ...current.portfolioTitle, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Portfolio (EN): title
-              <input
-                value={landingDraft.portfolioTitle.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    portfolioTitle: { ...current.portfolioTitle, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Портфолио (RU): текст
-              <textarea
-                rows={3}
-                value={landingDraft.portfolioText.ru}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    portfolioText: { ...current.portfolioText, ru: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Portfolio (EN): text
-              <textarea
-                rows={3}
-                value={landingDraft.portfolioText.en}
-                onChange={(e) =>
-                  setLandingDraft((current) => ({
-                    ...current,
-                    portfolioText: { ...current.portfolioText, en: e.target.value }
-                  }))
-                }
-              />
-            </label>
-            <label>
-              Фото для блока «Обо мне»
-              <input type="file" accept="image/*" onChange={(e) => void handleLandingPhoto(e)} />
-            </label>
-            {landingDraft.aboutPhoto ? (
-              <img className="admin-landing-editor__preview" src={landingDraft.aboutPhoto} alt="about-preview" />
-            ) : null}
-            <button type="submit">Сохранить контент главной</button>
-          </form>
-        </article>
       </article>
 
       <aside className="admin-card admin-projects__posts-panel admin-projects__nav-panel">

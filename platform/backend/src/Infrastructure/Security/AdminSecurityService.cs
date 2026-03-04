@@ -32,12 +32,12 @@ public sealed class AdminSecurityService(
         return VerifyPassword(password, _passwordHash, _salt);
     }
 
-    public async Task<bool> RequestEmailCodeAsync(string email, string remoteIp, CancellationToken cancellationToken = default)
+    public async Task<RequestEmailCodeResult> RequestEmailCodeAsync(string email, string remoteIp, CancellationToken cancellationToken = default)
     {
         EnsureInitialized();
         if (!string.Equals(email?.Trim(), _adminOptions.Email, StringComparison.OrdinalIgnoreCase))
         {
-            return false;
+            return new RequestEmailCodeResult(false, ErrorCode: "invalid_email");
         }
 
         var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
@@ -59,7 +59,7 @@ public sealed class AdminSecurityService(
                 "EmailVerification disabled. Code for {Email} (for debug only): {Code}",
                 email,
                 code);
-            return true;
+            return new RequestEmailCodeResult(true, DebugCode: code);
         }
 
         try
@@ -76,12 +76,18 @@ public sealed class AdminSecurityService(
                 body: body);
 
             await smtp.SendMailAsync(message, cancellationToken);
-            return true;
+            return new RequestEmailCodeResult(true);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to send email verification code.");
-            return false;
+            if (ex is SmtpException smtpException &&
+                smtpException.Message.Contains("Application password is REQUIRED", StringComparison.OrdinalIgnoreCase))
+            {
+                return new RequestEmailCodeResult(false, ErrorCode: "mailru_app_password_required");
+            }
+
+            return new RequestEmailCodeResult(false, ErrorCode: "email_send_failed");
         }
     }
 

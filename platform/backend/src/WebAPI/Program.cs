@@ -298,13 +298,13 @@ privateAuth.MapPost("/request-email-code", async (
 {
     RequestValidator.Validate(request);
     var remoteIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    var sent = await adminSecurityService.RequestEmailCodeAsync(request.Email, remoteIp, cancellationToken);
-    if (!sent)
+    var result = await adminSecurityService.RequestEmailCodeAsync(request.Email, remoteIp, cancellationToken);
+    if (!result.Success)
     {
-        return Results.BadRequest(new { error = "email_code_request_failed" });
+        return Results.BadRequest(new { error = result.ErrorCode ?? "email_code_request_failed" });
     }
 
-    return Results.Ok(new { status = "email_code_sent" });
+    return Results.Ok(new { status = "email_code_sent", debugCode = result.DebugCode });
 }).RequireRateLimiting("auth-email-code");
 
 privateAuth.MapPost("/change-password", (HttpContext context, ChangePasswordRequest request, IAdminSecurityService adminSecurityService) =>

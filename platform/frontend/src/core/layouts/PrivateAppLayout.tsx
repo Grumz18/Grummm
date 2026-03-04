@@ -12,6 +12,7 @@ export function PrivateAppLayout({ children }: PrivateAppLayoutProps) {
   const navItems = [
     { to: "/app", label: "Обзор", end: true },
     { to: "/app/projects", label: "Проекты" },
+    { to: "/app/content", label: "Контент главной" },
     { to: "/app/security", label: "Безопасность" },
     { to: "/app/tasks", label: "Задачи" },
     { to: "/app/tasks/board", label: "Доска" },

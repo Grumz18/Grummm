@@ -14,6 +14,7 @@ import {
   type SignInPayload
 } from "../auth/auth-session";
 import { AdminProjectsWorkspace } from "../pages/AdminProjectsWorkspace";
+import { AdminLandingContentPage } from "../pages/AdminLandingContentPage";
 import { AdminLoginPage } from "../pages/AdminLoginPage";
 import { AdminSecurityPage } from "../pages/AdminSecurityPage";
 import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
@@ -104,6 +105,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute adminOnly>
               {withPrivateLayout(<AdminProjectsWorkspace />)}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/app/content"
+          element={
+            <ProtectedRoute adminOnly>
+              {withPrivateLayout(<AdminLandingContentPage />)}
             </ProtectedRoute>
           }
         />

@@ -27,8 +27,8 @@ export function AdminSecurityPage() {
 
     setBusyCode(true);
     try {
-      await requestPasswordEmailCode(email.trim(), auth.accessToken);
-      setStatus("Код отправлен на почту.");
+      const debugCode = await requestPasswordEmailCode(email.trim(), auth.accessToken);
+      setStatus(debugCode ? `Почта отключена. Код подтверждения: ${debugCode}` : "Код отправлен на почту.");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Не удалось отправить код.");
     } finally {
