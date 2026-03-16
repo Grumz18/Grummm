@@ -40,11 +40,13 @@ export function LandingHeroSection({
 
       <div className="liquid-glass__content hero__shell">
         <aside className="hero__scene" aria-hidden="true">
-          <div className="hero__scene-stage">
-            <div className="hero__scene-orb hero__scene-orb--one" />
-            <div className="hero__scene-orb hero__scene-orb--two" />
-            <div className="hero__scene-line hero__scene-line--one" />
-            <div className="hero__scene-line hero__scene-line--two" />
+          <div className="hero__scene-stage" data-gsap-hero-parallax>
+            <div className="hero__scene-glow" />
+            <div className="hero__scene-cube" />
+            <div className="hero__scene-spark hero__scene-spark--one" />
+            <div className="hero__scene-spark hero__scene-spark--two" />
+            <div className="hero__scene-spark hero__scene-spark--three" />
+            <div className="hero__scene-spark hero__scene-spark--four" />
           </div>
         </aside>
 

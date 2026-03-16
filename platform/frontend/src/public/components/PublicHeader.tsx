@@ -4,6 +4,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { PreferenceSegmentedControl } from "./PreferenceSegmentedControl";
+import grummmLogo from "../../images/grummmLogo.svg";
 
 const NAV_ITEMS = [
   { to: "/", key: "public.nav.home", end: true },
@@ -65,7 +66,9 @@ export function PublicHeader() {
         <div className="liquid-glass__grain" aria-hidden="true" />
         <div className="liquid-glass__content public-header__content">
           <NavLink to="/" className="public-brand">
-            <span className="public-brand__mark">G</span>
+            <span className="public-brand__mark">
+              <img src={grummmLogo} alt="" className="public-brand__mark-image" />
+            </span>
             <span className="public-brand__copy">
               <strong>Grummm</strong>
               <small>{t("public.brand.subtitle", language)}</small>

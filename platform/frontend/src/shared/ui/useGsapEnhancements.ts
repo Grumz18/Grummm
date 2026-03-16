@@ -1,23 +1,6 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { gsap } from "gsap";
 
-const SURFACE_SELECTOR = [
-  ".public-header__shell",
-  ".public-nav",
-  ".public-preferences",
-  ".catalog-header",
-  ".detail-header",
-  ".about-section",
-  ".project-card",
-  ".private-layout__topbar",
-  ".private-layout__aside",
-  ".admin-card",
-  ".admin-panel",
-  ".auth-card",
-  ".module-public-card",
-  ".auth-reauth-modal"
-].join(", ");
-
 function bindButtonMotion(button: HTMLElement) {
   button.style.transformOrigin = "50% 50%";
   button.style.willChange = "transform, box-shadow";
@@ -86,57 +69,99 @@ function bindButtonMotion(button: HTMLElement) {
   };
 }
 
-function bindSurfaceGlow(surface: HTMLElement) {
-  surface.style.setProperty("--surface-glow-x", "50%");
-  surface.style.setProperty("--surface-glow-y", "50%");
-  surface.style.setProperty("--surface-glow-opacity", "0");
+function bindHeroParallax(stage: HTMLElement) {
+  const hero = stage.closest(".hero");
+  if (!(hero instanceof HTMLElement)) {
+    return () => {};
+  }
 
-  const updatePointer = (event: PointerEvent) => {
-    const rect = surface.getBoundingClientRect();
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    surface.style.setProperty("--surface-glow-x", `${x}%`);
-    surface.style.setProperty("--surface-glow-y", `${y}%`);
-  };
+  const cube = stage.querySelector<HTMLElement>(".hero__scene-cube");
+  const glow = stage.querySelector<HTMLElement>(".hero__scene-glow");
 
-  const onEnter = (event: PointerEvent) => {
-    updatePointer(event);
-    gsap.killTweensOf(surface);
-    gsap.to(surface, {
-      "--surface-glow-opacity": 1,
-      duration: 0.22,
-      ease: "power2.out",
-      overwrite: true
-    });
-  };
+  if (!cube || !glow) {
+    return () => {};
+  }
+
+  cube.style.willChange = "transform";
+  glow.style.willChange = "transform";
+
+  gsap.set(cube, {
+    transformPerspective: 1000,
+    transformOrigin: "50% 58%"
+  });
 
   const onMove = (event: PointerEvent) => {
-    updatePointer(event);
+    const rect = hero.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width - 0.5;
+    const py = (event.clientY - rect.top) / rect.height - 0.5;
+
+    const cubeX = gsap.utils.clamp(-10, 10, px * 20);
+    const cubeY = gsap.utils.clamp(-7, 7, py * 14);
+    const rotationY = gsap.utils.clamp(-4.5, 4.5, px * 9);
+    const rotationX = gsap.utils.clamp(-3.5, 3.5, -py * 7);
+    const glowX = gsap.utils.clamp(-14, 14, px * -18);
+    const glowY = gsap.utils.clamp(-10, 10, py * -12);
+
+    gsap.to(cube, {
+      x: cubeX,
+      y: cubeY,
+      rotationY,
+      rotationX,
+      duration: 0.42,
+      ease: "power3.out",
+      overwrite: true,
+      force3D: true
+    });
+
+    gsap.to(glow, {
+      x: glowX,
+      y: glowY,
+      duration: 0.62,
+      ease: "power3.out",
+      overwrite: true,
+      force3D: true
+    });
   };
 
   const onLeave = () => {
-    gsap.killTweensOf(surface);
-    gsap.to(surface, {
-      "--surface-glow-opacity": 0,
-      duration: 0.34,
+    gsap.killTweensOf(cube);
+    gsap.killTweensOf(glow);
+
+    gsap.to(cube, {
+      x: 0,
+      y: 0,
+      rotationY: 0,
+      rotationX: 0,
+      duration: 0.65,
       ease: "power3.out",
-      overwrite: true
+      overwrite: true,
+      force3D: true
+    });
+
+    gsap.to(glow, {
+      x: 0,
+      y: 0,
+      duration: 0.8,
+      ease: "power3.out",
+      overwrite: true,
+      force3D: true
     });
   };
 
-  surface.addEventListener("pointerenter", onEnter);
-  surface.addEventListener("pointermove", onMove);
-  surface.addEventListener("pointerleave", onLeave);
-  surface.addEventListener("pointercancel", onLeave);
+  hero.addEventListener("pointermove", onMove);
+  hero.addEventListener("pointerleave", onLeave);
+  hero.addEventListener("pointercancel", onLeave);
 
   return () => {
-    surface.removeEventListener("pointerenter", onEnter);
-    surface.removeEventListener("pointermove", onMove);
-    surface.removeEventListener("pointerleave", onLeave);
-    surface.removeEventListener("pointercancel", onLeave);
-    surface.style.removeProperty("--surface-glow-x");
-    surface.style.removeProperty("--surface-glow-y");
-    surface.style.removeProperty("--surface-glow-opacity");
+    hero.removeEventListener("pointermove", onMove);
+    hero.removeEventListener("pointerleave", onLeave);
+    hero.removeEventListener("pointercancel", onLeave);
+    gsap.killTweensOf(cube);
+    gsap.killTweensOf(glow);
+    cube.style.willChange = "auto";
+    glow.style.willChange = "auto";
+    gsap.set(cube, { clearProps: "transform,transformPerspective,transformOrigin" });
+    gsap.set(glow, { clearProps: "transform" });
   };
 }
 
@@ -159,7 +184,7 @@ export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unkno
     }
 
     const cleanupButtons: Array<() => void> = [];
-    const cleanupSurfaces: Array<() => void> = [];
+    const cleanupHeroScenes: Array<() => void> = [];
 
     const ctx = gsap.context(() => {
       const revealNodes = gsap.utils.toArray<HTMLElement>("[data-gsap='reveal']", root);
@@ -203,14 +228,14 @@ export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unkno
       buttons.forEach((button) => cleanupButtons.push(bindButtonMotion(button)));
 
       if (supportsDesktopHover) {
-        const surfaces = gsap.utils.toArray<HTMLElement>(SURFACE_SELECTOR, root);
-        surfaces.forEach((surface) => cleanupSurfaces.push(bindSurfaceGlow(surface)));
+        const heroScenes = gsap.utils.toArray<HTMLElement>("[data-gsap-hero-parallax]", root);
+        heroScenes.forEach((stage) => cleanupHeroScenes.push(bindHeroParallax(stage)));
       }
     }, root);
 
     return () => {
       cleanupButtons.forEach((cleanup) => cleanup());
-      cleanupSurfaces.forEach((cleanup) => cleanup());
+      cleanupHeroScenes.forEach((cleanup) => cleanup());
       ctx.revert();
     };
   }, deps);
