@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+﻿import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AUTH_ACCESS_TOKEN_STORAGE_KEY,
@@ -46,8 +46,27 @@ function getInitialSession(): AuthSession {
   }
 }
 
+function finishPreload() {
+  const loader = document.getElementById("app-preloader");
+  document.body.classList.add("app-ready");
+
+  if (!loader) {
+    return;
+  }
+
+  window.setTimeout(() => {
+    loader.remove();
+  }, 420);
+}
+
 createRoot(rootElement).render(
   <StrictMode>
     <AppRouter session={getInitialSession()} />
   </StrictMode>
 );
+
+window.requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => {
+    finishPreload();
+  });
+});

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type TouchEvent } from "react";
+﻿import { useEffect, useMemo, useState, type TouchEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { LiquidGlass } from "../components/LiquidGlass";
 import { PostContentRenderer } from "../components/PostContentRenderer";
@@ -8,10 +8,12 @@ import { ProjectLightbox } from "../components/ProjectLightbox";
 import { ProjectNotFoundCard } from "../components/ProjectNotFoundCard";
 import { ProjectScreensGallery } from "../components/ProjectScreensGallery";
 import { RelatedEntriesSection } from "../components/RelatedEntriesSection";
+import { formatPublishedMeta } from "../formatPublishedDate";
 import { getPortfolioKind, isPortfolioPost, isPortfolioProject, useProjectPost, useProjectPosts } from "../data/project-store";
 import { useSwipeBack } from "../hooks/useSwipeBack";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
+import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
 
 interface ProjectDetailPageProps {
   mode?: "project" | "post";
@@ -40,6 +42,21 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     () => allEntries.filter((entry) => entry.id !== id && isPortfolioProject(entry)).slice(0, 3),
     [allEntries, id]
   );
+  const publishedMeta = mode === "post" && project ? formatPublishedMeta(project.publishedAt, language) ?? undefined : undefined;
+  const detailTitle = project
+    ? `${project.title[language] || project.title.en || project.id} | Grummm`
+    : `${mode === "post" ? t("posts.title", language) : t("projects.title", language)} | Grummm`;
+  const detailDescription = project
+    ? (project.summary[language] || project.summary.en || project.description[language] || project.description.en || "Grummm public entry details.")
+    : (mode === "post" ? t("posts.description", language) : t("projects.description", language));
+  const detailPath = mode === "post" ? `/posts/${id ?? ""}` : `/projects/${id ?? ""}`;
+
+  useDocumentMetadata({
+    title: detailTitle,
+    description: detailDescription,
+    path: detailPath,
+    language
+  });
 
   function openLightbox(index: number) {
     setLightboxIndex(index);
@@ -129,6 +146,7 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
         eyebrow={mode === "post" ? t("detail.postEyebrow", language) : t("detail.projectEyebrow", language)}
         title={project.title[language]}
         description={project.summary[language]}
+        meta={publishedMeta}
         tags={[]}
         backLabel={t("detail.back", language)}
         onBack={() => navigate(-1)}

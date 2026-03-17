@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Language } from "../types";
 
 interface HeroMorphTitleProps {
@@ -6,8 +6,8 @@ interface HeroMorphTitleProps {
   language: Language;
 }
 
-const MORPH_TIME = 1.15;
-const COOLDOWN_TIME = 1.6;
+const MORPH_TIME = 0.9;
+const COOLDOWN_TIME = 1.75;
 const STATIC_BRAND = "Grummm";
 
 function cleanPhrase(value: string): string {
@@ -22,9 +22,9 @@ function getHeroSuffixes(title: string, language: Language): string[] {
   const cleaned = stripBrand(cleanPhrase(title));
   const defaults = language === "ru"
     ? [
-        "\u043E\u0436\u0438\u0432\u043B\u044F\u0435\u0442 \u043F\u0440\u043E\u0435\u043A\u0442\u044B",
-        "\u0437\u0430\u043F\u0443\u0441\u043A\u0430\u0435\u0442 \u0434\u0435\u043C\u043E",
-        "\u0441\u043E\u0431\u0438\u0440\u0430\u0435\u0442 \u043F\u043B\u0430\u0442\u0444\u043E\u0440\u043C\u044B"
+        "оживляет проекты",
+        "запускает демо",
+        "собирает платформы"
       ]
     : [
         "brings projects to life",
@@ -37,7 +37,6 @@ function getHeroSuffixes(title: string, language: Language): string[] {
 }
 
 export function HeroMorphTitle({ title, language }: HeroMorphTitleProps) {
-  const filterId = useId().replace(/:/g, "");
   const fromRef = useRef<HTMLSpanElement | null>(null);
   const toRef = useRef<HTMLSpanElement | null>(null);
   const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -80,20 +79,26 @@ export function HeroMorphTitle({ title, language }: HeroMorphTitleProps) {
     };
 
     const doCooldown = () => {
-      from.style.filter = "none";
       from.style.opacity = "1";
-      to.style.filter = "none";
+      from.style.filter = "blur(0px)";
+      from.style.transform = "translate3d(0, 0, 0)";
+
       to.style.opacity = "0";
+      to.style.filter = "blur(8px)";
+      to.style.transform = "translate3d(0, 0.14em, 0)";
     };
 
     const setMorph = (fraction: number) => {
-      const clamped = Math.min(Math.max(fraction, 0.0001), 1);
-      const inverse = Math.max(1 - clamped, 0.0001);
+      const clamped = Math.min(Math.max(fraction, 0), 1);
+      const inverse = 1 - clamped;
 
-      to.style.filter = `blur(${Math.min(8 / clamped - 8, 100)}px)`;
-      to.style.opacity = `${Math.pow(clamped, 0.4)}`;
-      from.style.filter = `blur(${Math.min(8 / inverse - 8, 100)}px)`;
-      from.style.opacity = `${Math.pow(1 - clamped, 0.4)}`;
+      from.style.opacity = `${Math.max(0, 1 - Math.pow(clamped, 1.18))}`;
+      from.style.filter = `blur(${(clamped * 8).toFixed(2)}px)`;
+      from.style.transform = `translate3d(0, ${(-0.05 * clamped).toFixed(3)}em, 0)`;
+
+      to.style.opacity = `${Math.min(1, 0.12 + Math.pow(clamped, 0.92))}`;
+      to.style.filter = `blur(${(inverse * 8).toFixed(2)}px)`;
+      to.style.transform = `translate3d(0, ${(0.14 * inverse).toFixed(3)}em, 0)`;
     };
 
     const animate = (time: number) => {
@@ -156,20 +161,8 @@ export function HeroMorphTitle({ title, language }: HeroMorphTitleProps) {
     <h1 aria-label={ariaLabel}>
       <span className="hero-morph__brand">{STATIC_BRAND}</span>
       <span className="hero-morph" aria-hidden="true">
-        <svg className="hero-morph__filter" aria-hidden="true" focusable="false">
-          <defs>
-            <filter id={filterId}>
-              <feColorMatrix
-                in="SourceGraphic"
-                type="matrix"
-                values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 255 -140"
-              />
-            </filter>
-          </defs>
-        </svg>
-
         <span className="hero-morph__measure">{longestSuffix}</span>
-        <span className="hero-morph__stack" style={{ filter: `url(#${filterId})` }}>
+        <span className="hero-morph__stack">
           <span ref={fromRef} className="hero-morph__text hero-morph__text--from" />
           <span ref={toRef} className="hero-morph__text hero-morph__text--to" />
         </span>

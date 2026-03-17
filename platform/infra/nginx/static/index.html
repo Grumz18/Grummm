@@ -1,14 +1,52 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Platform Frontend Placeholder</title>
+  <title>Grummm: posts, projects and runtime demos</title>
+  <meta name="description" content="Grummm is a modular platform for posts, projects, runtime demos, analytics, and a secure admin workspace for product teams.">
+  <meta name="keywords" content="grummm, modular platform, posts, projects, runtime demos, admin workspace, analytics, showcase">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://grummm.ru/">
 </head>
 <body>
   <main>
-    <h1>Platform frontend placeholder</h1>
-    <p>Nginx is serving static content over HTTPS.</p>
+    <nav aria-label="Semantic navigation">
+      <p>
+        <a href="#overview">Overview</a> |
+        <a href="#posts">Posts</a> |
+        <a href="#projects">Projects</a> |
+        <a href="#admin">Admin workspace</a>
+      </p>
+      <p>
+        <a href="/posts">Browse posts</a> |
+        <a href="/projects">Browse projects</a> |
+        <a href="/login">Open admin</a>
+      </p>
+    </nav>
+
+    <section id="overview">
+      <h1>Grummm: posts, projects and runtime demos</h1>
+      <p>Grummm presents posts, projects, and runtime demos inside one modular product. The public area is designed for reading, comparison, and navigation. Instead of hiding information behind a single decorative screen, the site gives visitors a direct path from overview text to structured posts, separate projects, and runnable demos that show the system in action.</p>
+      <p>The product uses a modular monolith architecture. That keeps content publishing, runtime delivery, analytics, operations, and security responsibilities separated without fragmenting the user experience. Readers can understand what exists, why it was built, and where to continue next. That structure is useful for visitors, maintainers, and search systems because it creates real content instead of thin promotional copy.</p>
+    </section>
+
+    <section id="posts">
+      <h2>Editorial posts</h2>
+      <p>Posts are long-form entries built from structured blocks. They can include paragraphs, images, subheadings, publication dates, and related links. This makes them readable for people and legible for crawlers. A post can document an implementation, explain an architectural decision, or summarize a release without being mixed with runtime-specific data.</p>
+      <p>Keeping posts separate from projects improves semantics. Articles remain editorial. Projects remain product entities. That boundary gives Grummm a clearer information model and a stronger public catalog.</p>
+    </section>
+
+    <section id="projects">
+      <h2>Projects and demos</h2>
+      <p>Projects focus on executable work: template types, screenshots, runtime paths, and published modules. Runtime demos connect project pages to working output. This allows a visitor to move from explanation to implementation without leaving the same product surface.</p>
+      <p>That flow is the practical side of Grummm. A reader can browse posts, inspect projects, and open demos from one site with consistent navigation and administration.</p>
+    </section>
+
+    <section id="admin">
+      <h2>Admin workspace</h2>
+      <p>The admin workspace manages posts, projects, analytics, security, and operations in one protected zone. Editors can publish content, maintain runtime entities, and review platform status without mixing internal tooling into the public interface. This fallback page exists so crawlers can still read meaningful content even before the main JavaScript application is loaded.</p>
+    </section>
   </main>
 </body>
 </html>

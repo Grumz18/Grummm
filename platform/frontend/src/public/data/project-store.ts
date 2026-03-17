@@ -17,6 +17,11 @@ const PUBLIC_API = "/api/public/projects";
 const PRIVATE_API = "/api/app/projects";
 const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 const SEED_KIND_BY_ID = new Map(seedProjects.map((project) => [project.id, project.kind]));
+const SEED_PUBLISHED_AT_BY_ID = new Map(
+  seedProjects
+    .filter((project) => project.kind === "post" && typeof project.publishedAt === "string" && project.publishedAt.trim().length > 0)
+    .map((project) => [project.id, project.publishedAt as string])
+);
 
 const DEFAULT_FRONTEND_PATH: Record<TemplateType, string | undefined> = {
   None: undefined,
@@ -101,6 +106,15 @@ function normalizeContentBlocks(blocks?: PortfolioContentBlock[] | null): Portfo
     });
 }
 
+function normalizePublishedAt(value?: string | null): string | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
 export function getPortfolioKind(project: PortfolioProject): PortfolioEntryKind {
   if (project.kind === "post" || project.kind === "project") {
     return project.kind;
@@ -124,12 +138,21 @@ export function getPublicEntryPath(project: PortfolioProject): string {
 
 function normalizeProjectRecord(project: PortfolioProject): PortfolioProject {
   const seedKind = SEED_KIND_BY_ID.get(project.id);
+  const kind = project.kind ?? seedKind ?? getPortfolioKind(project);
+  const publishedAt =
+    kind === "post"
+      ? normalizePublishedAt(project.publishedAt) ??
+        normalizePublishedAt(SEED_PUBLISHED_AT_BY_ID.get(project.id)) ??
+        new Date().toISOString()
+      : undefined;
+
   return {
     ...project,
-    kind: project.kind ?? seedKind ?? getPortfolioKind(project),
+    kind,
     title: normalizeLocalizedText(project.title),
     summary: normalizeLocalizedText(project.summary),
     description: normalizeLocalizedText(project.description),
+    publishedAt,
     contentBlocks: normalizeContentBlocks(project.contentBlocks),
     tags: Array.isArray(project.tags) ? project.tags.filter(Boolean) : [],
     heroImage: normalizeThemedAsset(project.heroImage),
@@ -169,6 +192,7 @@ function cloneSeed(): PortfolioProject[] {
       title: { ...project.title },
       summary: { ...project.summary },
       description: { ...project.description },
+      publishedAt: project.publishedAt,
       contentBlocks: (project.contentBlocks ?? []).map((block) => ({
         ...block,
         content: block.content ? { ...block.content } : undefined
@@ -232,6 +256,7 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
     title: normalizeLocalizedText(input.title),
     summary: normalizeLocalizedText(input.summary),
     description: normalizeLocalizedText(input.description),
+    publishedAt: kind === "post" ? normalizePublishedAt(input.publishedAt) : undefined,
     contentBlocks: normalizeContentBlocks(input.contentBlocks),
     heroImage: normalizeThemedAsset(input.heroImage),
     screenshots: kind === "post" ? [] : (input.screenshots ?? []).map(normalizeThemedAsset),
@@ -240,6 +265,17 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
     frontendPath: kind === "post" ? undefined : (input.frontendPath ?? DEFAULT_FRONTEND_PATH[template]),
     backendPath: kind === "post" ? undefined : (input.backendPath ?? DEFAULT_BACKEND_PATH[template])
   };
+}
+
+function ensurePostPublishedAt(input: PortfolioProject, existing?: PortfolioProject): string | undefined {
+  const kind = getPortfolioKind(input);
+  if (kind !== "post") {
+    return undefined;
+  }
+
+  return normalizePublishedAt(input.publishedAt)
+    ?? normalizePublishedAt(existing?.publishedAt)
+    ?? new Date().toISOString();
 }
 
 async function tryMultipartUpsert(endpoint: string, token: string, upload?: ProjectUploadBundle): Promise<{ ok: boolean; status: number } | null> {
@@ -294,7 +330,17 @@ export function readProjects(): PortfolioProject[] {
       return initial;
     }
 
-    return normalizeProjectList(parsed);
+    const normalized = normalizeProjectList(parsed);
+    const migrated = normalized.some((project, index) => {
+      const original = parsed[index];
+      return getPortfolioKind(project) === "post" && project.publishedAt !== normalizePublishedAt(original?.publishedAt);
+    });
+
+    if (migrated) {
+      writeProjects(normalized);
+    }
+
+    return normalized;
   } catch {
     const initial = cloneSeed();
     writeProjects(initial);
@@ -367,7 +413,7 @@ export async function createProjectWithOptions(input: PortfolioProject, upload?:
     uniqueId = `${baseId}-${index++}`;
   }
 
-  const localRecord = normalizeProjectRecord({ ...input, id: uniqueId });
+  const localRecord = normalizeProjectRecord({ ...input, id: uniqueId, publishedAt: ensurePostPublishedAt({ ...input, id: uniqueId }) });
   const payload = toApiPayload(localRecord);
   const token = ensureAccessToken(Boolean(options.serverOnly));
 
@@ -418,7 +464,12 @@ export async function createProjectWithOptions(input: PortfolioProject, upload?:
 
 export async function updateProject(projectId: string, patch: PortfolioProject, upload?: ProjectUploadBundle, options: AdminMutationOptions = {}): Promise<PortfolioProject[]> {
   const current = readProjects();
-  const localRecord = normalizeProjectRecord({ ...patch, id: projectId });
+  const existing = current.find((project) => project.id === projectId);
+  const localRecord = normalizeProjectRecord({
+    ...patch,
+    id: projectId,
+    publishedAt: ensurePostPublishedAt({ ...patch, id: projectId }, existing)
+  });
   const payload = toApiPayload(localRecord);
   const token = ensureAccessToken(Boolean(options.serverOnly));
 

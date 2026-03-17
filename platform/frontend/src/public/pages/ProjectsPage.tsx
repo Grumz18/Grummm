@@ -1,24 +1,26 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { ProjectCardGrid } from "../components/ProjectCardGrid";
 import { ProjectsCatalogHeader } from "../components/ProjectsCatalogHeader";
 import { useSwipeBack } from "../hooks/useSwipeBack";
 import { useRuntimeProjects } from "../data/project-store";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
+import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
 
 export function ProjectsPage() {
   const navigate = useNavigate();
   const { theme, language } = usePreferences();
   const projects = useRuntimeProjects();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const canHover = (typeof window !== "undefined" && window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) ?? false;
 
-  useSwipeBack(() => navigate("/"), { enabled: !canHover, edgeOnly: true });
+  useDocumentMetadata({
+    title: `${t("projects.title", language)} | Grummm`,
+    description: t("projects.description", language),
+    path: "/projects",
+    language
+  });
 
-  function handleCardCollapse(projectId: string) {
-    setExpandedId((current) => (current === projectId ? null : current));
-  }
+  useSwipeBack(() => navigate("/"), { enabled: !canHover, edgeOnly: true });
 
   return (
     <section className="projects-page" data-gsap="reveal">
@@ -35,9 +37,6 @@ export function ProjectsPage() {
         items={projects}
         theme={theme}
         language={language}
-        expandedId={expandedId}
-        onExpand={setExpandedId}
-        onCollapse={handleCardCollapse}
         onNavigate={(projectId) => navigate(`/projects/${projectId}`)}
         className="portfolio-grid--catalog"
       />

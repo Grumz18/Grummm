@@ -341,9 +341,12 @@ public sealed class UploadWithTemplateEndpointTests
         await repository.UpsertAsync(
             new ProjectPostDto(
                 Id: id,
+                Kind: ProjectEntryKind.Post,
                 Title: new LocalizedTextDto("Demo", "Demo RU"),
                 Summary: new LocalizedTextDto("Summary", "Summary RU"),
                 Description: new LocalizedTextDto("Description", "Description RU"),
+                PublishedAt: DateTimeOffset.UtcNow,
+                ContentBlocks: [],
                 Tags: ["demo"],
                 HeroImage: new ThemedAssetDto("light", "dark"),
                 Screenshots: [new ThemedAssetDto("s1", "s1")],

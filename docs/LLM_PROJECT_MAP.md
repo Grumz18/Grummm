@@ -1,4 +1,4 @@
-# LLM Project Map (Grummm)
+﻿# LLM Project Map (Grummm)
 
 ## 1. Project in One Minute
 
@@ -87,17 +87,18 @@ platform/backend/
 - Owns readiness/ops contracts, queries and endpoints instead of keeping that logic in WebAPI services.
 
 ### `src/Modules/ProjectPosts`
-- Project post CRUD and template upload/runtime flow.
+- Project/post CRUD and template upload/runtime flow.
 - Public read endpoints and private admin endpoints.
 - Explicit upload DTO mapping for mass-assignment protection.
 - Template runtime support for Static/JavaScript/CSharp/Python.
+- Owns `kind`, `contentBlocks` and `publishedAt` for editorial posts vs runtime projects.
 
 ### `src/Modules/TaskTracker`
 - Task tracker module with commands, queries, validation and module-specific persistence abstractions.
 
 ### `platform/backend/tests`
 - xUnit coverage for ProjectPosts upload/runtime flow.
-- Tests for dynamic viewer routing and template upload behavior.
+- Tests for project/post mapping, publication-date handling and dynamic viewer routing.
 
 ## 5. Frontend Map (`platform/frontend`)
 
@@ -109,6 +110,11 @@ platform/frontend/
 |- vite.config.ts
 |- tsconfig.json
 |- index.html
+|- public/
+|  |- preload.css
+|  |- preload.js
+|  |- robots.txt
+|  `- sitemap.xml
 `- src/
    |- main.tsx
    |- styles.css
@@ -118,10 +124,20 @@ platform/frontend/
    `- modules/
 ```
 
+### `index.html`
+- Static semantic fallback for crawlers.
+- Owns landing-page base metadata, anchors and crawlable paragraphs before React hydrates.
+- Mounts the preloader shell and `#root`.
+
+### `public/*`
+- `preload.css` / `preload.js`: CSP-safe preloader layer to hide fallback text during SPA mount.
+- `robots.txt` / `sitemap.xml`: crawl assets deployed with the frontend.
+
 ### `src/main.tsx`
 - Restores auth session from `localStorage`.
 - Boots the root React tree.
 - Mounts `AppRouter`.
+- Removes the preloader after the first paint cycle.
 
 ### `src/core`
 - `auth/auth-session.tsx`: auth state/provider.
@@ -138,19 +154,21 @@ platform/frontend/
 - `pages/PostsPage.tsx`: posts catalog.
 - `pages/ProjectDetailPage.tsx`: split detail flow for runtime projects and editorial posts.
 - `components/PublicHeader.tsx`: public navigation + preferences panel.
-- `components/LandingHeroSection.tsx`: hero split-layout.
+- `components/LandingHeroSection.tsx`: layered hero.
 - `components/ProjectCard.tsx`: shared card UI for posts/projects.
 - `components/PostContentRenderer.tsx`: structured post body renderer.
 - `components/RelatedEntriesSection.tsx`: related posts/projects footer.
 - `components/ProjectDetailSummary.tsx`: project-only editorial summary layout.
-- `data/project-store.ts`: API-first public/admin store with fallback and block-type normalization.
+- `data/project-store.ts`: API-first public/admin store with fallback, publication-date backfill and block-type normalization.
 - `data/landing-content-store.ts`: API-first landing content store.
 - `preferences.tsx`: theme/language provider and persistence.
+- `formatPublishedDate.ts`: shared post publication-date formatter.
 - `types.ts`: shared public types.
 
 ### `src/shared`
 - `i18n/*`: built-in RU/EN dictionaries and translation helpers.
-- `ui/useGsapEnhancements.ts`: GSAP reveal/stagger/button motion helper.
+- `seo/useDocumentMetadata.ts`: runtime metadata synchronization.
+- `ui/useGsapEnhancements.ts`: GSAP reveal/stagger/button/hero motion helper.
 
 ### `src/modules/task-tracker`
 - Frontend module registration metadata and public/private pages for TaskTracker.
@@ -173,6 +191,7 @@ platform/infra/
 
 ### `nginx`
 - reverse proxy, security headers, limits, SPA fallback, dynamic `/app/{slug}/...` asset serving.
+- `static/index.html`, `static/robots.txt` and `static/sitemap.xml` mirror the crawl-facing fallback for direct static serving.
 
 ### `postgres`
 - postgres image customization used by compose.
@@ -213,6 +232,7 @@ Important current state:
 - frontend HTML composition was rebuilt around persistent layout shells
 - theme and language switching were preserved
 - motion is now a thin GSAP enhancement layer instead of a routing mechanism
+- static fallback HTML, preloader, robots and sitemap are now part of the deployable frontend surface
 - documentation for the current frontend lives primarily in `platform/frontend/FRONTEND_ARCHITECTURE.md`
 
 ## 10. Quick Start for Another LLM
@@ -223,4 +243,5 @@ When assisting in this repo:
 - preserve public/private zone split
 - preserve plugin auto-registration on backend and frontend
 - do not bypass `preferences.tsx` or `shared/i18n/*` for theme/language changes
+- keep runtime metadata aligned with `index.html` metadata on public pages
 - update docs when router/layout/store contracts change

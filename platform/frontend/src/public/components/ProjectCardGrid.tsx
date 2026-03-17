@@ -6,9 +6,6 @@ interface ProjectCardGridProps {
   items: PortfolioProject[];
   theme: ThemeMode;
   language: Language;
-  expandedId: string | null;
-  onExpand: (projectId: string) => void;
-  onCollapse: (projectId: string) => void;
   onNavigate: (projectId: string) => void;
   className?: string;
   placeholderCount?: number;
@@ -18,9 +15,6 @@ export function ProjectCardGrid({
   items,
   theme,
   language,
-  expandedId,
-  onExpand,
-  onCollapse,
   onNavigate,
   className,
   placeholderCount = 0
@@ -36,9 +30,6 @@ export function ProjectCardGrid({
                 project={project}
                 theme={theme}
                 language={language}
-                isExpanded={expandedId === project.id}
-                onExpand={onExpand}
-                onCollapse={() => onCollapse(project.id)}
                 onNavigate={onNavigate}
               />
             </div>

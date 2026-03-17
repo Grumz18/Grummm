@@ -1,9 +1,9 @@
-# Frontend Structure
+﻿# Frontend Structure
 
 Root: `platform/frontend`
 
 Companion docs:
-- `FRONTEND_ARCHITECTURE.md` - routing, layouts, stores, motion layer and UI ownership
+- `FRONTEND_ARCHITECTURE.md` - routing, layouts, stores, motion layer, SEO shell and UI ownership
 - `../docs/LLM_PROJECT_MAP.md` - cross-project map for backend/frontend/infra
 - `../ai-context.md` - current platform state snapshot
 
@@ -18,10 +18,17 @@ platform/frontend/
 |- package.json
 |- tsconfig.json
 |- vite.config.ts
+|- public/
+|  |- preload.css
+|  |- preload.js
+|  |- robots.txt
+|  `- sitemap.xml
 `- src/
    |- main.tsx
    |- styles.css
    |- images/
+   |  |- grummmLogo.png
+   |  |- grummmLogo.svg
    |  |- logo_dark.png
    |  `- logo_white.png
    |- core/
@@ -61,6 +68,7 @@ platform/frontend/
    |     |- TaskTrackerPrivatePage.tsx
    |     `- TaskTrackerPublicPage.tsx
    |- public/
+   |  |- formatPublishedDate.ts
    |  |- preferences.tsx
    |  |- types.ts
    |  |- assets/
@@ -91,7 +99,6 @@ platform/frontend/
    |  |  |- ProjectScreensGallery.tsx
    |  |  |- PublicHeader.tsx
    |  |  |- RelatedEntriesSection.tsx
-   |  |  |- RotatingEarth.tsx
    |  |  `- SectionHeading.tsx
    |  |- data/
    |  |  |- landing-content-store.ts
@@ -111,6 +118,8 @@ platform/frontend/
    |  |  |- index.ts
    |  |  |- ru.ts
    |  |  `- t.ts
+   |  |- seo/
+   |  |  `- useDocumentMetadata.ts
    |  `- ui/
    |     `- useGsapEnhancements.ts
    `- test/
@@ -119,14 +128,27 @@ platform/frontend/
 
 ## Ownership map
 
+### `index.html`
+Static crawl-facing shell. Owns:
+- base metadata
+- semantic fallback content
+- anchor links for non-JS crawlers
+- preloader mount point
+
+### `public/preload.css` / `public/preload.js`
+CSP-safe external preload assets. They hide the semantic shell behind a neutral preloader until the SPA mounts.
+
+### `public/robots.txt` / `public/sitemap.xml`
+Search-engine crawl assets deployed with the SPA.
+
 ### `src/main.tsx`
-Bootstraps React, restores the auth session and mounts `AppRouter`.
+Bootstraps React, restores the auth session, mounts `AppRouter`, and removes the preloader after first paint.
 
 ### `src/styles.css`
 Global frontend design system and responsive behavior. It owns theme tokens, shell geometry, cards, forms, hero layout, post detail layout, admin post block editor layout, and cross-page spacing.
 
 ### `src/images`
-Theme-aware hero artwork used by the landing hero.
+Branding and theme-aware hero artwork used by the public header, favicon and landing hero.
 
 ### `src/core`
 Application shell layer:
@@ -146,6 +168,7 @@ Public showcase layer:
 - public UI components
 - preferences
 - landing and project stores
+- publication-date formatting helper
 
 ### `src/public/types.ts`
 Defines the frontend portfolio contract, including:
@@ -160,23 +183,29 @@ Owns creation/editing workflows for:
 - editorial posts
 - custom template picker UI
 - block-based post authoring
+- publication-date readout for posts
 
 ### `src/public/data/project-store.ts`
 Owns API-first project/post CRUD and normalization for:
 - `kind`
 - `contentBlocks`
+- `publishedAt`
 - template-path defaults
 - localStorage fallback
 - normalization of backend block-type casing so post images survive API reloads
+- local backfill of missing post publication dates
 
 ### `src/core/components/AdminPostBlocksEditor.tsx`
 Dedicated editor used only for posts mode in admin. It owns add/reorder/remove logic for paragraph/subheading/image blocks.
 
 ### `src/public/components/PostContentRenderer.tsx`
-Renders structured public post bodies from `contentBlocks`.
+Renders structured public post bodies from `contentBlocks` and appends publication metadata at the bottom of article text.
 
 ### `src/public/components/RelatedEntriesSection.tsx`
 Renders bottom-of-post recommendations for other posts and projects.
+
+### `src/shared/seo/useDocumentMetadata.ts`
+Synchronizes runtime metadata (`title`, `description`, `keywords`, canonical, OG/Twitter tags) with route changes.
 
 ## Current public composition
 
@@ -184,10 +213,10 @@ Renders bottom-of-post recommendations for other posts and projects.
 - `LandingHeroSection.tsx` - text-first layered hero with a desktop-only decorative scene
 - `HeroMorphTitle.tsx` - desktop-only morph title that keeps `Grummm` static and morphs the suffix phrase
 - `PortfolioSection.tsx` - reusable wrapper for curated posts and modules
-- `ProjectCard.tsx` - unified card with expand-then-navigate interaction model and tags shown only at card level
+- `ProjectCard.tsx` - unified card with direct navigation and publication date for posts
 - `ProjectDetailHeader.tsx` - title/description + full-width back button, no tags
 - `ProjectDetailSummary.tsx` - project-only editorial summary
-- `PostContentRenderer.tsx` - post-only structured article body
+- `PostContentRenderer.tsx` - post-only structured article body with footer publication date
 - `RelatedEntriesSection.tsx` - post-only recommendations footer
 
 ## Current frontend direction
@@ -200,5 +229,6 @@ The frontend is intentionally organized around:
 - a thin GSAP enhancement layer
 - explicit split between showcase posts and runtime projects
 - block-based editorial post content
+- crawl-friendly fallback HTML plus runtime metadata sync
 
 If the visual layer changes again, these boundaries should remain intact.

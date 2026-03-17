@@ -32,6 +32,7 @@ export const seedProjects: PortfolioProject[] = [
       en: "Grummm is a modular monolith platform that separates public showcase posts from runtime-ready projects.",
       ru: "Grummm — это модульная монолитная платформа, разделяющая публичные посты и runtime-проекты."
     },
+    publishedAt: "2026-03-16T09:30:00.000Z",
     contentBlocks: [
       {
         id: "intro",

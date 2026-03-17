@@ -1,4 +1,4 @@
-# Frontend Architecture Guide
+﻿# Frontend Architecture Guide
 
 This document describes the current frontend architecture after the public/private shell reset and the split between showcase posts and runtime projects.
 
@@ -22,8 +22,27 @@ File: `src/main.tsx`
 Startup flow:
 1. Resolve `#root`
 2. Restore auth session from `localStorage`
-3. Pass the restored session into `AppRouter`
-4. Mount the app with global styles from `src/styles.css`
+3. Mount the app with global styles from `src/styles.css`
+4. Remove the external preloader overlay after the first paint cycle
+
+## Static shell and SEO surface
+
+Files:
+- `index.html`
+- `public/preload.css`
+- `public/preload.js`
+- `public/robots.txt`
+- `public/sitemap.xml`
+
+Responsibilities:
+- hold the semantic fallback HTML used by non-JS crawlers
+- expose stable `title`, `description`, `keywords`, canonical and social metadata
+- provide anchor links and readable paragraphs before the React app hydrates
+- show a CSP-safe external preloader instead of flashing raw fallback text
+
+Important consequence:
+- runtime metadata from React must stay aligned with the static metadata in `index.html`
+- `robots.txt` and `sitemap.xml` are part of frontend deploy correctness, not just marketing assets
 
 ## Provider and router tree
 
@@ -128,8 +147,9 @@ Responsibilities:
 - admin CRUD
 - upload/template related project flows
 - local fallback when API/token is unavailable
-- normalization of `kind` and `contentBlocks`
+- normalization of `kind`, `contentBlocks` and `publishedAt`
 - backend enum-case normalization for post blocks (`Image` / `Paragraph` / `Subheading`)
+- backfill of publication dates for older local post entries
 
 Important contract:
 - `PortfolioProject.kind` splits editorial `post` entries from runtime `project` entries
@@ -137,6 +157,7 @@ Important contract:
   - `paragraph`
   - `subheading`
   - `image`
+- `PortfolioProject.publishedAt` is rendered only for posts
 
 ### `landing-content-store.ts`
 Responsibilities:
@@ -173,8 +194,9 @@ Reusable wrapper for curated posts and runtime-ready modules on the landing page
 ### `ProjectCard.tsx`
 Current card behavior:
 - unified media/text shell
-- first tap/click expands context, next tap navigates
+- direct navigation on click/tap
 - tags are shown only on cards
+- post cards render publication date
 - card eyebrow changes by entry kind (`post` vs `project`)
 
 ### `ProjectDetailPage.tsx`
@@ -188,6 +210,7 @@ Now has two detail flows:
   - detail header
   - optional video
   - block-based article renderer
+  - publication date in header and article footer
   - related links to other posts and projects
 
 ### `PostContentRenderer.tsx`
@@ -196,6 +219,7 @@ Renders structured post blocks in public detail view:
 - subheading blocks as section headings
 - image blocks as article figures
 - plain description fallback when no blocks exist
+- publication date footer for posts
 
 ### `RelatedEntriesSection.tsx`
 Rendered at the bottom of public post detail pages. It links to:
@@ -222,6 +246,7 @@ Single page component with two modes:
 - `mode="posts"`
   - title + summary + cover + tags
   - block-based post editor
+  - publication date preview/readout
   - no runtime template controls
   - no screenshot/video bundle workflow
 
@@ -246,13 +271,28 @@ Current contract:
 - `[data-gsap='reveal']` for container reveal
 - `[data-gsap='stagger']` for child stagger
 - `[data-gsap-button]` for hover/press interaction
-- desktop-only pointer-follow glow for selected surfaces
+- `[data-gsap-hero-parallax]` for the landing hero cube/glow scene only
 - persistent admin shell elements must not use reveal/stagger data attributes
 - respects `prefers-reduced-motion`
 
 Rule:
 - GSAP enhances motion only
 - it must not own layout, route state or business behavior
+- pointer-follow surface glow is no longer part of the system
+
+## SEO runtime metadata layer
+
+File: `src/shared/seo/useDocumentMetadata.ts`
+
+Responsibilities:
+- sync document `title`
+- sync `description`, `keywords`, `robots`
+- sync OpenGraph and Twitter fields
+- keep canonical URLs aligned with route changes
+
+Rule:
+- page-level metadata should be set here, not ad hoc inside components
+- static fallback metadata in `index.html` must stay consistent with runtime metadata on the landing page
 
 ## CSS architecture
 
@@ -270,15 +310,18 @@ It currently contains:
 - post article layout
 - admin post blocks editor layout
 - responsive overrides
-- desktop pointer-follow surface glow
+- mobile tap-highlight suppression for header controls
 
 ## Asset ownership
 
-Current frontend image assets relevant to hero:
+Current frontend image assets relevant to hero and branding:
+- `src/images/grummmLogo.png`
+- `src/images/grummmLogo.svg`
 - `src/images/logo_white.png`
 - `src/images/logo_dark.png`
 
 Used for:
+- site branding in the public header and favicon
 - theme-aware hero artwork
 
 ## Where to change what
@@ -297,10 +340,19 @@ Change hero content or behavior:
 - `src/images/logo_white.png`
 - `src/images/logo_dark.png`
 
+Change static preload or crawl-facing fallback:
+- `index.html`
+- `public/preload.css`
+- `public/preload.js`
+- `public/robots.txt`
+- `public/sitemap.xml`
+- `src/shared/seo/useDocumentMetadata.ts`
+
 Change post/project storage contract:
 - `src/public/types.ts`
 - `src/public/data/project-store.ts`
 - `src/public/data/projects.ts`
+- `src/public/formatPublishedDate.ts`
 
 Change admin post editor:
 - `src/core/components/AdminPostBlocksEditor.tsx`
@@ -310,5 +362,6 @@ Change admin post editor:
 Change public post detail:
 - `src/public/components/PostContentRenderer.tsx`
 - `src/public/components/RelatedEntriesSection.tsx`
+- `src/public/components/ProjectDetailHeader.tsx`
 - `src/public/pages/ProjectDetailPage.tsx`
 - `src/styles.css`

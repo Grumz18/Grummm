@@ -9,9 +9,6 @@ interface PortfolioSectionProps {
   items: PortfolioProject[];
   theme: ThemeMode;
   language: Language;
-  expandedId: string | null;
-  onExpand: (projectId: string) => void;
-  onCollapse: (projectId: string) => void;
   onNavigate: (projectId: string) => void;
   placeholderCount?: number;
 }
@@ -23,9 +20,6 @@ export function PortfolioSection({
   items,
   theme,
   language,
-  expandedId,
-  onExpand,
-  onCollapse,
   onNavigate,
   placeholderCount = 0
 }: PortfolioSectionProps) {
@@ -46,9 +40,6 @@ export function PortfolioSection({
           items={items}
           theme={theme}
           language={language}
-          expandedId={expandedId}
-          onExpand={onExpand}
-          onCollapse={onCollapse}
           onNavigate={onNavigate}
           placeholderCount={placeholderCount}
         />

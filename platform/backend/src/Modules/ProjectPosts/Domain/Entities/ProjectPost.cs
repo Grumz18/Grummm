@@ -1,4 +1,4 @@
-﻿namespace Platform.Modules.ProjectPosts.Domain.Entities;
+namespace Platform.Modules.ProjectPosts.Domain.Entities;
 
 public enum TemplateType
 {
@@ -49,6 +49,7 @@ public sealed class ProjectPost
     public LocalizedText Title { get; set; } = new();
     public LocalizedText Summary { get; set; } = new();
     public LocalizedText Description { get; set; } = new();
+    public DateTimeOffset? PublishedAt { get; set; }
     public ProjectPostContentBlock[] ContentBlocks { get; set; } = [];
     public string[] Tags { get; set; } = [];
     public ThemedAsset HeroImage { get; set; } = new();

@@ -28,6 +28,7 @@ export interface PortfolioProject {
   title: LocalizedText;
   summary: LocalizedText;
   description: LocalizedText;
+  publishedAt?: string;
   contentBlocks?: PortfolioContentBlock[];
   tags: string[];
   heroImage: ThemedAsset;

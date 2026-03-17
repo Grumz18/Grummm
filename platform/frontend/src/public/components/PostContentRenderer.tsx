@@ -1,4 +1,5 @@
 import { ParagraphText } from "./ParagraphText";
+import { formatPublishedMeta } from "../formatPublishedDate";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
 interface PostContentRendererProps {
@@ -10,6 +11,7 @@ interface PostContentRendererProps {
 export function PostContentRenderer({ project, language, theme }: PostContentRendererProps) {
   const blocks = project.contentBlocks ?? [];
   const hasBlocks = blocks.length > 0;
+  const publishedMeta = formatPublishedMeta(project.publishedAt, language);
 
   return (
     <section className="post-content liquid-glass" data-gsap="reveal">
@@ -41,6 +43,7 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
 
             return <ParagraphText key={block.id} text={value} className="post-content__paragraph" />;
           }) : <ParagraphText text={project.description[language]} className="post-content__paragraph" />}
+          {publishedMeta ? <p className="post-content__published-at">{publishedMeta}</p> : null}
         </div>
       </div>
     </section>

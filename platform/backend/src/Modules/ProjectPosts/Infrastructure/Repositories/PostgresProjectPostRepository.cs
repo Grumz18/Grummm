@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Npgsql;
+using NpgsqlTypes;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Contracts;
@@ -16,7 +17,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
     {
         const string sql = """
                            select id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                                  content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                                  published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
                                   template, frontend_path, backend_path
                            from project_posts
                            order by title_en;
@@ -42,7 +43,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
     {
         const string sql = """
                            select id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                                  content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                                  published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
                                   template, frontend_path, backend_path
                            from project_posts
                            where id = @id;
@@ -69,11 +70,12 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         const string sql = """
                            insert into project_posts (
                                id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                               content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                               published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
                                template, frontend_path, backend_path, created_at, updated_at
                            )
                            values (
                                @id, @kind, @title_en, @title_ru, @summary_en, @summary_ru, @description_en, @description_ru,
+                               case when @kind = 'post' then coalesce(@published_at, now()) else null end,
                                @content_blocks::jsonb, @tags, @hero_image_light, @hero_image_dark, @screenshots::jsonb, @video_url,
                                @template, @frontend_path, @backend_path, now(), now()
                            )
@@ -85,6 +87,10 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                summary_ru = excluded.summary_ru,
                                description_en = excluded.description_en,
                                description_ru = excluded.description_ru,
+                               published_at = case
+                                   when excluded.kind = 'post' then coalesce(project_posts.published_at, excluded.published_at, now())
+                                   else null
+                               end,
                                content_blocks = excluded.content_blocks,
                                tags = excluded.tags,
                                hero_image_light = excluded.hero_image_light,
@@ -247,6 +253,10 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         command.Parameters.AddWithValue("summary_ru", post.Summary.Ru);
         command.Parameters.AddWithValue("description_en", post.Description.En);
         command.Parameters.AddWithValue("description_ru", post.Description.Ru);
+        command.Parameters.Add(new NpgsqlParameter("published_at", NpgsqlDbType.TimestampTz)
+        {
+            Value = (object?)post.PublishedAt ?? DBNull.Value
+        });
         command.Parameters.AddWithValue("content_blocks", JsonSerializer.Serialize(post.ContentBlocks ?? Array.Empty<ProjectPostContentBlockDto>(), JsonOptions));
         command.Parameters.AddWithValue("tags", post.Tags ?? Array.Empty<string>());
         command.Parameters.AddWithValue("hero_image_light", post.HeroImage.Light);
@@ -277,6 +287,9 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             Description: new LocalizedTextDto(
                 En: reader.GetString(reader.GetOrdinal("description_en")),
                 Ru: reader.GetString(reader.GetOrdinal("description_ru"))),
+            PublishedAt: reader.IsDBNull(reader.GetOrdinal("published_at"))
+                ? null
+                : reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("published_at")),
             ContentBlocks: contentBlocks,
             Tags: (string[])reader["tags"],
             HeroImage: new ThemedAssetDto(
@@ -377,6 +390,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                summary_ru text not null,
                                description_en text not null,
                                description_ru text not null,
+                               published_at timestamptz null,
                                content_blocks jsonb not null default '[]'::jsonb,
                                tags text[] not null default '{}',
                                hero_image_light text not null,
@@ -390,6 +404,8 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                updated_at timestamptz not null default now()
                            );
 
+                           alter table project_posts
+                               add column if not exists published_at timestamptz null;
                            alter table project_posts
                                add column if not exists kind text;
 
@@ -406,6 +422,10 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                            update project_posts
                            set content_blocks = '[]'::jsonb
                            where content_blocks is null;
+
+                           update project_posts
+                           set published_at = coalesce(published_at, created_at, now())
+                           where kind = 'post' and published_at is null;
 
                            alter table project_posts
                                alter column kind set default 'post';

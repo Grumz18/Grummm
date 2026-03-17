@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Platform.Modules.ProjectPosts.Domain.Entities;
 
@@ -28,6 +28,7 @@ public sealed record ProjectPostDto(
     LocalizedTextDto Title,
     LocalizedTextDto Summary,
     LocalizedTextDto Description,
+    DateTimeOffset? PublishedAt,
     ProjectPostContentBlockDto[] ContentBlocks,
     string[] Tags,
     ThemedAssetDto HeroImage,
@@ -43,6 +44,7 @@ public sealed record UpsertProjectPostRequest(
     LocalizedTextDto Title,
     LocalizedTextDto Summary,
     LocalizedTextDto Description,
+    DateTimeOffset? PublishedAt,
     ProjectPostContentBlockDto[]? ContentBlocks,
     string[]? Tags,
     ThemedAssetDto HeroImage,

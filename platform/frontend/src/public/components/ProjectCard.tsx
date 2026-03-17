@@ -1,6 +1,5 @@
-import { useRef } from "react";
-import { ParagraphText } from "./ParagraphText";
 import { t } from "../../shared/i18n";
+import { formatPublishedDate } from "../formatPublishedDate";
 import { getPortfolioKind } from "../data/project-store";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
@@ -8,73 +7,39 @@ interface ProjectCardProps {
   project: PortfolioProject;
   theme: ThemeMode;
   language: Language;
-  isExpanded: boolean;
-  onExpand: (projectId: string) => void;
-  onCollapse: () => void;
   onNavigate: (projectId: string) => void;
-}
-
-function getInteractionHint(language: Language): string {
-  return language === "ru"
-    ? "\u041f\u0435\u0440\u0432\u044b\u0439 \u0442\u0430\u043f \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442 \u0431\u043e\u043b\u044c\u0448\u0435 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u0430"
-    : "First tap opens more context";
 }
 
 export function ProjectCard({
   project,
   theme,
   language,
-  isExpanded,
-  onExpand,
-  onCollapse: _onCollapse,
   onNavigate
 }: ProjectCardProps) {
-  const lastTapRef = useRef<number>(0);
-
   const title = project.title[language];
   const summary = project.summary[language];
-  const description = project.description[language];
   const cover = project.heroImage[theme];
   const kind = getPortfolioKind(project);
   const eyebrow = kind === "project"
     ? project.template && project.template !== "None" ? project.template : t("project.card.project", language)
     : t("project.card.showcase", language);
-  const interactionHint = getInteractionHint(language);
+  const publishedAt = kind === "post" ? formatPublishedDate(project.publishedAt, language) : null;
 
-  function handleClick() {
-    if (isExpanded) {
-      lastTapRef.current = 0;
-      onNavigate(project.id);
-      return;
-    }
-
-    const now = Date.now();
-    if (now - lastTapRef.current < 320) {
-      onNavigate(project.id);
-      lastTapRef.current = 0;
-      return;
-    }
-
-    lastTapRef.current = now;
-    onExpand(project.id);
+  function handleNavigate() {
+    onNavigate(project.id);
   }
 
   return (
     <article
-      className={`project-card liquid-glass${isExpanded ? " project-card--expanded" : ""}`}
+      className="project-card liquid-glass"
       data-gsap-button
-      onClick={handleClick}
-      role="button"
+      onClick={handleNavigate}
+      role="link"
       tabIndex={0}
-      aria-expanded={isExpanded}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          if (isExpanded) {
-            onNavigate(project.id);
-          } else {
-            onExpand(project.id);
-          }
+          handleNavigate();
         }
       }}
       aria-label={title}
@@ -89,6 +54,7 @@ export function ProjectCard({
         <div className="project-card__content">
           <div className="project-card__meta">
             <p className="project-card__eyebrow">{eyebrow}</p>
+            {publishedAt ? <p className="project-card__published-at">{publishedAt}</p> : null}
           </div>
 
           <div className="project-card__text">
@@ -107,12 +73,6 @@ export function ProjectCard({
               </div>
             </div>
           ) : null}
-
-          <p className="project-card__interaction-hint">{interactionHint}</p>
-
-          <div className={`project-card__details${isExpanded ? " is-open" : ""}`}>
-            <ParagraphText text={description} className="project-card__detail-paragraph" />
-          </div>
         </div>
       </div>
     </article>

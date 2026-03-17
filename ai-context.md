@@ -1,8 +1,8 @@
-# AI CONTEXT - PLATFORM STATE
+﻿# AI CONTEXT - PLATFORM STATE
 
-Last Updated: 2026-03-16
-Version: 7.6
-Phase: 11.x (posts/projects split, structured post editor rollout)
+Last Updated: 2026-03-17
+Version: 7.7
+Phase: 11.x (posts/projects split, structured post editor rollout, SEO shell sync)
 
 > Important: the repository is the Grummm Platform. Older docs or history may still reference previous frontend experiments that are no longer current.
 
@@ -51,6 +51,8 @@ Implemented:
 - Theme + language switching in public zone
 - Persistent public shell through `PublicLayout`
 - Landing hero rebuilt as a layered composition with desktop-only decorative scene
+- `index.html` now includes a semantic SEO fallback shell, external preloader assets, `robots`, `keywords`, canonical metadata and anchor links for non-JS crawlers
+- `platform/frontend/public/robots.txt` and `platform/frontend/public/sitemap.xml` are part of the frontend deploy surface
 - Hero title uses `HeroMorphTitle.tsx`:
   - `Grummm` stays static
   - only the suffix phrase morphs on desktop
@@ -59,9 +61,10 @@ Implemented:
 - Post detail is now structured article content:
   - title + summary in header
   - cover image and block-based body
+  - publication date in header, cards and article footer
   - related links to other posts and runtime projects at the bottom
 - Responsive project interaction model:
-  - cards expand first, then navigate on the next click/tap
+  - cards navigate directly on click/tap
   - tags are shown on cards, not inside post headers
   - mobile public pages support swipe-back helper behavior
 
@@ -82,6 +85,7 @@ Posts workspace specifics:
   - themed cover
   - tags
   - structured body blocks
+  - publication date
 - posts use `AdminPostBlocksEditor.tsx` with `+` block picker for:
   - paragraph
   - subheading
@@ -102,6 +106,7 @@ Current flow (hybrid):
 Important current contract:
 - `PortfolioProject.kind` splits editorial posts from runtime projects
 - `PortfolioProject.contentBlocks` stores structured post body blocks
+- `PortfolioProject.publishedAt` is used only for posts and is backfilled for older local entries on read
 
 Template flow:
 - Upload endpoint: `POST /api/app/projects/{id}/upload-with-template`
@@ -118,7 +123,8 @@ Implemented:
 
 `ProjectPosts` module now owns:
 - `kind` (`post` / `project`)
-- structured `contentBlocks`
+- `contentBlocks`
+- `publishedAt`
 - schema backfill for old rows through repository bootstrap and migration SQL
 
 ### 3.5 Test and Smoke Status
@@ -155,3 +161,4 @@ Template upload controls:
 3. Review public post typography and related-links density in a live browser pass.
 4. Remove stale competing hero CSS once the current layout is accepted.
 5. Convert current hero PNG assets to a lighter production format if hero performance becomes a priority.
+6. Add prerender/SSR if search visibility of detail pages becomes a priority beyond fallback HTML.

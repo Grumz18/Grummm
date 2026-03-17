@@ -97,6 +97,7 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             Description: new LocalizedTextDto(
                 "Grummm is a modular monolith platform that separates public posts from runtime-ready projects.",
                 "Grummm вЂ” СЌС‚Рѕ РјРѕРґСѓР»СЊРЅР°СЏ РјРѕРЅРѕР»РёС‚РЅР°СЏ РїР»Р°С‚С„РѕСЂРјР°, СЂР°Р·РґРµР»СЏСЋС‰Р°СЏ РїСѓР±Р»РёС‡РЅС‹Рµ РїРѕСЃС‚С‹ Рё runtime-РїСЂРѕРµРєС‚С‹."),
+            PublishedAt: new DateTimeOffset(2026, 3, 16, 9, 30, 0, TimeSpan.Zero),
             ContentBlocks:
             [
                 new ProjectPostContentBlockDto(
@@ -141,6 +142,7 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             Description: new LocalizedTextDto(
                 "Task tracker module with CQRS handlers, ownership checks and private API routes.",
                 "РњРѕРґСѓР»СЊ С‚СЂРµРєРµСЂР° Р·Р°РґР°С‡ СЃ CQRS, РїСЂРѕРІРµСЂРєРѕР№ РІР»Р°РґРµР»СЊС†Р° Рё РїСЂРёРІР°С‚РЅС‹РјРё API-РјР°СЂС€СЂСѓС‚Р°РјРё."),
+            PublishedAt: null,
             ContentBlocks: [],
             Tags: ["React", ".NET", "CQRS"],
             HeroImage: new ThemedAssetDto(

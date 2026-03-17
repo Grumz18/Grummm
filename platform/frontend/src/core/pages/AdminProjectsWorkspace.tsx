@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { useDropzone, type DropEvent } from "react-dropzone";
 import { useSearchParams } from "react-router-dom";
 import { AdminPostBlocksEditor } from "../components/AdminPostBlocksEditor";
+import { formatPublishedMeta } from "../../public/formatPublishedDate";
 import {
   createProjectWithOptions,
   deleteProject,
@@ -473,6 +474,21 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
         .sort((a, b) => a.title.en.localeCompare(b.title.en)),
     [projects, isPostsMode]
   );
+  const editingItem = useMemo(
+    () => (editingId ? items.find((project) => project.id === editingId) ?? null : null),
+    [editingId, items]
+  );
+  const publishedPreview = useMemo(() => {
+    if (!isPostsMode) {
+      return null;
+    }
+
+    if (!editingItem?.publishedAt) {
+      return editingId ? "Publication date unavailable" : "Publication date will be set on first save";
+    }
+
+    return formatPublishedMeta(editingItem.publishedAt, "en");
+  }, [editingId, editingItem, isPostsMode]);
 
   function clearEditQuery() {
     if (!searchParams.has("edit")) {

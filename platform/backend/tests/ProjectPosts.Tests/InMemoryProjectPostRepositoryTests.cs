@@ -14,9 +14,12 @@ public sealed class InMemoryProjectPostRepositoryTests
 
         var post = new ProjectPostDto(
             Id: "js-template-post",
+            Kind: ProjectEntryKind.Project,
             Title: new LocalizedTextDto("JS template", "JS шаблон"),
             Summary: new LocalizedTextDto("Summary", "Кратко"),
             Description: new LocalizedTextDto("Description", "Описание"),
+            PublishedAt: null,
+            ContentBlocks: [],
             Tags: ["javascript", "template"],
             HeroImage: new ThemedAssetDto("light", "dark"),
             Screenshots: [new ThemedAssetDto("s1", "s1")],

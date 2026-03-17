@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -87,6 +87,7 @@ public sealed partial class ProjectPostsModule : IModule
             Title: new LocalizedTextDto(request.Title.En.Trim(), request.Title.Ru.Trim()),
             Summary: new LocalizedTextDto(request.Summary.En.Trim(), request.Summary.Ru.Trim()),
             Description: new LocalizedTextDto(fallbackDescriptionEn, fallbackDescriptionRu),
+            PublishedAt: kind == ProjectEntryKind.Post ? request.PublishedAt ?? DateTimeOffset.UtcNow : null,
             ContentBlocks: contentBlocks,
             Tags: tags,
             HeroImage: new ThemedAssetDto(request.HeroImage.Light.Trim(), request.HeroImage.Dark.Trim()),
