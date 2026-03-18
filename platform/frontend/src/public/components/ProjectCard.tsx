@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { t } from "../../shared/i18n";
 import { formatPublishedDate } from "../formatPublishedDate";
 import { getPortfolioKind } from "../data/project-store";
@@ -7,74 +8,68 @@ interface ProjectCardProps {
   project: PortfolioProject;
   theme: ThemeMode;
   language: Language;
-  onNavigate: (projectId: string) => void;
+  href: string;
 }
 
 export function ProjectCard({
   project,
   theme,
   language,
-  onNavigate
+  href
 }: ProjectCardProps) {
-  const title = project.title[language];
-  const summary = project.summary[language];
+  const title = project.title[language] || project.title.en;
+  const summary = project.summary[language] || project.summary.en;
   const cover = project.heroImage[theme];
   const kind = getPortfolioKind(project);
   const eyebrow = kind === "project"
     ? project.template && project.template !== "None" ? project.template : t("project.card.project", language)
     : t("project.card.showcase", language);
-  const publishedAt = kind === "post" ? formatPublishedDate(project.publishedAt, language) : null;
-
-  function handleNavigate() {
-    onNavigate(project.id);
-  }
+  const publishedAt = formatPublishedDate(project.publishedAt, language);
+  const itemType = kind === "post" ? "https://schema.org/BlogPosting" : "https://schema.org/SoftwareApplication";
+  const titleProp = kind === "post" ? "headline" : "name";
+  const publicUrl = `https://grummm.ru${href}`;
 
   return (
-    <article
-      className="project-card liquid-glass"
-      data-gsap-button
-      onClick={handleNavigate}
-      role="link"
-      tabIndex={0}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          handleNavigate();
-        }
-      }}
-      aria-label={title}
-    >
+    <article className="project-card liquid-glass" itemScope itemType={itemType}>
+      <meta itemProp="url" content={publicUrl} />
       <div className="liquid-glass__sheen" aria-hidden="true" />
       <div className="liquid-glass__grain" aria-hidden="true" />
-      <div className="liquid-glass__content project-card__shell">
-        <div className="project-card__media">
-          <img src={cover} alt={title} loading="lazy" />
-        </div>
 
-        <div className="project-card__content">
-          <div className="project-card__meta">
-            <p className="project-card__eyebrow">{eyebrow}</p>
-            {publishedAt ? <p className="project-card__published-at">{publishedAt}</p> : null}
+      <Link to={href} className="project-card__link" aria-label={title} data-gsap-button>
+        <div className="liquid-glass__content project-card__shell">
+          <div className="project-card__media">
+            <img src={cover} alt={title} loading="lazy" itemProp="image" />
           </div>
 
-          <div className="project-card__text">
-            <h3 title={title}>{title}</h3>
-            <p className="project-card__summary" title={summary}>{summary}</p>
-          </div>
-
-          {project.tags.length > 0 ? (
-            <div className="project-card__tags-marquee" aria-label={t("landing.hero.highlights", language)}>
-              <div className="project-card__tags-track">
-                {[...project.tags, ...project.tags].map((tag, index) => (
-                  <span key={`${project.id}-${tag}-${index}`} className="project-card__tag-pill">
-                    {tag}
-                  </span>
-                ))}
-              </div>
+          <div className="project-card__content">
+            <div className="project-card__meta">
+              <p className="project-card__eyebrow">{eyebrow}</p>
+              {publishedAt ? (
+                <time className="project-card__published-at" dateTime={project.publishedAt} itemProp="datePublished">
+                  {publishedAt}
+                </time>
+              ) : null}
             </div>
-          ) : null}
+
+            <div className="project-card__text">
+              <h3 title={title} itemProp={titleProp}>{title}</h3>
+              <p className="project-card__summary" title={summary} itemProp="description">{summary}</p>
+            </div>
+
+            {project.tags.length > 0 ? (
+              <div className="project-card__tags-marquee" aria-label={t("landing.hero.highlights", language)}>
+                <div className="project-card__tags-track">
+                  {[...project.tags, ...project.tags].map((tag, index) => (
+                    <span key={`${project.id}-${tag}-${index}`} className="project-card__tag-pill">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
+      </Link>
     </article>
   );
 }

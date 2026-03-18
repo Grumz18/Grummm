@@ -1,4 +1,4 @@
-import { ProjectCardGrid } from "./ProjectCardGrid";
+﻿import { ProjectCardGrid } from "./ProjectCardGrid";
 import { SectionHeading } from "./SectionHeading";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
@@ -9,7 +9,7 @@ interface PortfolioSectionProps {
   items: PortfolioProject[];
   theme: ThemeMode;
   language: Language;
-  onNavigate: (projectId: string) => void;
+  resolveHref: (projectId: string) => string;
   placeholderCount?: number;
 }
 
@@ -20,7 +20,7 @@ export function PortfolioSection({
   items,
   theme,
   language,
-  onNavigate,
+  resolveHref,
   placeholderCount = 0
 }: PortfolioSectionProps) {
   return (
@@ -40,7 +40,7 @@ export function PortfolioSection({
           items={items}
           theme={theme}
           language={language}
-          onNavigate={onNavigate}
+          resolveHref={resolveHref}
           placeholderCount={placeholderCount}
         />
       </div>

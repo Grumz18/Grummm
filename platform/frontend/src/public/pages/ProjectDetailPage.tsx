@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type TouchEvent } from "react";
+import { useEffect, useMemo, useState, type TouchEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { LiquidGlass } from "../components/LiquidGlass";
 import { PostContentRenderer } from "../components/PostContentRenderer";
@@ -42,7 +42,10 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     () => allEntries.filter((entry) => entry.id !== id && isPortfolioProject(entry)).slice(0, 3),
     [allEntries, id]
   );
-  const publishedMeta = mode === "post" && project ? formatPublishedMeta(project.publishedAt, language) ?? undefined : undefined;
+  const publishedMeta = project ? formatPublishedMeta(project.publishedAt, language) ?? undefined : undefined;
+  const demoActionLabel = language === "ru" ? "\u041F\u043E\u0441\u043C\u043E\u0442\u0440\u0435\u0442\u044C \u043F\u0440\u043E\u0435\u043A\u0442" : "View project";
+  const publicDemoUrl = project ? `/api/public/projects/${project.id}/viewer/` : undefined;
+  const canShowPublicDemo = Boolean(project && mode === "project" && project.publicDemoEnabled);
   const detailTitle = project
     ? `${project.title[language] || project.title.en || project.id} | Grummm`
     : `${mode === "post" ? t("posts.title", language) : t("projects.title", language)} | Grummm`;
@@ -50,12 +53,22 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     ? (project.summary[language] || project.summary.en || project.description[language] || project.description.en || "Grummm public entry details.")
     : (mode === "post" ? t("posts.description", language) : t("projects.description", language));
   const detailPath = mode === "post" ? `/posts/${id ?? ""}` : `/projects/${id ?? ""}`;
+  const detailKeywords = project
+    ? Array.from(new Set([
+        "grummm",
+        mode === "post" ? "post" : "project",
+        project.title.en,
+        project.title[language],
+        ...project.tags
+      ].filter((value): value is string => typeof value === "string" && value.trim().length > 0))).join(", ")
+    : undefined;
 
   useDocumentMetadata({
     title: detailTitle,
     description: detailDescription,
     path: detailPath,
-    language
+    language,
+    keywords: detailKeywords
   });
 
   function openLightbox(index: number) {
@@ -150,6 +163,8 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
         tags={[]}
         backLabel={t("detail.back", language)}
         onBack={() => navigate(-1)}
+        actionLabel={canShowPublicDemo && publicDemoUrl ? demoActionLabel : undefined}
+        actionHref={canShowPublicDemo && publicDemoUrl ? publicDemoUrl : undefined}
       />
 
       {project.videoUrl ? (
@@ -167,6 +182,31 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
         </>
       ) : (
         <>
+          {canShowPublicDemo && publicDemoUrl ? (
+            <LiquidGlass as="section" className="project-demo project-detail__media-panel" data-gsap="reveal">
+              <div className="liquid-glass__content project-demo__shell">
+                <div className="project-demo__header">
+                  <div>
+                    <p className="section-heading__eyebrow">Public demo</p>
+                    <h2>{project.title[language]}</h2>
+                    <p>{project.summary[language]}</p>
+                  </div>
+                </div>
+                <div className="project-demo__frame-wrap">
+                  <iframe
+                    className="project-demo__frame"
+                    src={publicDemoUrl}
+                    title={`${project.title[language]} demo`}
+                    loading="lazy"
+                    referrerPolicy="same-origin"
+                    sandbox="allow-scripts allow-forms allow-modals allow-downloads"
+                  />
+                </div>
+                <p className="project-demo__hint">Public demo is limited to safe static interactions. Server runtime remains private.</p>
+              </div>
+            </LiquidGlass>
+          ) : null}
+
           <ProjectDetailSummary
             imageSrc={project.heroImage[theme]}
             imageAlt={project.title[language]}

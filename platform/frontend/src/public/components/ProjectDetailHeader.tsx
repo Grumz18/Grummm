@@ -8,9 +8,21 @@ interface ProjectDetailHeaderProps {
   tags: string[];
   backLabel: string;
   onBack: () => void;
+  actionLabel?: string;
+  actionHref?: string;
 }
 
-export function ProjectDetailHeader({ eyebrow, title, description, meta, tags: _tags, backLabel, onBack }: ProjectDetailHeaderProps) {
+export function ProjectDetailHeader({
+  eyebrow,
+  title,
+  description,
+  meta,
+  tags: _tags,
+  backLabel,
+  onBack,
+  actionLabel,
+  actionHref
+}: ProjectDetailHeaderProps) {
   return (
     <header className="detail-header liquid-glass" data-gsap="reveal">
       <div className="liquid-glass__sheen" aria-hidden="true" />
@@ -29,9 +41,16 @@ export function ProjectDetailHeader({ eyebrow, title, description, meta, tags: _
           </div>
         </div>
 
-        <button className="inline-back detail-header__back" type="button" onClick={onBack} data-gsap-button>
-          {backLabel}
-        </button>
+        <div className="detail-header__actions-row">
+          {actionLabel && actionHref ? (
+            <a className="glass-button detail-header__cta" href={actionHref} target="_blank" rel="noreferrer" data-gsap-button>
+              {actionLabel}
+            </a>
+          ) : null}
+          <button className="inline-back detail-header__back" type="button" onClick={onBack} data-gsap-button>
+            {backLabel}
+          </button>
+        </div>
       </div>
     </header>
   );

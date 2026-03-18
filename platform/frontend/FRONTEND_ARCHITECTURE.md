@@ -1,6 +1,6 @@
-﻿# Frontend Architecture Guide
+# Frontend Architecture Guide
 
-This document describes the current frontend architecture after the public/private shell reset and the split between showcase posts and runtime projects.
+This document describes the current frontend architecture after the public/private shell reset and the split between editorial posts and runtime projects.
 
 ## Stable boundaries
 
@@ -13,7 +13,7 @@ The following contracts are fixed and must be preserved:
 - Auth guard through `ProtectedRoute`
 - Persistent shells through `PublicLayout` and `PrivateAppLayout`
 
-Business logic, store contracts, API usage and route ownership stay stable. Visual composition and DOM structure may change.
+Business logic, store contracts, API usage and route ownership stay stable. Visual composition may change.
 
 ## Entry point
 
@@ -33,16 +33,18 @@ Files:
 - `public/preload.js`
 - `public/robots.txt`
 - `public/sitemap.xml`
+- `scripts/prerender-seo.mjs`
 
 Responsibilities:
 - hold the semantic fallback HTML used by non-JS crawlers
-- expose stable `title`, `description`, `keywords`, canonical and social metadata
+- expose stable title, description, keywords, canonical and social metadata
 - provide anchor links and readable paragraphs before the React app hydrates
 - show a CSP-safe external preloader instead of flashing raw fallback text
 
 Important consequence:
-- runtime metadata from React must stay aligned with the static metadata in `index.html`
-- `robots.txt` and `sitemap.xml` are part of frontend deploy correctness, not just marketing assets
+- runtime metadata from React must stay aligned with static metadata in `index.html`
+- `robots.txt` stays a frontend deploy asset
+- build-time `public/sitemap.xml` is only a fallback; production freshness comes from backend `/sitemap.xml`
 
 ## Provider and router tree
 
@@ -57,9 +59,9 @@ Current tree:
 6. Reauth dialog overlay
 
 Important consequence:
-- Public and private shells stay mounted between route transitions
-- Page content changes through nested routes and `Outlet`
-- Layout remount flicker is intentionally avoided
+- public and private shells stay mounted between route transitions
+- page content changes through nested routes and `Outlet`
+- layout remount flicker is intentionally avoided
 
 ## Routing model
 
@@ -87,19 +89,19 @@ Rendered inside `ProtectedRoute` + `PrivateAppLayout`:
 
 ### `PublicLayout`
 Responsibilities:
-- Persistent public header
-- Shared shell width and spacing
-- Public content outlet
+- persistent public header
+- shared shell width and spacing
+- public content outlet
 - GSAP enhancement hookup for public screens
 
 ### `PrivateAppLayout`
 Responsibilities:
-- Private top bar and aside navigation
-- Session state and logout
-- Theme control in admin zone
-- Mobile private navigation state
-- Shared outlet for `/app/*`
-- Persistent shell chrome without reveal/stagger animations on mounted admin navigation
+- private top bar and aside navigation
+- session state and logout
+- theme control in admin zone
+- mobile private navigation state
+- shared outlet for `/app/*`
+- persistent shell chrome without reveal/stagger animations on mounted admin navigation
 
 ## Preferences and i18n
 
@@ -147,17 +149,14 @@ Responsibilities:
 - admin CRUD
 - upload/template related project flows
 - local fallback when API/token is unavailable
-- normalization of `kind`, `contentBlocks` and `publishedAt`
+- normalization of `kind`, `contentBlocks`, `publishedAt`, `template`, and `publicDemoEnabled`
 - backend enum-case normalization for post blocks (`Image` / `Paragraph` / `Subheading`)
-- backfill of publication dates for older local post entries
+- local backfill of missing publication dates
 
 Important contract:
 - `PortfolioProject.kind` splits editorial `post` entries from runtime `project` entries
-- `PortfolioProject.contentBlocks` stores structured post content blocks:
-  - `paragraph`
-  - `subheading`
-  - `image`
-- `PortfolioProject.publishedAt` is rendered only for posts
+- `PortfolioProject.contentBlocks` stores structured post content blocks
+- `PortfolioProject.publishedAt` is available for both posts and projects and is rendered in cards and detail views
 
 ### `landing-content-store.ts`
 Responsibilities:
@@ -172,49 +171,47 @@ Responsibilities:
 Contains:
 - brand block
 - primary nav
-- integrated preferences panel for theme/language
+- two minimal circular icon buttons for language and theme switching
 - posts link instead of admin login
 
 Important:
-- the header lives in `PublicLayout`
-- it stays mounted across public route changes
-- admin entry remains only inside the landing hero CTA
+- header lives in `PublicLayout`
+- admin entry remains only inside landing hero CTA
+- old segmented preference control is removed
 
 ### `LandingHeroSection.tsx`
 Current model:
 - text-first layered hero
 - desktop scene is a decorative right-side layer
 - mobile hides the scene completely
-- content order is strict: eyebrow -> title -> description -> CTA actions
+- content order is fixed: eyebrow -> title -> description -> CTA actions
 - `HeroMorphTitle.tsx` keeps `Grummm` static and morphs only the suffix phrase on desktop
-
-### `PortfolioSection.tsx`
-Reusable wrapper for curated posts and runtime-ready modules on the landing page.
 
 ### `ProjectCard.tsx`
 Current card behavior:
 - unified media/text shell
 - direct navigation on click/tap
 - tags are shown only on cards
-- post cards render publication date
-- card eyebrow changes by entry kind (`post` vs `project`)
+- publication date is rendered for both posts and projects when available, including public cards and detail headers
+- card eyebrow changes by entry kind
 
 ### `ProjectDetailPage.tsx`
-Now has two detail flows:
-- `mode="project"`:
-  - detail header
+Two detail flows:
+- `mode="project"`
+  - detail header with publication meta
   - optional video
+  - optional static public demo and CTA if `publicDemoEnabled`
   - text-first summary with cover image
-  - screenshots gallery + lightbox
-- `mode="post"`:
-  - detail header
+  - screenshots gallery and lightbox
+- `mode="post"`
+  - detail header with publication meta
   - optional video
   - block-based article renderer
   - publication date in header and article footer
   - related links to other posts and projects
 
 ### `PostContentRenderer.tsx`
-Renders structured post blocks in public detail view:
+Renders structured post blocks:
 - paragraph blocks through `ParagraphText`
 - subheading blocks as section headings
 - image blocks as article figures
@@ -222,9 +219,7 @@ Renders structured post blocks in public detail view:
 - publication date footer for posts
 
 ### `RelatedEntriesSection.tsx`
-Rendered at the bottom of public post detail pages. It links to:
-- other posts
-- runtime projects
+Rendered at the bottom of public post detail pages and links to other posts and runtime projects.
 
 ## Private/admin UI composition
 
@@ -239,12 +234,13 @@ Core files:
 ### `AdminProjectsWorkspace.tsx`
 Single page component with two modes:
 - `mode="projects"`
-  - classic runtime project editor
+  - runtime project editor
   - template selection
   - frontend/backend upload bundles
   - screenshots and optional video
+  - public demo toggle for safe static projects
 - `mode="posts"`
-  - title + summary + cover + tags
+  - title, summary, cover, tags
   - block-based post editor
   - publication date preview/readout
   - no runtime template controls
@@ -255,10 +251,7 @@ Block-based editor used only in posts mode.
 
 Capabilities:
 - add blocks through `+` picker
-- supported block types:
-  - paragraph
-  - subheading
-  - image
+- supported block types: paragraph, subheading, image
 - text blocks store EN/RU content separately
 - image blocks upload and preview a single image
 - blocks can be moved up/down or removed
@@ -271,34 +264,34 @@ Current contract:
 - `[data-gsap='reveal']` for container reveal
 - `[data-gsap='stagger']` for child stagger
 - `[data-gsap-button]` for hover/press interaction
-- `[data-gsap-hero-parallax]` for the landing hero cube/glow scene only
+- `[data-gsap-hero-parallax]` for landing hero cube/glow motion only
 - persistent admin shell elements must not use reveal/stagger data attributes
 - respects `prefers-reduced-motion`
 
 Rule:
 - GSAP enhances motion only
 - it must not own layout, route state or business behavior
-- pointer-follow surface glow is no longer part of the system
+- pointer-follow surface glow is removed from the system
 
 ## SEO runtime metadata layer
 
 File: `src/shared/seo/useDocumentMetadata.ts`
 
 Responsibilities:
-- sync document `title`
-- sync `description`, `keywords`, `robots`
+- sync document title
+- sync description, keywords, robots
 - sync OpenGraph and Twitter fields
 - keep canonical URLs aligned with route changes
 
 Rule:
 - page-level metadata should be set here, not ad hoc inside components
-- static fallback metadata in `index.html` must stay consistent with runtime metadata on the landing page
+- static fallback metadata in `index.html` must stay consistent with runtime metadata on public pages
 
 ## CSS architecture
 
 File: `src/styles.css`
 
-This is the single design-system layer for the SPA.
+Single design-system layer for the SPA.
 
 It currently contains:
 - theme tokens
@@ -321,14 +314,13 @@ Current frontend image assets relevant to hero and branding:
 - `src/images/logo_dark.png`
 
 Used for:
-- site branding in the public header and favicon
+- public header branding and favicon
 - theme-aware hero artwork
 
 ## Where to change what
 
 Change navigation or shell:
 - `src/public/components/PublicHeader.tsx`
-- `src/public/components/PreferenceSegmentedControl.tsx`
 - `src/core/layouts/PublicLayout.tsx`
 - `src/styles.css`
 
@@ -346,6 +338,7 @@ Change static preload or crawl-facing fallback:
 - `public/preload.js`
 - `public/robots.txt`
 - `public/sitemap.xml`
+- `scripts/prerender-seo.mjs`
 - `src/shared/seo/useDocumentMetadata.ts`
 
 Change post/project storage contract:
@@ -359,9 +352,10 @@ Change admin post editor:
 - `src/core/pages/AdminProjectsWorkspace.tsx`
 - `src/styles.css`
 
-Change public post detail:
+Change public detail flows:
 - `src/public/components/PostContentRenderer.tsx`
 - `src/public/components/RelatedEntriesSection.tsx`
 - `src/public/components/ProjectDetailHeader.tsx`
+- `src/public/components/ProjectDetailSummary.tsx`
 - `src/public/pages/ProjectDetailPage.tsx`
 - `src/styles.css`

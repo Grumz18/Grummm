@@ -52,6 +52,7 @@ public sealed class ProjectPost
     public DateTimeOffset? PublishedAt { get; set; }
     public ProjectPostContentBlock[] ContentBlocks { get; set; } = [];
     public string[] Tags { get; set; } = [];
+    public bool PublicDemoEnabled { get; set; }
     public ThemedAsset HeroImage { get; set; } = new();
     public ThemedAsset[] Screenshots { get; set; } = [];
     public string? VideoUrl { get; set; }

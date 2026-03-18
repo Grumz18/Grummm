@@ -19,7 +19,7 @@ const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 const SEED_KIND_BY_ID = new Map(seedProjects.map((project) => [project.id, project.kind]));
 const SEED_PUBLISHED_AT_BY_ID = new Map(
   seedProjects
-    .filter((project) => project.kind === "post" && typeof project.publishedAt === "string" && project.publishedAt.trim().length > 0)
+    .filter((project) => typeof project.publishedAt === "string" && project.publishedAt.trim().length > 0)
     .map((project) => [project.id, project.publishedAt as string])
 );
 
@@ -139,12 +139,8 @@ export function getPublicEntryPath(project: PortfolioProject): string {
 function normalizeProjectRecord(project: PortfolioProject): PortfolioProject {
   const seedKind = SEED_KIND_BY_ID.get(project.id);
   const kind = project.kind ?? seedKind ?? getPortfolioKind(project);
-  const publishedAt =
-    kind === "post"
-      ? normalizePublishedAt(project.publishedAt) ??
-        normalizePublishedAt(SEED_PUBLISHED_AT_BY_ID.get(project.id)) ??
-        new Date().toISOString()
-      : undefined;
+  const normalizedPublishedAt = normalizePublishedAt(project.publishedAt) ?? normalizePublishedAt(SEED_PUBLISHED_AT_BY_ID.get(project.id));
+  const publishedAt = normalizedPublishedAt ?? new Date().toISOString();
 
   return {
     ...project,
@@ -155,6 +151,7 @@ function normalizeProjectRecord(project: PortfolioProject): PortfolioProject {
     publishedAt,
     contentBlocks: normalizeContentBlocks(project.contentBlocks),
     tags: Array.isArray(project.tags) ? project.tags.filter(Boolean) : [],
+    publicDemoEnabled: kind === "project" ? Boolean(project.publicDemoEnabled) : false,
     heroImage: normalizeThemedAsset(project.heroImage),
     screenshots: Array.isArray(project.screenshots) ? project.screenshots.map(normalizeThemedAsset) : []
   };
@@ -256,8 +253,9 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
     title: normalizeLocalizedText(input.title),
     summary: normalizeLocalizedText(input.summary),
     description: normalizeLocalizedText(input.description),
-    publishedAt: kind === "post" ? normalizePublishedAt(input.publishedAt) : undefined,
+    publishedAt: normalizePublishedAt(input.publishedAt),
     contentBlocks: normalizeContentBlocks(input.contentBlocks),
+    publicDemoEnabled: kind === "project" && template === "Static" && Boolean(input.publicDemoEnabled),
     heroImage: normalizeThemedAsset(input.heroImage),
     screenshots: kind === "post" ? [] : (input.screenshots ?? []).map(normalizeThemedAsset),
     template,
@@ -267,12 +265,7 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
   };
 }
 
-function ensurePostPublishedAt(input: PortfolioProject, existing?: PortfolioProject): string | undefined {
-  const kind = getPortfolioKind(input);
-  if (kind !== "post") {
-    return undefined;
-  }
-
+function ensurePublishedAt(input: PortfolioProject, existing?: PortfolioProject): string | undefined {
   return normalizePublishedAt(input.publishedAt)
     ?? normalizePublishedAt(existing?.publishedAt)
     ?? new Date().toISOString();
@@ -333,7 +326,7 @@ export function readProjects(): PortfolioProject[] {
     const normalized = normalizeProjectList(parsed);
     const migrated = normalized.some((project, index) => {
       const original = parsed[index];
-      return getPortfolioKind(project) === "post" && project.publishedAt !== normalizePublishedAt(original?.publishedAt);
+      return project.publishedAt !== normalizePublishedAt(original?.publishedAt);
     });
 
     if (migrated) {
@@ -413,7 +406,7 @@ export async function createProjectWithOptions(input: PortfolioProject, upload?:
     uniqueId = `${baseId}-${index++}`;
   }
 
-  const localRecord = normalizeProjectRecord({ ...input, id: uniqueId, publishedAt: ensurePostPublishedAt({ ...input, id: uniqueId }) });
+  const localRecord = normalizeProjectRecord({ ...input, id: uniqueId, publishedAt: ensurePublishedAt({ ...input, id: uniqueId }) });
   const payload = toApiPayload(localRecord);
   const token = ensureAccessToken(Boolean(options.serverOnly));
 
@@ -468,7 +461,7 @@ export async function updateProject(projectId: string, patch: PortfolioProject, 
   const localRecord = normalizeProjectRecord({
     ...patch,
     id: projectId,
-    publishedAt: ensurePostPublishedAt({ ...patch, id: projectId }, existing)
+    publishedAt: ensurePublishedAt({ ...patch, id: projectId }, existing)
   });
   const payload = toApiPayload(localRecord);
   const token = ensureAccessToken(Boolean(options.serverOnly));

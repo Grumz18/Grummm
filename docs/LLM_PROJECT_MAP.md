@@ -1,4 +1,4 @@
-﻿# LLM Project Map (Grummm)
+# LLM Project Map (Grummm)
 
 ## 1. Project in One Minute
 
@@ -88,10 +88,10 @@ platform/backend/
 
 ### `src/Modules/ProjectPosts`
 - Project/post CRUD and template upload/runtime flow.
-- Public read endpoints and private admin endpoints.
+- Public read endpoints, private admin endpoints and dynamic `/sitemap.xml` generation from repository data.
 - Explicit upload DTO mapping for mass-assignment protection.
-- Template runtime support for Static/JavaScript/CSharp/Python.
-- Owns `kind`, `contentBlocks` and `publishedAt` for editorial posts vs runtime projects.
+- Owns `kind`, `contentBlocks`, `publishedAt`, `publicDemoEnabled`, and template metadata.
+- Public demo viewer endpoint stays restricted to safe static projects.
 
 ### `src/Modules/TaskTracker`
 - Task tracker module with commands, queries, validation and module-specific persistence abstractions.
@@ -153,16 +153,16 @@ platform/frontend/
 - `pages/ProjectsPage.tsx`: project catalog.
 - `pages/PostsPage.tsx`: posts catalog.
 - `pages/ProjectDetailPage.tsx`: split detail flow for runtime projects and editorial posts.
-- `components/PublicHeader.tsx`: public navigation + preferences panel.
+- `components/PublicHeader.tsx`: public navigation and two minimal circular icon controls for language/theme.
 - `components/LandingHeroSection.tsx`: layered hero.
-- `components/ProjectCard.tsx`: shared card UI for posts/projects.
+- `components/ProjectCard.tsx`: shared card UI for posts/projects with publication metadata.
 - `components/PostContentRenderer.tsx`: structured post body renderer.
 - `components/RelatedEntriesSection.tsx`: related posts/projects footer.
 - `components/ProjectDetailSummary.tsx`: project-only editorial summary layout.
-- `data/project-store.ts`: API-first public/admin store with fallback, publication-date backfill and block-type normalization.
+- `data/project-store.ts`: API-first public/admin store with local fallback, publication-date backfill and block-type normalization.
 - `data/landing-content-store.ts`: API-first landing content store.
 - `preferences.tsx`: theme/language provider and persistence.
-- `formatPublishedDate.ts`: shared post publication-date formatter.
+- `formatPublishedDate.ts`: shared publication-date formatter.
 - `types.ts`: shared public types.
 
 ### `src/shared`
@@ -172,13 +172,6 @@ platform/frontend/
 
 ### `src/modules/task-tracker`
 - Frontend module registration metadata and public/private pages for TaskTracker.
-
-### Frontend Tests
-- `src/core/components/AdminPostBlocksEditor.tsx`: block-based admin post editor.
-- `src/core/pages/AdminProjectsWorkspace.test.tsx`
-- `src/core/routing/AppRouter.dynamic-viewer.test.tsx`
-- `src/public/components/ProjectCard.test.tsx`
-- Cypress config and e2e flows in frontend workspace.
 
 ## 6. Infra Map (`platform/infra`)
 
@@ -190,17 +183,18 @@ platform/infra/
 ```
 
 ### `nginx`
-- reverse proxy, security headers, limits, SPA fallback, dynamic `/app/{slug}/...` asset serving.
-- `static/index.html`, `static/robots.txt` and `static/sitemap.xml` mirror the crawl-facing fallback for direct static serving.
+- Reverse proxy, security headers, rate limits, SPA fallback, dynamic `/app/{slug}/...` asset serving and `/sitemap.xml` proxying to backend.
+- `static/index.html`, `static/robots.txt`, and `static/sitemap.xml` mirror the crawl-facing fallback for direct static serving.
+- `default.conf` must remain UTF-8 without BOM. Nginx fails immediately if a BOM is present at the first directive.
 
 ### `postgres`
-- postgres image customization used by compose.
+- Postgres image customization used by compose.
 
 ### `server`
-- bootstrap/hardening scripts.
-- smoke and readiness checks.
-- backup and restore drill scripts.
-- state collection and reporting scripts.
+- bootstrap/hardening scripts
+- smoke and readiness checks
+- backup and restore drill scripts
+- state collection and reporting scripts
 
 ## 7. Docs Map (`docs`)
 
@@ -225,17 +219,18 @@ platform/infra/
 
 These boundaries are architectural constraints.
 
-## 9. Frontend Reset Status
+## 9. Current frontend/platform direction
 
 Important current state:
-- business logic and stores were intentionally preserved
-- frontend HTML composition was rebuilt around persistent layout shells
-- theme and language switching were preserved
-- motion is now a thin GSAP enhancement layer instead of a routing mechanism
-- static fallback HTML, preloader, robots and sitemap are now part of the deployable frontend surface
-- documentation for the current frontend lives primarily in `platform/frontend/FRONTEND_ARCHITECTURE.md`
+- business logic and stores are preserved
+- frontend HTML composition is rebuilt around persistent layout shells
+- theme and language switching are preserved through centralized preferences
+- motion is a thin GSAP enhancement layer instead of a routing mechanism
+- static fallback HTML, preloader, robots and sitemap are part of the deployable frontend surface
+- posts and projects are modeled separately end-to-end
+- publication dates for posts and projects, plus public static demos, are first-class features in public detail flows
 
-## 10. Quick Start for Another LLM
+## 10. Quick start for another LLM
 
 When assisting in this repo:
 - preserve module boundaries
@@ -244,4 +239,5 @@ When assisting in this repo:
 - preserve plugin auto-registration on backend and frontend
 - do not bypass `preferences.tsx` or `shared/i18n/*` for theme/language changes
 - keep runtime metadata aligned with `index.html` metadata on public pages
+- keep nginx conf UTF-8 without BOM
 - update docs when router/layout/store contracts change

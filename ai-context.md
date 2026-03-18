@@ -1,10 +1,10 @@
-﻿# AI CONTEXT - PLATFORM STATE
+# AI CONTEXT - PLATFORM STATE
 
-Last Updated: 2026-03-17
-Version: 7.7
-Phase: 11.x (posts/projects split, structured post editor rollout, SEO shell sync)
+Last Updated: 2026-03-18
+Version: 8.0
+Phase: 11.x (posts/projects split, public demo hardening, SEO surface sync, header/detail cleanup)
 
-> Important: the repository is the Grummm Platform. Older docs or history may still reference previous frontend experiments that are no longer current.
+> The repository is Grummm Platform. Older notes about earlier frontend experiments are not authoritative.
 
 ---
 
@@ -18,9 +18,9 @@ Proxy: Nginx
 Deployment: Docker Compose
 
 Project domain:
-- Public portfolio platform (`/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`)
-- Private admin workspace (`/app/*`) for secure management tasks
-- Dynamic template runtime host for interactive project posts
+- Public showcase (`/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`)
+- Private admin workspace (`/app/*`)
+- Dynamic template runtime host for interactive project entries
 
 ## 2. Locked Route Zones
 
@@ -44,121 +44,91 @@ Private API:
 
 ## 3. Current Functional State
 
-### 3.1 Public Frontend
+### 3.1 Public frontend
 
 Implemented:
-- Landing page, separate projects listing, separate posts listing, and split detail pages
-- Theme + language switching in public zone
-- Persistent public shell through `PublicLayout`
-- Landing hero rebuilt as a layered composition with desktop-only decorative scene
-- `index.html` now includes a semantic SEO fallback shell, external preloader assets, `robots`, `keywords`, canonical metadata and anchor links for non-JS crawlers
-- `platform/frontend/public/robots.txt` and `platform/frontend/public/sitemap.xml` are part of the frontend deploy surface
-- Hero title uses `HeroMorphTitle.tsx`:
-  - `Grummm` stays static
-  - only the suffix phrase morphs on desktop
-  - morphing is disabled on mobile and for `prefers-reduced-motion`
-- Project detail remains media/text oriented
-- Post detail is now structured article content:
-  - title + summary in header
-  - cover image and block-based body
-  - publication date in header, cards and article footer
-  - related links to other posts and runtime projects at the bottom
-- Responsive project interaction model:
-  - cards navigate directly on click/tap
-  - tags are shown on cards, not inside post headers
-  - mobile public pages support swipe-back helper behavior
+- landing page, separate project catalog, separate posts catalog, split detail pages
+- persistent `PublicLayout`
+- compact public header with two minimal circular icon buttons for language and theme switching
+- layered landing hero with desktop-only decorative scene and `HeroMorphTitle`
+- CSP-safe preloader and semantic fallback shell in `index.html`
+- runtime metadata sync through `useDocumentMetadata`
+- post detail with structured content blocks, footer date and related entries
+- project detail with summary, gallery, optional static public demo and CTA to open demo when enabled
 
-### 3.2 Private Admin Frontend
+### 3.2 Private admin frontend
 
 Implemented:
-- Persistent admin shell through `PrivateAppLayout`
-- Admin overview, projects workspace, posts workspace, content page and security page
-- Admin overview received a mobile-first layout pass for KPI density and quick actions
-- Dynamic project viewer (`/app/:slug`)
-- Session countdown, theme toggle, logout and responsive private navigation state
+- persistent `PrivateAppLayout`
+- admin overview, posts editor, projects editor, content page, security page
+- posts editor is block-based and stores EN/RU text separately
+- projects editor keeps template, upload, screenshot and video controls project-only
+- custom template picker replaces native browser select
+- admin navigation no longer remounts with route reveal animation
 
-Posts workspace specifics:
-- posts are no longer treated as projects without templates
-- posts keep:
-  - title
-  - short summary
-  - themed cover
-  - tags
-  - structured body blocks
-  - publication date
-- posts use `AdminPostBlocksEditor.tsx` with `+` block picker for:
-  - paragraph
-  - subheading
-  - image
-- each text block stores EN/RU content separately
+### 3.3 Data flow and content model
 
-Projects workspace specifics:
-- runtime/template upload flow remains separate
-- screenshots/video/template controls stay project-only
-
-### 3.3 Projects Data Flow
-
-Current flow (hybrid):
-- Frontend store in `project-store.ts`
-- Tries backend API first (`/api/public/projects`, `/api/app/projects`)
-- Falls back to `localStorage` when API/token is unavailable
-
-Important current contract:
-- `PortfolioProject.kind` splits editorial posts from runtime projects
+Current model:
+- `PortfolioProject.kind` splits `post` and `project`
 - `PortfolioProject.contentBlocks` stores structured post body blocks
-- `PortfolioProject.publishedAt` is used only for posts and is backfilled for older local entries on read
+- `PortfolioProject.publishedAt` is now normalized for both posts and projects
+- frontend store is API-first and falls back to `localStorage`
+- older local entries are backfilled with publication dates on read
 
-Template flow:
-- Upload endpoint: `POST /api/app/projects/{id}/upload-with-template`
-- Nginx serves uploaded frontend from `/var/projects/{slug}/frontend` under `/app/{slug}/...`
-- Embedded backend dispatch: `/api/app/{slug}/*`
+Template/runtime flow:
+- upload endpoint: `POST /api/app/projects/{id}/upload-with-template`
+- Nginx serves uploaded frontend bundles under `/app/{slug}/...`
+- dynamic backend dispatch stays under `/api/app/{slug}/*`
+- public static demo is exposed only through `/api/public/projects/{id}/viewer/` and only when `publicDemoEnabled` is set
 
-### 3.4 Backend Modules
+### 3.4 Backend modules
 
 Implemented:
-- `TaskTracker` module
-- `ProjectPosts` module
-- `Analytics` module
-- `PlatformOps` module
+- `TaskTracker`
+- `ProjectPosts`
+- `Analytics`
+- `PlatformOps`
 
-`ProjectPosts` module now owns:
-- `kind` (`post` / `project`)
+`ProjectPosts` now owns:
+- `kind`
 - `contentBlocks`
 - `publishedAt`
-- schema backfill for old rows through repository bootstrap and migration SQL
+- `publicDemoEnabled`
+- repository-backed `/sitemap.xml`
 
-### 3.5 Test and Smoke Status
+### 3.5 SEO and crawl surface
 
 Implemented:
-- Backend xUnit coverage for template upload flows
-- Runtime load/call/unload checks for CSharp and Python
-- Authorization checks for private template routes
-- Frontend unit tests for workspace and dynamic viewer routes
-- Cypress e2e baseline for `/app/projects` form and `/app/:slug` viewer
-- Deploy smoke docs updated around dynamic app delivery
+- `index.html` includes title, description, keywords, canonical and semantic fallback HTML
+- `public/preload.css` and `public/preload.js` hide fallback content until SPA mount
+- frontend build runs `scripts/prerender-seo.mjs`
+- production `/sitemap.xml` is expected to be proxied to backend so DB-backed posts/projects are included without frontend rebuild
+- `robots.txt` remains part of frontend deploy surface
+- public cards and detail flows render publication metadata for both posts and projects when `publishedAt` is available
 
-## 4. Security and Operations Baseline
+### 3.6 Current deployment caveats
+
+Important:
+- `platform/infra/nginx/default.conf` must stay UTF-8 without BOM; nginx fails on BOM at the first directive
+- backend repository bootstrap SQL must not contain literal backtick escape fragments; they break PostgreSQL startup
+- frontend deploy is still tied to the mounted `platform/frontend/dist` directory on the server
+
+## 4. Security and operations baseline
 
 Implemented baseline:
-- JWT auth + refresh rotation
-- `AdminOnly` private route/API protection
-- CSRF strategy for cookie-based unsafe API requests
+- JWT auth and refresh rotation
+- `AdminOnly` protection for private routes and APIs
+- CSRF strategy for unsafe requests
 - correlation-id propagation
-- audit logging middleware baseline
+- audit logging baseline
 - rate limiting and security headers
-- health/readiness and backup runbooks available
+- health/readiness and backup runbooks
+- template upload validation and malware scanning
 
-Template upload controls:
-- explicit DTO-to-command mapping
-- structure validation by template type
-- malware scan before save
-- correlation-id in upload/log flow
+## 5. Immediate next steps
 
-## 5. Immediate Next Steps (TASK-11)
-
-1. Verify backend build in an environment where `dotnet` is available.
-2. Add admin validation tests around post block editing and persistence.
-3. Review public post typography and related-links density in a live browser pass.
-4. Remove stale competing hero CSS once the current layout is accepted.
-5. Convert current hero PNG assets to a lighter production format if hero performance becomes a priority.
-6. Add prerender/SSR if search visibility of detail pages becomes a priority beyond fallback HTML.
+1. Verify backend build and startup in a full .NET environment after the latest repository changes.
+2. Add or refresh tests around publication dates for project entries and public demo visibility.
+3. Clean remaining stale CSS layers around detail and admin screens after visual acceptance.
+4. Decide whether project publication date should be editable in admin or remain first-save derived.
+5. Consider SSR or deeper prerendering if non-JS indexing of detail pages becomes a stronger requirement.

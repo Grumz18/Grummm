@@ -12,12 +12,16 @@ export function ProjectsPage() {
   const { theme, language } = usePreferences();
   const projects = useRuntimeProjects();
   const canHover = (typeof window !== "undefined" && window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) ?? false;
+  const seoKeywords = language === "ru"
+    ? "grummm, \u043f\u0440\u043e\u0435\u043a\u0442\u044b, runtime \u0434\u0435\u043c\u043e, \u043c\u043e\u0434\u0443\u043b\u0438, \u0448\u0430\u0431\u043b\u043e\u043d\u044b, \u0432\u0438\u0442\u0440\u0438\u043d\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432"
+    : "grummm, projects, runtime demos, modules, templates, showcase projects";
 
   useDocumentMetadata({
     title: `${t("projects.title", language)} | Grummm`,
     description: t("projects.description", language),
     path: "/projects",
-    language
+    language,
+    keywords: seoKeywords
   });
 
   useSwipeBack(() => navigate("/"), { enabled: !canHover, edgeOnly: true });
@@ -37,7 +41,7 @@ export function ProjectsPage() {
         items={projects}
         theme={theme}
         language={language}
-        onNavigate={(projectId) => navigate(`/projects/${projectId}`)}
+        resolveHref={(projectId) => `/projects/${projectId}`}
         className="portfolio-grid--catalog"
       />
     </section>

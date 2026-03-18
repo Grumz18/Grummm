@@ -29,6 +29,6 @@ export function formatPublishedMeta(value: string | undefined, language: Languag
   }
 
   return language === "ru"
-    ? `Опубликовано ${formatted}`
+    ? `\u041E\u043F\u0443\u0431\u043B\u0438\u043A\u043E\u0432\u0430\u043D\u043E ${formatted}`
     : `Published ${formatted}`;
 }

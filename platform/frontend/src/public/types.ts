@@ -31,6 +31,7 @@ export interface PortfolioProject {
   publishedAt?: string;
   contentBlocks?: PortfolioContentBlock[];
   tags: string[];
+  publicDemoEnabled?: boolean;
   heroImage: ThemedAsset;
   screenshots: ThemedAsset[];
   videoUrl?: string;

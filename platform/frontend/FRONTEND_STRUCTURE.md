@@ -1,4 +1,4 @@
-﻿# Frontend Structure
+# Frontend Structure
 
 Root: `platform/frontend`
 
@@ -16,6 +16,8 @@ platform/frontend/
 |- index.html
 |- jest.config.cjs
 |- package.json
+|- scripts/
+|  `- prerender-seo.mjs
 |- tsconfig.json
 |- vite.config.ts
 |- public/
@@ -84,7 +86,6 @@ platform/frontend/
    |  |  |- ParagraphText.tsx
    |  |  |- PortfolioSection.tsx
    |  |  |- PostContentRenderer.tsx
-   |  |  |- PreferenceSegmentedControl.tsx
    |  |  |- ProjectCard.test.tsx
    |  |  |- ProjectCard.tsx
    |  |  |- ProjectCardGrid.tsx
@@ -139,13 +140,16 @@ Static crawl-facing shell. Owns:
 CSP-safe external preload assets. They hide the semantic shell behind a neutral preloader until the SPA mounts.
 
 ### `public/robots.txt` / `public/sitemap.xml`
-Search-engine crawl assets deployed with the SPA.
+Static crawl assets shipped with the SPA build. `robots.txt` stays authoritative; `public/sitemap.xml` is a build-time fallback for seed routes and is superseded in production by the backend-driven `/sitemap.xml`.
+
+### `scripts/prerender-seo.mjs`
+Build-time SEO pass that creates prerendered HTML for repo-backed posts/projects and rewrites the fallback sitemap during `npm run build`.
 
 ### `src/main.tsx`
 Bootstraps React, restores the auth session, mounts `AppRouter`, and removes the preloader after first paint.
 
 ### `src/styles.css`
-Global frontend design system and responsive behavior. It owns theme tokens, shell geometry, cards, forms, hero layout, post detail layout, admin post block editor layout, and cross-page spacing.
+Global frontend design system and responsive behavior. It owns theme tokens, shell geometry, cards, forms, hero layout, post/project detail layout, admin post block editor layout, and cross-page spacing.
 
 ### `src/images`
 Branding and theme-aware hero artwork used by the public header, favicon and landing hero.
@@ -183,17 +187,20 @@ Owns creation/editing workflows for:
 - editorial posts
 - custom template picker UI
 - block-based post authoring
-- publication-date readout for posts
+- publication-date readout
+- public demo toggle for safe static project demos
 
 ### `src/public/data/project-store.ts`
 Owns API-first project/post CRUD and normalization for:
 - `kind`
 - `contentBlocks`
 - `publishedAt`
+- `template`
+- `publicDemoEnabled`
 - template-path defaults
 - localStorage fallback
 - normalization of backend block-type casing so post images survive API reloads
-- local backfill of missing post publication dates
+- local backfill of missing publication dates
 
 ### `src/core/components/AdminPostBlocksEditor.tsx`
 Dedicated editor used only for posts mode in admin. It owns add/reorder/remove logic for paragraph/subheading/image blocks.
@@ -201,20 +208,20 @@ Dedicated editor used only for posts mode in admin. It owns add/reorder/remove l
 ### `src/public/components/PostContentRenderer.tsx`
 Renders structured public post bodies from `contentBlocks` and appends publication metadata at the bottom of article text.
 
-### `src/public/components/RelatedEntriesSection.tsx`
-Renders bottom-of-post recommendations for other posts and projects.
+### `src/public/components/ProjectDetailHeader.tsx`
+Renders title, summary, publication meta, full-width back button, and optional public-demo CTA.
 
 ### `src/shared/seo/useDocumentMetadata.ts`
 Synchronizes runtime metadata (`title`, `description`, `keywords`, canonical, OG/Twitter tags) with route changes.
 
 ## Current public composition
 
-- `PublicHeader.tsx` - persistent public navigation and integrated theme/language controls
+- `PublicHeader.tsx` - persistent navigation and two compact icon controls for language and theme
 - `LandingHeroSection.tsx` - text-first layered hero with a desktop-only decorative scene
 - `HeroMorphTitle.tsx` - desktop-only morph title that keeps `Grummm` static and morphs the suffix phrase
 - `PortfolioSection.tsx` - reusable wrapper for curated posts and modules
-- `ProjectCard.tsx` - unified card with direct navigation and publication date for posts
-- `ProjectDetailHeader.tsx` - title/description + full-width back button, no tags
+- `ProjectCard.tsx` - unified card with direct navigation and publication date support
+- `ProjectDetailHeader.tsx` - title, summary, publication meta, optional public-demo CTA and back action
 - `ProjectDetailSummary.tsx` - project-only editorial summary
 - `PostContentRenderer.tsx` - post-only structured article body with footer publication date
 - `RelatedEntriesSection.tsx` - post-only recommendations footer

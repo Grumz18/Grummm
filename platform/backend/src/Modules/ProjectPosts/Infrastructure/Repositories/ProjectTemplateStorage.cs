@@ -43,7 +43,7 @@ internal static class ProjectTemplateStorage
                 throw new ValidationException("Static template requires frontend index.html at root of uploaded bundle.");
             }
 
-            RewriteAbsoluteAssetReferences(GetFrontendFolder(id), id);
+            RewriteAbsoluteAssetReferences(GetFrontendFolder(id));
         }
 
         if (templateType != TemplateType.Static)
@@ -140,7 +140,7 @@ internal static class ProjectTemplateStorage
         }
     }
 
-    private static void RewriteAbsoluteAssetReferences(string frontendFolder, string projectId)
+    private static void RewriteAbsoluteAssetReferences(string frontendFolder)
     {
         var files = Directory
             .EnumerateFiles(frontendFolder, "*", SearchOption.AllDirectories)
@@ -154,7 +154,7 @@ internal static class ProjectTemplateStorage
             });
 
         var from = "/assets/";
-        var to = $"/app/{projectId}/assets/";
+        var to = "assets/";
 
         foreach (var path in files)
         {

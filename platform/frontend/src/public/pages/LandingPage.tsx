@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+﻿import { useNavigate } from "react-router-dom";
 import { LandingAboutSection } from "../components/LandingAboutSection";
 import { LandingHeroSection } from "../components/LandingHeroSection";
 import { PortfolioSection } from "../components/PortfolioSection";
@@ -71,7 +71,7 @@ export function LandingPage() {
         items={featuredPosts}
         theme={theme}
         language={language}
-        onNavigate={(projectId) => navigate(`/posts/${projectId}`)}
+        resolveHref={(projectId) => `/posts/${projectId}`}
         placeholderCount={3}
       />
 
@@ -82,7 +82,7 @@ export function LandingPage() {
         items={featuredProjects}
         theme={theme}
         language={language}
-        onNavigate={(projectId) => navigate(`/projects/${projectId}`)}
+        resolveHref={(projectId) => `/projects/${projectId}`}
         placeholderCount={3}
       />
 

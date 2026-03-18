@@ -43,7 +43,11 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
 
             return <ParagraphText key={block.id} text={value} className="post-content__paragraph" />;
           }) : <ParagraphText text={project.description[language]} className="post-content__paragraph" />}
-          {publishedMeta ? <p className="post-content__published-at">{publishedMeta}</p> : null}
+          {publishedMeta ? (
+            <div className="post-content__meta-row">
+              <p className="post-content__published-at">{publishedMeta}</p>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

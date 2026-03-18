@@ -29,6 +29,7 @@ interface DraftProject {
   includeVideo: boolean;
   videoUrl: string;
   templateType: TemplateType;
+  publicDemoEnabled: boolean;
   frontendFiles: File[];
   backendFiles: File[];
 }
@@ -101,6 +102,7 @@ function emptyDraft(): DraftProject {
     includeVideo: false,
     videoUrl: "",
     templateType: "None",
+    publicDemoEnabled: false,
     frontendFiles: [],
     backendFiles: []
   };
@@ -279,7 +281,7 @@ function TemplateTypeSelect({
           <strong>{currentOption.label}</strong>
           <small>{currentOption.description}</small>
         </span>
-        <span className="template-select__chevron" aria-hidden="true">⌄</span>
+        <span className="template-select__chevron" aria-hidden="true">{"\u25BE"}</span>
       </button>
 
       {open ? (
@@ -302,7 +304,7 @@ function TemplateTypeSelect({
                   <strong>{option.label}</strong>
                   <small>{option.description}</small>
                 </span>
-                <span className="template-select__check" aria-hidden="true">{selected ? "•" : ""}</span>
+                <span className="template-select__check" aria-hidden="true">{selected ? "\u2713" : ""}</span>
               </button>
             );
           })}
@@ -329,6 +331,7 @@ function toDraft(project: PortfolioProject): DraftProject {
     includeVideo: Boolean(project.videoUrl),
     videoUrl: project.videoUrl ?? "",
     templateType: project.template ?? "None",
+    publicDemoEnabled: Boolean(project.publicDemoEnabled),
     frontendFiles: [],
     backendFiles: []
   };
@@ -365,6 +368,7 @@ function fromDraft(draft: DraftProject, kind: "post" | "project"): PortfolioProj
       : (draft.screenshots.length > 0 ? draft.screenshots.map((image) => ({ light: image, dark: image })) : [{ light: coverLight, dark: coverDark }]),
     videoUrl: kind === "post" ? undefined : (draft.includeVideo ? draft.videoUrl || undefined : undefined),
     template: templateType,
+    publicDemoEnabled: kind === "project" && templateType === "Static" && draft.publicDemoEnabled,
     frontendPath: kind === "post" ? undefined : DEFAULT_FRONTEND_PATH[templateType],
     backendPath: kind === "post" ? undefined : DEFAULT_BACKEND_PATH[templateType]
   };
@@ -462,6 +466,8 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
   const projects = useProjectPosts();
   const [searchParams, setSearchParams] = useSearchParams();
   const screenshotInputRef = useRef<HTMLInputElement | null>(null);
+  const heroLightInputRef = useRef<HTMLInputElement | null>(null);
+  const heroDarkInputRef = useRef<HTMLInputElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftProject>(() => emptyDraft());
   const [busy, setBusy] = useState(false);
@@ -660,21 +666,39 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                 </label>
 
                 {!isPostsMode ? (
-                  <label>
-                    Template type
-                    <TemplateTypeSelect
-                      value={draft.templateType}
-                      options={TEMPLATE_OPTIONS}
-                      disabled={busy}
-                      onChange={(nextTemplateType) => {
-                        setDraft((current) => ({
-                          ...current,
-                          templateType: nextTemplateType,
-                          backendFiles: nextTemplateType === "Static" ? [] : current.backendFiles
-                        }));
-                      }}
-                    />
-                  </label>
+                  <>
+                    <label>
+                      Template type
+                      <TemplateTypeSelect
+                        value={draft.templateType}
+                        options={TEMPLATE_OPTIONS}
+                        disabled={busy}
+                        onChange={(nextTemplateType) => {
+                          setDraft((current) => ({
+                            ...current,
+                            templateType: nextTemplateType,
+                            publicDemoEnabled: nextTemplateType === "Static" ? current.publicDemoEnabled : false,
+                            backendFiles: nextTemplateType === "Static" ? [] : current.backendFiles
+                          }));
+                        }}
+                      />
+                    </label>
+                    <div className="admin-projects__template-note admin-projects__template-note--compact">
+                      <strong>Public demo</strong>
+                      {draft.templateType === "Static" ? (
+                        <label className="admin-toggle admin-toggle--inline">
+                          <input
+                            type="checkbox"
+                            checked={draft.publicDemoEnabled}
+                            onChange={(event) => setDraft((current) => ({ ...current, publicDemoEnabled: event.target.checked }))}
+                          />
+                          <span>Enable sandboxed public demo for visitors</span>
+                        </label>
+                      ) : (
+                        <p className="admin-muted">Public demo is available only for Static projects. Server runtimes stay private.</p>
+                      )}
+                    </div>
+                  </>
                 ) : (
                   <div className="admin-projects__template-note">
                     <strong>Posts mode</strong>
@@ -753,13 +777,21 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
               </label>
 
               <section className="admin-projects__media-grid">
-                <label>
-                  Cover for light theme
-                  <input type="file" accept="image/*" onChange={(event) => void handleSingleImage(event, "heroLight")} />
+                <label className="admin-file-picker">
+                  <span>Cover for light theme</span>
+                  <input ref={heroLightInputRef} type="file" accept="image/*" hidden onChange={(event) => void handleSingleImage(event, "heroLight")} />
+                  <button type="button" className="admin-file-picker__button" onClick={() => heroLightInputRef.current?.click()}>
+                    {draft.heroLight ? "Replace light cover" : "Choose light cover"}
+                  </button>
+                  <small className="admin-file-picker__status">{draft.heroLight ? "Light cover ready" : "No file selected"}</small>
                 </label>
-                <label>
-                  Cover for dark theme
-                  <input type="file" accept="image/*" onChange={(event) => void handleSingleImage(event, "heroDark")} />
+                <label className="admin-file-picker">
+                  <span>Cover for dark theme</span>
+                  <input ref={heroDarkInputRef} type="file" accept="image/*" hidden onChange={(event) => void handleSingleImage(event, "heroDark")} />
+                  <button type="button" className="admin-file-picker__button" onClick={() => heroDarkInputRef.current?.click()}>
+                    {draft.heroDark ? "Replace dark cover" : "Choose dark cover"}
+                  </button>
+                  <small className="admin-file-picker__status">{draft.heroDark ? "Dark cover ready" : "No file selected"}</small>
                 </label>
               </section>
 
@@ -772,7 +804,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                       <div key={`${index}:${image.slice(0, 24)}`} className="admin-screenshot-tile">
                         <img src={image} alt={`Screenshot ${index + 1}`} />
                         <button type="button" className="admin-screenshot-add" title="Add more" onClick={() => screenshotInputRef.current?.click()}>+</button>
-                        <button type="button" className="admin-screenshot-remove" title="Remove screenshot" onClick={() => removeScreenshot(index)}>Р“вЂ”</button>
+                        <button type="button" className="admin-screenshot-remove" title="Remove screenshot" onClick={() => removeScreenshot(index)}>{"\u00D7"}</button>
                       </div>
                     ))}
                     <button type="button" className="admin-screenshot-tile admin-screenshot-tile--add" onClick={() => screenshotInputRef.current?.click()}>
@@ -819,7 +851,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                     <span>{draft.heroLight ? "Light cover set" : "No light cover"}</span>
                     <span>{draft.heroDark ? "Dark cover set" : "No dark cover"}</span>
                     <span>{isPostsMode ? `${draft.contentBlocks.length} blocks` : `${draft.screenshots.length} screenshots`}</span>
-                    <span>{isPostsMode ? "Structured post" : (draft.includeVideo && draft.videoUrl ? "Video attached" : "No video")}</span>
+                    <span>{isPostsMode ? "Structured post" : (draft.publicDemoEnabled && draft.templateType === "Static" ? "Public demo enabled" : (draft.includeVideo && draft.videoUrl ? "Video attached" : "No video"))}</span>
                   </div>
                 </div>
               </section>

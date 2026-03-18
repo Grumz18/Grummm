@@ -17,7 +17,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
     {
         const string sql = """
                            select id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                                  published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                                  published_at, content_blocks, tags, public_demo_enabled, hero_image_light, hero_image_dark, screenshots, video_url,
                                   template, frontend_path, backend_path
                            from project_posts
                            order by title_en;
@@ -43,7 +43,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
     {
         const string sql = """
                            select id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                                  published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                                  published_at, content_blocks, tags, public_demo_enabled, hero_image_light, hero_image_dark, screenshots, video_url,
                                   template, frontend_path, backend_path
                            from project_posts
                            where id = @id;
@@ -70,13 +70,13 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         const string sql = """
                            insert into project_posts (
                                id, kind, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
-                               published_at, content_blocks, tags, hero_image_light, hero_image_dark, screenshots, video_url,
+                               published_at, content_blocks, tags, public_demo_enabled, hero_image_light, hero_image_dark, screenshots, video_url,
                                template, frontend_path, backend_path, created_at, updated_at
                            )
                            values (
                                @id, @kind, @title_en, @title_ru, @summary_en, @summary_ru, @description_en, @description_ru,
-                               case when @kind = 'post' then coalesce(@published_at, now()) else null end,
-                               @content_blocks::jsonb, @tags, @hero_image_light, @hero_image_dark, @screenshots::jsonb, @video_url,
+                               coalesce(@published_at, now()),
+                               @content_blocks::jsonb, @tags, @public_demo_enabled, @hero_image_light, @hero_image_dark, @screenshots::jsonb, @video_url,
                                @template, @frontend_path, @backend_path, now(), now()
                            )
                            on conflict (id) do update set
@@ -87,12 +87,10 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                summary_ru = excluded.summary_ru,
                                description_en = excluded.description_en,
                                description_ru = excluded.description_ru,
-                               published_at = case
-                                   when excluded.kind = 'post' then coalesce(project_posts.published_at, excluded.published_at, now())
-                                   else null
-                               end,
+                               published_at = coalesce(project_posts.published_at, excluded.published_at, now()),
                                content_blocks = excluded.content_blocks,
                                tags = excluded.tags,
+                               public_demo_enabled = excluded.public_demo_enabled,
                                hero_image_light = excluded.hero_image_light,
                                hero_image_dark = excluded.hero_image_dark,
                                screenshots = excluded.screenshots,
@@ -259,6 +257,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         });
         command.Parameters.AddWithValue("content_blocks", JsonSerializer.Serialize(post.ContentBlocks ?? Array.Empty<ProjectPostContentBlockDto>(), JsonOptions));
         command.Parameters.AddWithValue("tags", post.Tags ?? Array.Empty<string>());
+        command.Parameters.AddWithValue("public_demo_enabled", post.PublicDemoEnabled);
         command.Parameters.AddWithValue("hero_image_light", post.HeroImage.Light);
         command.Parameters.AddWithValue("hero_image_dark", post.HeroImage.Dark);
         command.Parameters.AddWithValue("screenshots", JsonSerializer.Serialize(post.Screenshots ?? Array.Empty<ThemedAssetDto>(), JsonOptions));
@@ -292,6 +291,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                 : reader.GetFieldValue<DateTimeOffset>(reader.GetOrdinal("published_at")),
             ContentBlocks: contentBlocks,
             Tags: (string[])reader["tags"],
+            PublicDemoEnabled: reader.GetBoolean(reader.GetOrdinal("public_demo_enabled")),
             HeroImage: new ThemedAssetDto(
                 Light: reader.GetString(reader.GetOrdinal("hero_image_light")),
                 Dark: reader.GetString(reader.GetOrdinal("hero_image_dark"))),
@@ -363,18 +363,18 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
             HeroTitle: new LocalizedTextDto(
                 "A platform where projects become live demonstrations.",
-                "РџР»Р°С‚С„РѕСЂРјР°, РіРґРµ РїСЂРѕРµРєС‚С‹ РїСЂРµРІСЂР°С‰Р°СЋС‚СЃСЏ РІ Р¶РёРІС‹Рµ РґРµРјРѕРЅСЃС‚СЂР°С†РёРё."),
+                "Р В Р’В Р РЋРЎСџР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°, Р В Р’В Р РЋРІР‚вЂњР В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚в„–Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РЎвЂњР В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В  Р В Р’В Р вЂ™Р’В¶Р В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚В."),
             HeroDescription: new LocalizedTextDto(
                 "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
-                "Grummm.ru вЂ” СЌС‚Рѕ РїРµСЂСЃРѕРЅР°Р»СЊРЅР°СЏ РІРёС‚СЂРёРЅР° СЃ РїСѓР±Р»РёС‡РЅС‹Рј РїРѕСЂС‚С„РѕР»РёРѕ Рё РїСЂРёРІР°С‚РЅРѕР№ Р°РґРјРёРЅ-Р·РѕРЅРѕР№, РіРґРµ СЏ СѓРїСЂР°РІР»СЏСЋ РїСЂРѕРµРєС‚Р°РјРё, С€Р°Р±Р»РѕРЅР°РјРё Рё РєРѕРЅС‚РµРЅС‚РѕРј."),
-            AboutTitle: new LocalizedTextDto("About Me", "РћР±Рѕ РјРЅРµ"),
+                "Grummm.ru Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ Р В Р Р‹Р В Р Р‰Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚Сћ Р В Р’В Р РЋРІР‚вЂќР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В° Р В Р Р‹Р В РЎвЂњ Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В±Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р РЋР’В Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚Сћ Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦-Р В Р’В Р вЂ™Р’В·Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ, Р В Р’В Р РЋРІР‚вЂњР В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В Р РЏ Р В Р Р‹Р РЋРІР‚СљР В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р РЏР В Р Р‹Р В РІР‚в„– Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚В, Р В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’В."),
+            AboutTitle: new LocalizedTextDto("About Me", "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚Сћ Р В Р’В Р РЋР’ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ"),
             AboutText: new LocalizedTextDto(
                 "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my latest work and architecture approach.",
-                "РЇ СЃРѕР·РґР°СЋ РїСЂРёРєР»Р°РґРЅС‹Рµ РІРµР±-РїСЂРѕРµРєС‚С‹: РѕС‚ РёРґРµРё Рё РёРЅС‚РµСЂС„РµР№СЃР° РґРѕ backend-Р»РѕРіРёРєРё Рё РґРµРїР»РѕСЏ. РќР° СЌС‚РѕР№ СЃС‚СЂР°РЅРёС†Рµ РІС‹ РІРёРґРёС‚Рµ РјРѕРё Р°РєС‚СѓР°Р»СЊРЅС‹Рµ СЂР°Р±РѕС‚С‹ Рё РїРѕРґС…РѕРґ Рє Р°СЂС…РёС‚РµРєС‚СѓСЂРµ."),
-            PortfolioTitle: new LocalizedTextDto("Portfolio", "РџРѕСЂС‚С„РѕР»РёРѕ"),
+                "Р В Р’В Р В РІР‚РЋ Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В·Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚в„– Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В±-Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“: Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ў Р В Р’В Р РЋРІР‚ВР В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р вЂ™Р’ВµР В Р’В Р Р†РІР‚С›РІР‚вЂњР В Р Р‹Р В РЎвЂњР В Р’В Р вЂ™Р’В° Р В Р’В Р СћРІР‚ВР В Р’В Р РЋРІР‚Сћ backend-Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚вЂњР В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚В Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚вЂќР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р Р‹Р В Р РЏ. Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’В° Р В Р Р‹Р В Р Р‰Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р В РІР‚В Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ Р В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚ВР В Р’В Р СћРІР‚ВР В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚В Р В Р’В Р вЂ™Р’В°Р В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р СћРІР‚ВР В Р Р‹Р Р†Р вЂљР’В¦Р В Р’В Р РЋРІР‚СћР В Р’В Р СћРІР‚В Р В Р’В Р РЋРІР‚Сњ Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљР’В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р РЋРІР‚СљР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’Вµ."),
+            PortfolioTitle: new LocalizedTextDto("Portfolio", "Р В Р’В Р РЋРЎСџР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚Сћ"),
             PortfolioText: new LocalizedTextDto(
                 "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action.",
-                "Р’ РїРѕСЂС‚С„РѕР»РёРѕ вЂ” РїСЂРѕРµРєС‚С‹ СЃ СЂР°Р·РЅС‹РјРё С€Р°Р±Р»РѕРЅР°РјРё: static, JavaScript, C#, Python. РљР°Р¶РґС‹Р№ РјРѕР¶РЅРѕ РѕС‚РєСЂС‹С‚СЊ, РёР·СѓС‡РёС‚СЊ Рё РѕС†РµРЅРёС‚СЊ РІ СЂР°Р±РѕС‚Рµ."),
+                "Р В Р’В Р Р†Р вЂљРІвЂћСћ Р В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚Сћ Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ Р В Р’В Р РЋРІР‚вЂќР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“ Р В Р Р‹Р В РЎвЂњ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚В Р В Р Р‹Р Р†РІР‚С™Р’В¬Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р вЂ™Р’В»Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚В: static, JavaScript, C#, Python. Р В Р’В Р РЋРІвЂћСћР В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В¶Р В Р’В Р СћРІР‚ВР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В¶Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ°, Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’В·Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ° Р В Р’В Р РЋРІР‚В Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р В Р вЂ° Р В Р’В Р В РІР‚В  Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’Вµ."),
             AboutPhoto: null);
     }
 
@@ -393,6 +393,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                published_at timestamptz null,
                                content_blocks jsonb not null default '[]'::jsonb,
                                tags text[] not null default '{}',
+                               public_demo_enabled boolean not null default false,
                                hero_image_light text not null,
                                hero_image_dark text not null,
                                screenshots jsonb not null default '[]'::jsonb,
@@ -411,7 +412,8 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
                            alter table project_posts
                                add column if not exists content_blocks jsonb not null default '[]'::jsonb;
-
+                           alter table project_posts
+                               add column if not exists public_demo_enabled boolean not null default false;
                            update project_posts
                            set kind = case
                                when template <> 0 or frontend_path is not null or backend_path is not null then 'project'
@@ -425,7 +427,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
                            update project_posts
                            set published_at = coalesce(published_at, created_at, now())
-                           where kind = 'post' and published_at is null;
+                           where published_at is null;
 
                            alter table project_posts
                                alter column kind set default 'post';

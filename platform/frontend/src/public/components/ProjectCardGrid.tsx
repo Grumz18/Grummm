@@ -1,4 +1,4 @@
-import { ProjectCard } from "./ProjectCard";
+﻿import { ProjectCard } from "./ProjectCard";
 import { ProjectCardPlaceholder } from "./ProjectCardPlaceholder";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
@@ -6,7 +6,7 @@ interface ProjectCardGridProps {
   items: PortfolioProject[];
   theme: ThemeMode;
   language: Language;
-  onNavigate: (projectId: string) => void;
+  resolveHref: (projectId: string) => string;
   className?: string;
   placeholderCount?: number;
 }
@@ -15,7 +15,7 @@ export function ProjectCardGrid({
   items,
   theme,
   language,
-  onNavigate,
+  resolveHref,
   className,
   placeholderCount = 0
 }: ProjectCardGridProps) {
@@ -30,7 +30,7 @@ export function ProjectCardGrid({
                 project={project}
                 theme={theme}
                 language={language}
-                onNavigate={onNavigate}
+                href={resolveHref(project.id)}
               />
             </div>
           ))

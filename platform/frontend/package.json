@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
-    "build:secure": "vite build --mode production",
+    "build": "vite build && node scripts/prerender-seo.mjs",
+    "build:secure": "vite build --mode production && node scripts/prerender-seo.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "jest --runInBand",

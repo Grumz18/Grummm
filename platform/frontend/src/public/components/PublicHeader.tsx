@@ -3,7 +3,6 @@ import { gsap } from "gsap";
 import { NavLink, useLocation } from "react-router-dom";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
-import { PreferenceSegmentedControl } from "./PreferenceSegmentedControl";
 import grummmLogo from "../../images/grummmLogo.svg";
 
 const NAV_ITEMS = [
@@ -12,7 +11,41 @@ const NAV_ITEMS = [
   { to: "/posts", key: "public.nav.posts" }
 ] as const;
 
-type PublicControlMode = "theme" | "language";
+function ThemeGlyph({ theme }: { theme: "light" | "dark" }) {
+  if (theme === "dark") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14.8 3.5A8.8 8.8 0 1 0 20.5 15a7.2 7.2 0 1 1-5.7-11.5Z" fill="currentColor" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4.6" fill="currentColor" />
+      <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <path d="M12 2.5v2.4" />
+        <path d="M12 19.1v2.4" />
+        <path d="M2.5 12h2.4" />
+        <path d="M19.1 12h2.4" />
+        <path d="m5.3 5.3 1.7 1.7" />
+        <path d="m17 17 1.7 1.7" />
+        <path d="m18.7 5.3-1.7 1.7" />
+        <path d="M7 17 5.3 18.7" />
+      </g>
+    </svg>
+  );
+}
+
+function LanguageGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.9 12h16.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M12 3.6c2.4 2.2 3.8 5.2 3.8 8.4s-1.4 6.2-3.8 8.4c-2.4-2.2-3.8-5.2-3.8-8.4S9.6 5.8 12 3.6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+  );
+}
 
 export function PublicHeader() {
   const { theme, language, setTheme, setLanguage } = usePreferences();
@@ -20,7 +53,6 @@ export function PublicHeader() {
   const navRef = useRef<HTMLElement | null>(null);
   const navIndicatorRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [controlMode, setControlMode] = useState<PublicControlMode>("theme");
 
   useEffect(() => {
     setMenuOpen(false);
@@ -58,6 +90,9 @@ export function PublicHeader() {
     window.addEventListener("resize", syncIndicator);
     return () => window.removeEventListener("resize", syncIndicator);
   }, [location.pathname, language, menuOpen]);
+
+  const nextTheme = theme === "dark" ? "light" : "dark";
+  const nextLanguage = language === "ru" ? "en" : "ru";
 
   return (
     <header className="public-header">
@@ -104,50 +139,30 @@ export function PublicHeader() {
               ))}
             </nav>
 
-            <section className="public-preferences liquid-glass" aria-label={t("public.nav.primary", language)}>
-              <PreferenceSegmentedControl
-                label={t("public.nav.primary", language)}
-                value={controlMode}
-                onChange={setControlMode}
-                options={[
-                  { value: "theme", label: t("public.appearance.label", language) },
-                  { value: "language", label: t("public.language.label", language) }
-                ]}
-                className="public-control-switch"
-                optionClassName="public-control-switch__option"
-                indicatorId="public-control-switch"
-              />
+            <div className="public-header__actions" aria-label={t("public.nav.primary", language)}>
+              <button
+                type="button"
+                className="public-header__action-button"
+                data-gsap-button
+                aria-label={language === "ru" ? "Switch language to English" : "Switch language to Russian"}
+                title={nextLanguage.toUpperCase()}
+                onClick={() => setLanguage(nextLanguage)}
+              >
+                <span className="public-header__action-glyph"><LanguageGlyph /></span>
+                <span className="public-header__action-code">{language.toUpperCase()}</span>
+              </button>
 
-              <div className="public-preferences__body">
-                {controlMode === "theme" ? (
-                  <PreferenceSegmentedControl
-                    label={t("public.appearance.label", language)}
-                    value={theme}
-                    onChange={setTheme}
-                    options={[
-                      { value: "light", label: t("public.theme.light", language) },
-                      { value: "dark", label: t("public.theme.dark", language) }
-                    ]}
-                    className="public-control-options"
-                    optionClassName="public-control-options__option"
-                    indicatorId="public-control-theme"
-                  />
-                ) : (
-                  <PreferenceSegmentedControl
-                    label={t("public.language.label", language)}
-                    value={language}
-                    onChange={setLanguage}
-                    options={[
-                      { value: "ru", label: t("public.language.russian", language) },
-                      { value: "en", label: t("public.language.english", language) }
-                    ]}
-                    className="public-control-options"
-                    optionClassName="public-control-options__option"
-                    indicatorId="public-control-language"
-                  />
-                )}
-              </div>
-            </section>
+              <button
+                type="button"
+                className="public-header__action-button"
+                data-gsap-button
+                aria-label={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
+                title={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
+                onClick={() => setTheme(nextTheme)}
+              >
+                <span className="public-header__action-glyph"><ThemeGlyph theme={theme} /></span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

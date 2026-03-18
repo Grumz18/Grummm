@@ -74,6 +74,9 @@ public sealed partial class ProjectPostsModule : IModule
         var backendPath = kind == ProjectEntryKind.Post || string.IsNullOrWhiteSpace(request.BackendPath)
             ? null
             : request.BackendPath.Trim();
+        var publicDemoEnabled = kind == ProjectEntryKind.Project
+            && template == TemplateType.Static
+            && request.PublicDemoEnabled;
 
         var screenshots = (request.Screenshots is { Length: > 0 } ? request.Screenshots : [request.HeroImage])
             .Select(s => new ThemedAssetDto(
@@ -87,9 +90,10 @@ public sealed partial class ProjectPostsModule : IModule
             Title: new LocalizedTextDto(request.Title.En.Trim(), request.Title.Ru.Trim()),
             Summary: new LocalizedTextDto(request.Summary.En.Trim(), request.Summary.Ru.Trim()),
             Description: new LocalizedTextDto(fallbackDescriptionEn, fallbackDescriptionRu),
-            PublishedAt: kind == ProjectEntryKind.Post ? request.PublishedAt ?? DateTimeOffset.UtcNow : null,
+            PublishedAt: request.PublishedAt ?? DateTimeOffset.UtcNow,
             ContentBlocks: contentBlocks,
             Tags: tags,
+            PublicDemoEnabled: publicDemoEnabled,
             HeroImage: new ThemedAssetDto(request.HeroImage.Light.Trim(), request.HeroImage.Dark.Trim()),
             Screenshots: screenshots,
             VideoUrl: string.IsNullOrWhiteSpace(request.VideoUrl) ? null : request.VideoUrl.Trim(),
