@@ -15,6 +15,13 @@ public enum ProjectEntryKind
     Project = 1
 }
 
+public enum ProjectVisibility
+{
+    Public = 0,
+    Private = 1,
+    Demo = 2
+}
+
 public enum ProjectPostContentBlockType
 {
     Paragraph = 0,
@@ -46,6 +53,7 @@ public sealed class ProjectPost
 {
     public string Id { get; set; } = string.Empty;
     public ProjectEntryKind Kind { get; set; } = ProjectEntryKind.Post;
+    public ProjectVisibility Visibility { get; set; } = ProjectVisibility.Public;
     public LocalizedText Title { get; set; } = new();
     public LocalizedText Summary { get; set; } = new();
     public LocalizedText Description { get; set; } = new();

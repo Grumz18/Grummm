@@ -20,6 +20,7 @@ export const seedProjects: PortfolioProject[] = [
   {
     id: "grummm-platform",
     kind: "post",
+    visibility: "public",
     title: {
       en: "Grummm Platform",
       ru: "Платформа Grummm"
@@ -70,6 +71,7 @@ export const seedProjects: PortfolioProject[] = [
   {
     id: "task-tracker",
     kind: "project",
+    visibility: "public",
     title: {
       en: "Task Tracker",
       ru: "Трекер задач"
@@ -82,6 +84,7 @@ export const seedProjects: PortfolioProject[] = [
       en: "Task Tracker is a production-oriented module with CQRS handlers, ownership checks, and audit-aware private API endpoints.",
       ru: "Task Tracker показывает production-модуль с CQRS, проверкой владельца и приватными API."
     },
+    publishedAt: "2026-03-17T08:00:00.000Z",
     contentBlocks: [],
     tags: ["React", ".NET", "CQRS", "Audit"],
     heroImage: {
@@ -105,6 +108,7 @@ export const seedProjects: PortfolioProject[] = [
   {
     id: "finance-tracker",
     kind: "project",
+    visibility: "demo",
     title: {
       en: "Finance Tracker",
       ru: "Финансовый трекер"
@@ -117,6 +121,7 @@ export const seedProjects: PortfolioProject[] = [
       en: "Finance Tracker focuses on monthly planning, variance alerts and compact decision dashboards for operational teams.",
       ru: "Finance Tracker собирает планирование, отклонения и компактные дашборды для команд."
     },
+    publishedAt: "2026-03-17T11:15:00.000Z",
     contentBlocks: [],
     tags: ["Analytics", "PostgreSQL", "Dashboard"],
     heroImage: {
@@ -140,6 +145,7 @@ export const seedProjects: PortfolioProject[] = [
   {
     id: "chat-module",
     kind: "project",
+    visibility: "public",
     title: {
       en: "Chat Module",
       ru: "Чат-модуль"
@@ -152,6 +158,7 @@ export const seedProjects: PortfolioProject[] = [
       en: "Chat Module provides low-friction team communication with role-based moderation and a lightweight event stream.",
       ru: "Chat Module даёт role-based модерацию и быстрый событийный поток."
     },
+    publishedAt: "2026-03-17T13:45:00.000Z",
     contentBlocks: [],
     tags: ["Realtime", "Moderation", "UX"],
     heroImage: {

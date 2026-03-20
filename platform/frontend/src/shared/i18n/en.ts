@@ -61,6 +61,11 @@ export const en = {
   "detail.eyebrow": "Project spotlight",
   "detail.back": "Back",
   "detail.description": "Description",
+  "notFound.eyebrow": "Error 404",
+  "notFound.title": "Page not found",
+  "notFound.description": "This route does not exist or is no longer available on Grummm.",
+  "notFound.backHome": "Back home",
+  "notFound.openProjects": "Open projects",
 
   "project.card.showcase": "Showcase post",
   "project.card.tapAgain": "Tap once more to open",

@@ -2,6 +2,7 @@ export type Language = "en" | "ru";
 export type ThemeMode = "light" | "dark";
 export type PortfolioEntryKind = "post" | "project";
 export type PortfolioContentBlockType = "paragraph" | "subheading" | "image";
+export type PortfolioVisibility = "public" | "private" | "demo";
 
 export interface LocalizedText {
   en: string;
@@ -25,6 +26,7 @@ export interface PortfolioContentBlock {
 export interface PortfolioProject {
   id: string;
   kind?: PortfolioEntryKind;
+  visibility?: PortfolioVisibility;
   title: LocalizedText;
   summary: LocalizedText;
   description: LocalizedText;

@@ -12,7 +12,7 @@ jest.mock("../../public/data/project-store", () => ({
 }));
 
 describe("AdminProjectsWorkspace", () => {
-  test("shows conditional template instructions for Python", async () => {
+  test("marks runtime templates as unavailable by default", async () => {
     const user = userEvent.setup();
 
     render(
@@ -21,11 +21,10 @@ describe("AdminProjectsWorkspace", () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByText(/Upload Python service files/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /static frontend only, without server runtime/i }));
 
-    await user.selectOptions(screen.getByLabelText(/Template type/i), "Python");
-
-    expect(screen.getByText(/Upload Python service files/i)).toBeInTheDocument();
-    expect(screen.getByText(/Upload frontend build/i)).toBeInTheDocument();
+    const pythonOption = screen.getByRole("button", { name: /python service with requirements and app files/i });
+    expect(pythonOption).toBeDisabled();
+    expect(screen.getByText(/runtime-backed templates are disabled on this deployment/i)).toBeInTheDocument();
   });
 });

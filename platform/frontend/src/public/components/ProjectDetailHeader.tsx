@@ -1,4 +1,4 @@
-import { SectionHeading } from "./SectionHeading";
+﻿import { SectionHeading } from "./SectionHeading";
 
 interface ProjectDetailHeaderProps {
   eyebrow: string;
@@ -42,14 +42,14 @@ export function ProjectDetailHeader({
         </div>
 
         <div className="detail-header__actions-row">
+          <button className="inline-back detail-header__back" type="button" onClick={onBack} data-gsap-button>
+            {backLabel}
+          </button>
           {actionLabel && actionHref ? (
             <a className="glass-button detail-header__cta" href={actionHref} target="_blank" rel="noreferrer" data-gsap-button>
               {actionLabel}
             </a>
           ) : null}
-          <button className="inline-back detail-header__back" type="button" onClick={onBack} data-gsap-button>
-            {backLabel}
-          </button>
         </div>
       </div>
     </header>

@@ -5,17 +5,29 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Platform.Modules.ProjectPosts</AssemblyName>
     <RootNamespace>Platform.Modules.ProjectPosts</RootNamespace>
+    <EnableRuntimeTemplates Condition="'$(EnableRuntimeTemplates)' == ''">false</EnableRuntimeTemplates>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="ClamAV.Net" Version="0.1.166" />
-    <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
     <PackageReference Include="Npgsql" Version="9.0.3" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EnableRuntimeTemplates)' == 'true'">
+    <PackageReference Include="McMaster.NETCore.Plugins" Version="2.0.0" />
     <PackageReference Include="Yarp.ReverseProxy" Version="2.3.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Core\Core.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(EnableRuntimeTemplates)' != 'true'">
+    <Compile Remove="Infrastructure\Plugins\CSharpTemplatePluginBootstrapHostedService.cs" />
+    <Compile Remove="Infrastructure\Plugins\CSharpTemplatePluginRuntime.cs" />
+    <Compile Remove="Infrastructure\Plugins\PythonTemplatePluginBootstrapHostedService.cs" />
+    <Compile Remove="Infrastructure\Plugins\PythonTemplateRuntime.cs" />
+    <Compile Remove="Infrastructure\Plugins\PythonTemplateRuntimeOptions.cs" />
+    <Compile Remove="ProjectPosts.Runtime.Endpoints.cs" />
+    <Compile Remove="ProjectPosts.Runtime.Module.cs" />
   </ItemGroup>
 </Project>

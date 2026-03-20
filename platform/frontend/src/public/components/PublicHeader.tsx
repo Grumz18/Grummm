@@ -93,6 +93,7 @@ export function PublicHeader() {
 
   const nextTheme = theme === "dark" ? "light" : "dark";
   const nextLanguage = language === "ru" ? "en" : "ru";
+  const languageCodes = language === "ru" ? ["RU", "EN"] : ["EN", "RU"];
 
   return (
     <header className="public-header">
@@ -142,14 +143,18 @@ export function PublicHeader() {
             <div className="public-header__actions" aria-label={t("public.nav.primary", language)}>
               <button
                 type="button"
-                className="public-header__action-button"
+                className="public-header__action-button public-header__action-button--language"
                 data-gsap-button
                 aria-label={language === "ru" ? "Switch language to English" : "Switch language to Russian"}
                 title={nextLanguage.toUpperCase()}
                 onClick={() => setLanguage(nextLanguage)}
               >
                 <span className="public-header__action-glyph"><LanguageGlyph /></span>
-                <span className="public-header__action-code">{language.toUpperCase()}</span>
+                <span className="public-header__action-code">
+                  <span className="public-header__action-code-primary">{languageCodes[0]}</span>
+                  <span className="public-header__action-code-separator">/</span>
+                  <span className="public-header__action-code-secondary">{languageCodes[1]}</span>
+                </span>
               </button>
 
               <button

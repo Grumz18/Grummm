@@ -9,6 +9,7 @@ public static class ProjectPostMappings
         return new ProjectPostDto(
             Id: project.Id,
             Kind: project.Kind,
+            Visibility: project.Visibility,
             Title: new LocalizedTextDto(project.Title.En, project.Title.Ru),
             Summary: new LocalizedTextDto(project.Summary.En, project.Summary.Ru),
             Description: new LocalizedTextDto(project.Description.En, project.Description.Ru),
@@ -30,6 +31,7 @@ public static class ProjectPostMappings
         {
             Id = dto.Id,
             Kind = dto.Kind,
+            Visibility = dto.Visibility,
             Title = new LocalizedText { En = dto.Title.En, Ru = dto.Title.Ru },
             Summary = new LocalizedText { En = dto.Summary.En, Ru = dto.Summary.Ru },
             Description = new LocalizedText { En = dto.Description.En, Ru = dto.Description.Ru },

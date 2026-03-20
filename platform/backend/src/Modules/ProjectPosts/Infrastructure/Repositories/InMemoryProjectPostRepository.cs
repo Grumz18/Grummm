@@ -90,6 +90,7 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
         yield return new ProjectPostDto(
             Id: "grummm-platform",
             Kind: ProjectEntryKind.Post,
+            Visibility: ProjectVisibility.Public,
             Title: new LocalizedTextDto("Grummm Platform", "Р В Р’В Р РЋРЎСџР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРЎвЂєР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В° Grummm"),
             Summary: new LocalizedTextDto(
                 "Editorial overview of the modular monolith, showcase layer, and admin workspace.",
@@ -136,6 +137,7 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
         yield return new ProjectPostDto(
             Id: "task-tracker",
             Kind: ProjectEntryKind.Project,
+            Visibility: ProjectVisibility.Public,
             Title: new LocalizedTextDto("Task Tracker", "Р В Р’В Р РЋРЎвЂєР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™ Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР Р‹"),
             Summary: new LocalizedTextDto(
                 "Owner-scoped task board with secure private routes.",

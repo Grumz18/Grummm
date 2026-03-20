@@ -1,5 +1,8 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 function bindButtonMotion(button: HTMLElement) {
   button.style.transformOrigin = "50% 50%";
@@ -165,6 +168,41 @@ function bindHeroParallax(stage: HTMLElement) {
   };
 }
 
+function bindPostBlockReveal(node: HTMLElement, index: number) {
+  node.style.willChange = "transform, opacity, filter";
+  gsap.set(node, {
+    autoAlpha: 0,
+    y: 22,
+    filter: "blur(10px)"
+  });
+
+  const tween = gsap.to(node, {
+    autoAlpha: 1,
+    y: 0,
+    filter: "blur(0px)",
+    duration: 0.52,
+    delay: Math.min(index * 0.04, 0.14),
+    ease: "power3.out",
+    paused: true,
+    overwrite: true,
+    force3D: true
+  });
+
+  const trigger = ScrollTrigger.create({
+    trigger: node,
+    start: "top 86%",
+    once: true,
+    onEnter: () => tween.restart()
+  });
+
+  return () => {
+    trigger.kill();
+    tween.kill();
+    node.style.willChange = "auto";
+    gsap.set(node, { clearProps: "opacity,transform,filter" });
+  };
+}
+
 export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unknown[] = []) {
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -180,11 +218,13 @@ export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unkno
     if (prefersReducedMotion) {
       gsap.set("[data-gsap='reveal']", { clearProps: "all" });
       gsap.set("[data-gsap='stagger'] > *", { clearProps: "all" });
+      gsap.set("[data-gsap-post-block]", { clearProps: "all" });
       return;
     }
 
     const cleanupButtons: Array<() => void> = [];
     const cleanupHeroScenes: Array<() => void> = [];
+    const cleanupPostBlocks: Array<() => void> = [];
 
     const ctx = gsap.context(() => {
       const revealNodes = gsap.utils.toArray<HTMLElement>("[data-gsap='reveal']", root);
@@ -227,6 +267,9 @@ export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unkno
       const buttons = gsap.utils.toArray<HTMLElement>("[data-gsap-button]", root);
       buttons.forEach((button) => cleanupButtons.push(bindButtonMotion(button)));
 
+      const postBlocks = gsap.utils.toArray<HTMLElement>("[data-gsap-post-block]", root);
+      postBlocks.forEach((block, index) => cleanupPostBlocks.push(bindPostBlockReveal(block, index)));
+
       if (supportsDesktopHover) {
         const heroScenes = gsap.utils.toArray<HTMLElement>("[data-gsap-hero-parallax]", root);
         heroScenes.forEach((stage) => cleanupHeroScenes.push(bindHeroParallax(stage)));
@@ -236,6 +279,7 @@ export function useGsapEnhancements(rootRef: RefObject<HTMLElement>, deps: unkno
     return () => {
       cleanupButtons.forEach((cleanup) => cleanup());
       cleanupHeroScenes.forEach((cleanup) => cleanup());
+      cleanupPostBlocks.forEach((cleanup) => cleanup());
       ctx.revert();
     };
   }, deps);

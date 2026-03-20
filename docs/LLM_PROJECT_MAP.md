@@ -9,6 +9,7 @@
 - Docs/runbooks: `docs/`.
 
 Main architecture and state snapshot:
+- `docs/LLM_SYSTEM_STATE.md` (current system behavior, runtime flows, deploy model and known sharp edges)
 - `ai-context.md` (current phase/state, constraints, roadmap)
 - `architecture-lock.md` (locked architecture decisions)
 - `module-contract.md` (module boundary and contract notes)

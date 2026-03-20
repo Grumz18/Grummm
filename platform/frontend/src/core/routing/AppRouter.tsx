@@ -1,6 +1,7 @@
 import { createElement, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { LandingPage } from "../../public/pages/LandingPage";
+import { NotFoundPage } from "../../public/pages/NotFoundPage";
 import { ProjectDetailPage } from "../../public/pages/ProjectDetailPage";
 import { PostsPage } from "../../public/pages/PostsPage";
 import { ProjectsPage } from "../../public/pages/ProjectsPage";
@@ -113,6 +114,7 @@ function AppRoutes() {
         <Route path="projects/:id" element={<ProjectDetailPage mode="project" />} />
         <Route path="posts" element={<PostsPage />} />
         <Route path="posts/:id" element={<ProjectDetailPage mode="post" />} />
+        <Route path="404" element={<NotFoundPage />} />
 
         {publicModuleRoutes.map((route) => (
           <Route key={route.id} path={route.path} element={createElement(route.component)} />
@@ -121,6 +123,8 @@ function AppRoutes() {
         {publicExtraRoutes.map((route) => (
           <Route key={route.id} path={route.path} element={createElement(route.component)} />
         ))}
+
+        <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>
 
       <Route path="/app" element={<ProtectedRoute adminOnly><PrivateAppLayout /></ProtectedRoute>}>
@@ -142,7 +146,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/app" replace />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
   );
 }

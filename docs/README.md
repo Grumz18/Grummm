@@ -24,6 +24,8 @@ Central navigation for platform runbooks and phase documentation.
 
 - Project map for LLM/dev onboarding:
   - `docs/LLM_PROJECT_MAP.md`
+- Current system state for LLM/dev onboarding:
+  - `docs/LLM_SYSTEM_STATE.md`
 - Landing/portfolio development plan:
   - `docs/landing-portfolio-roadmap.md`
 - Add new module:

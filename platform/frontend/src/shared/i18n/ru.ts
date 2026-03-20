@@ -61,6 +61,11 @@ export const ru = {
   "detail.eyebrow": "Фокус проекта",
   "detail.back": "Назад",
   "detail.description": "Описание",
+  "notFound.eyebrow": "Ошибка 404",
+  "notFound.title": "Страница не найдена",
+  "notFound.description": "Такого адреса нет на Grummm или он больше недоступен.",
+  "notFound.backHome": "На главную",
+  "notFound.openProjects": "Открыть проекты",
 
   "project.card.showcase": "Витринный пост",
   "project.card.tapAgain": "Ещё один тап откроет страницу",

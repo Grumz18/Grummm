@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Platform.Modules.ProjectPosts.Domain.Entities;
 
@@ -8,6 +9,12 @@ namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 internal static class ProjectTemplateStorage
 {
     private const string StorageRootPath = "/var/projects";
+    private static readonly Regex RootQuotedStaticPathRegex = new(
+        "(?<prefix>[\"'])/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^\"']*)?(?:#[^\"']*)?)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex RootCssUrlStaticPathRegex = new(
+        "(?<prefix>url\\(\\s*[\"']?)/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^)\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^)\"']*)?(?:#[^)\"']*)?)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public static string GetProjectRoot(string id) => Path.Combine(StorageRootPath, id);
     public static string GetFrontendFolder(string id) => Path.Combine(GetProjectRoot(id), "frontend");
@@ -159,16 +166,20 @@ internal static class ProjectTemplateStorage
         foreach (var path in files)
         {
             var content = File.ReadAllText(path);
-            if (!content.Contains(from, StringComparison.Ordinal))
+            var rewritten = content.Replace(from, to, StringComparison.Ordinal);
+            rewritten = RootQuotedStaticPathRegex.Replace(
+                rewritten,
+                match => $"{match.Groups["prefix"].Value}{match.Groups["path"].Value}");
+            rewritten = RootCssUrlStaticPathRegex.Replace(
+                rewritten,
+                match => $"{match.Groups["prefix"].Value}{match.Groups["path"].Value}");
+
+            if (string.Equals(content, rewritten, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var rewritten = content.Replace(from, to, StringComparison.Ordinal);
-            if (!string.Equals(content, rewritten, StringComparison.Ordinal))
-            {
-                File.WriteAllText(path, rewritten);
-            }
+            File.WriteAllText(path, rewritten);
         }
     }
 

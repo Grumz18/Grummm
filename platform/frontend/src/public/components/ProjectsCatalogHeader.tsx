@@ -1,5 +1,3 @@
-import { SectionHeading } from "./SectionHeading";
-
 interface ProjectsCatalogHeaderProps {
   eyebrow: string;
   title: string;
@@ -15,16 +13,18 @@ export function ProjectsCatalogHeader({ eyebrow, title, description, count, back
       <div className="liquid-glass__sheen" aria-hidden="true" />
       <div className="liquid-glass__grain" aria-hidden="true" />
       <div className="liquid-glass__content catalog-header__shell">
-        <SectionHeading
-          eyebrow={eyebrow}
-          title={title}
-          description={description}
-          titleAs="h1"
-          className="catalog-header__heading"
-        />
+        <div className="catalog-header__heading">
+          <p className="catalog-header__eyebrow">{eyebrow}</p>
+          <div className="catalog-header__title-row">
+            <h1 className="catalog-header__title">{title}</h1>
+            <span className="catalog-header__count" aria-label={`Count: ${count}`}>
+              {count}
+            </span>
+          </div>
+          <p className="catalog-header__description">{description}</p>
+        </div>
 
         <div className="catalog-header__actions">
-          <span className="catalog-header__count">{count}</span>
           <button className="inline-back" type="button" onClick={onBack} data-gsap-button>
             {backLabel}
           </button>

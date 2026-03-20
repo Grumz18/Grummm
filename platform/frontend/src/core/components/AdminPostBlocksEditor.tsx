@@ -135,10 +135,10 @@ export function AdminPostBlocksEditor({ blocks, disabled, onChange, onCreateImag
                 ) : (
                   <div className="admin-post-block__image">
                     <label>
-                      Image file
+                      Image or GIF
                       <input type="file" accept="image/*" onChange={(event) => void handleImageSelect(block.id, event)} />
                     </label>
-                    {block.imageUrl ? <img src={block.imageUrl} alt="Post block preview" loading="lazy" /> : <p className="admin-muted">Upload one image for this block.</p>}
+                    {block.imageUrl ? <img src={block.imageUrl} alt="Post block preview" loading="lazy" /> : <p className="admin-muted">Upload one static image or animated GIF for this block.</p>}
                   </div>
                 )}
               </article>

@@ -6,6 +6,7 @@ interface DocumentMetadataOptions {
   path: string;
   language?: string;
   keywords?: string;
+  robots?: string;
 }
 
 const BASE_URL = "https://grummm.ru";
@@ -41,7 +42,14 @@ function upsertLink(rel: string, href: string) {
   element.setAttribute("href", href);
 }
 
-export function useDocumentMetadata({ title, description, path, language, keywords = DEFAULT_KEYWORDS }: DocumentMetadataOptions) {
+export function useDocumentMetadata({
+  title,
+  description,
+  path,
+  language,
+  keywords = DEFAULT_KEYWORDS,
+  robots = "index,follow,max-image-preview:large"
+}: DocumentMetadataOptions) {
   useEffect(() => {
     if (typeof document === "undefined") {
       return;
@@ -56,7 +64,7 @@ export function useDocumentMetadata({ title, description, path, language, keywor
 
     upsertMeta("name", "description", description);
     upsertMeta("name", "keywords", keywords);
-    upsertMeta("name", "robots", "index,follow,max-image-preview:large");
+    upsertMeta("name", "robots", robots);
     upsertMeta("property", "og:type", "website");
     upsertMeta("property", "og:title", title);
     upsertMeta("property", "og:description", description);
@@ -65,5 +73,5 @@ export function useDocumentMetadata({ title, description, path, language, keywor
     upsertMeta("name", "twitter:title", title);
     upsertMeta("name", "twitter:description", description);
     upsertLink("canonical", canonicalUrl);
-  }, [description, keywords, language, path, title]);
+  }, [description, keywords, language, path, robots, title]);
 }

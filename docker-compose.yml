@@ -21,6 +21,8 @@ services:
     build:
       context: .
       dockerfile: platform/backend/Dockerfile
+      args:
+        ENABLE_RUNTIME_TEMPLATES: "false"
     container_name: platform-backend
     env_file:
       - ./.env.backend.local

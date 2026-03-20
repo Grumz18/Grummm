@@ -25,6 +25,7 @@ public sealed record ProjectPostContentBlockDto(
 public sealed record ProjectPostDto(
     [property: Required, MaxLength(80)] string Id,
     [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectEntryKind>))] ProjectEntryKind Kind,
+    [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectVisibility>))] ProjectVisibility Visibility,
     LocalizedTextDto Title,
     LocalizedTextDto Summary,
     LocalizedTextDto Description,
@@ -42,6 +43,7 @@ public sealed record ProjectPostDto(
 public sealed record UpsertProjectPostRequest(
     [property: Required, MaxLength(80)] string Id,
     [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectEntryKind>))] ProjectEntryKind Kind,
+    [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectVisibility>))] ProjectVisibility Visibility,
     LocalizedTextDto Title,
     LocalizedTextDto Summary,
     LocalizedTextDto Description,
@@ -52,6 +54,6 @@ public sealed record UpsertProjectPostRequest(
     ThemedAssetDto HeroImage,
     ThemedAssetDto[]? Screenshots,
     [property: MaxLength(5_000_000)] string? VideoUrl,
-    [property: JsonConverter(typeof(JsonStringEnumConverter<TemplateType>))] TemplateType Template = TemplateType.None,
-    [property: MaxLength(500)] string? FrontendPath = null,
-    [property: MaxLength(500)] string? BackendPath = null);
+    [property: JsonConverter(typeof(JsonStringEnumConverter<TemplateType>))] TemplateType Template,
+    [property: MaxLength(500)] string? FrontendPath,
+    [property: MaxLength(500)] string? BackendPath);

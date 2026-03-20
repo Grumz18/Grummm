@@ -26,7 +26,7 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
           {hasBlocks ? blocks.map((block) => {
             if (block.type === "image" && block.imageUrl) {
               return (
-                <figure key={block.id} className="post-content__figure">
+                <figure key={block.id} className="post-content__block post-content__block--image post-content__figure" data-gsap-post-block>
                   <img src={block.imageUrl} alt="Post block" loading="lazy" />
                 </figure>
               );
@@ -38,13 +38,25 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
             }
 
             if (block.type === "subheading") {
-              return <h2 key={block.id} className="post-content__subheading">{value}</h2>;
+              return (
+                <div key={block.id} className="post-content__block post-content__block--subheading" data-gsap-post-block>
+                  <h2 className="post-content__subheading">{value}</h2>
+                </div>
+              );
             }
 
-            return <ParagraphText key={block.id} text={value} className="post-content__paragraph" />;
-          }) : <ParagraphText text={project.description[language]} className="post-content__paragraph" />}
+            return (
+              <div key={block.id} className="post-content__block post-content__block--paragraph" data-gsap-post-block>
+                <ParagraphText text={value} className="post-content__paragraph" />
+              </div>
+            );
+          }) : (
+            <div className="post-content__block post-content__block--paragraph" data-gsap-post-block>
+              <ParagraphText text={project.description[language]} className="post-content__paragraph" />
+            </div>
+          )}
           {publishedMeta ? (
-            <div className="post-content__meta-row">
+            <div className="post-content__block post-content__meta-row" data-gsap-post-block>
               <p className="post-content__published-at">{publishedMeta}</p>
             </div>
           ) : null}

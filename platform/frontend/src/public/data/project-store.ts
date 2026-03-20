@@ -7,6 +7,7 @@ import type {
   PortfolioContentBlockType,
   PortfolioEntryKind,
   PortfolioProject,
+  PortfolioVisibility,
   TemplateType,
   ThemedAsset
 } from "../types";
@@ -17,6 +18,7 @@ const PUBLIC_API = "/api/public/projects";
 const PRIVATE_API = "/api/app/projects";
 const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 const SEED_KIND_BY_ID = new Map(seedProjects.map((project) => [project.id, project.kind]));
+const SEED_VISIBILITY_BY_ID = new Map(seedProjects.map((project) => [project.id, project.visibility]));
 const SEED_PUBLISHED_AT_BY_ID = new Map(
   seedProjects
     .filter((project) => typeof project.publishedAt === "string" && project.publishedAt.trim().length > 0)
@@ -33,7 +35,7 @@ const DEFAULT_FRONTEND_PATH: Record<TemplateType, string | undefined> = {
 
 const DEFAULT_BACKEND_PATH: Record<TemplateType, string | undefined> = {
   None: undefined,
-  Static: "/services/static",
+  Static: undefined,
   CSharp: "/services/csharp",
   Python: "/services/python",
   JavaScript: "/services/js"
@@ -115,6 +117,19 @@ function normalizePublishedAt(value?: string | null): string | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
+function normalizeExplicitVisibility(value?: string | null): PortfolioVisibility | undefined {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return undefined;
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "public" || normalized === "private" || normalized === "demo") {
+    return normalized;
+  }
+
+  return undefined;
+}
+
 export function getPortfolioKind(project: PortfolioProject): PortfolioEntryKind {
   if (project.kind === "post" || project.kind === "project") {
     return project.kind;
@@ -122,6 +137,32 @@ export function getPortfolioKind(project: PortfolioProject): PortfolioEntryKind 
 
   const template = project.template ?? "None";
   return template !== "None" || Boolean(project.frontendPath || project.backendPath) ? "project" : "post";
+}
+
+function normalizeVisibility(project: PortfolioProject, kind: PortfolioEntryKind, template: TemplateType): PortfolioVisibility {
+  const explicit = normalizeExplicitVisibility(project.visibility) ?? SEED_VISIBILITY_BY_ID.get(project.id);
+
+  if (kind === "post") {
+    return "public";
+  }
+
+  if (explicit === "private") {
+    return "private";
+  }
+
+  if (explicit === "demo") {
+    return template === "Static" ? "demo" : "public";
+  }
+
+  if (explicit === "public") {
+    return "public";
+  }
+
+  if (project.publicDemoEnabled && template === "Static") {
+    return "demo";
+  }
+
+  return "public";
 }
 
 export function isPortfolioPost(project: PortfolioProject): boolean {
@@ -132,6 +173,28 @@ export function isPortfolioProject(project: PortfolioProject): boolean {
   return getPortfolioKind(project) === "project";
 }
 
+export function isPortfolioPubliclyVisible(project: PortfolioProject): boolean {
+  if (getPortfolioKind(project) === "post") {
+    return true;
+  }
+
+  return (normalizeExplicitVisibility(project.visibility) ?? "public") !== "private";
+}
+
+export function isPortfolioPublicDemoEnabled(project: PortfolioProject): boolean {
+  if (getPortfolioKind(project) !== "project") {
+    return false;
+  }
+
+  const template = project.template ?? "None";
+  if (template !== "Static") {
+    return false;
+  }
+
+  const visibility = normalizeExplicitVisibility(project.visibility);
+  return visibility === "demo" || project.publicDemoEnabled === true;
+}
+
 export function getPublicEntryPath(project: PortfolioProject): string {
   return isPortfolioPost(project) ? `/posts/${project.id}` : `/projects/${project.id}`;
 }
@@ -139,21 +202,25 @@ export function getPublicEntryPath(project: PortfolioProject): string {
 function normalizeProjectRecord(project: PortfolioProject): PortfolioProject {
   const seedKind = SEED_KIND_BY_ID.get(project.id);
   const kind = project.kind ?? seedKind ?? getPortfolioKind(project);
+  const template = kind === "post" ? "None" : (project.template ?? "None");
+  const visibility = normalizeVisibility(project, kind, template);
   const normalizedPublishedAt = normalizePublishedAt(project.publishedAt) ?? normalizePublishedAt(SEED_PUBLISHED_AT_BY_ID.get(project.id));
   const publishedAt = normalizedPublishedAt ?? new Date().toISOString();
 
   return {
     ...project,
     kind,
+    visibility,
     title: normalizeLocalizedText(project.title),
     summary: normalizeLocalizedText(project.summary),
     description: normalizeLocalizedText(project.description),
     publishedAt,
     contentBlocks: normalizeContentBlocks(project.contentBlocks),
     tags: Array.isArray(project.tags) ? project.tags.filter(Boolean) : [],
-    publicDemoEnabled: kind === "project" ? Boolean(project.publicDemoEnabled) : false,
+    publicDemoEnabled: kind === "project" && visibility === "demo" && template === "Static",
     heroImage: normalizeThemedAsset(project.heroImage),
-    screenshots: Array.isArray(project.screenshots) ? project.screenshots.map(normalizeThemedAsset) : []
+    screenshots: Array.isArray(project.screenshots) ? project.screenshots.map(normalizeThemedAsset) : [],
+    template
   };
 }
 
@@ -246,16 +313,18 @@ function parseApiItem(payload: unknown): PortfolioProject | null {
 function toApiPayload(input: PortfolioProject): PortfolioProject {
   const kind = getPortfolioKind(input);
   const template = kind === "post" ? "None" : input.template ?? "None";
+  const visibility = normalizeVisibility(input, kind, template);
 
   return {
     ...input,
     kind,
+    visibility,
     title: normalizeLocalizedText(input.title),
     summary: normalizeLocalizedText(input.summary),
     description: normalizeLocalizedText(input.description),
     publishedAt: normalizePublishedAt(input.publishedAt),
     contentBlocks: normalizeContentBlocks(input.contentBlocks),
-    publicDemoEnabled: kind === "project" && template === "Static" && Boolean(input.publicDemoEnabled),
+    publicDemoEnabled: kind === "project" && visibility === "demo" && template === "Static",
     heroImage: normalizeThemedAsset(input.heroImage),
     screenshots: kind === "post" ? [] : (input.screenshots ?? []).map(normalizeThemedAsset),
     template,
@@ -324,12 +393,7 @@ export function readProjects(): PortfolioProject[] {
     }
 
     const normalized = normalizeProjectList(parsed);
-    const migrated = normalized.some((project, index) => {
-      const original = parsed[index];
-      return project.publishedAt !== normalizePublishedAt(original?.publishedAt);
-    });
-
-    if (migrated) {
+    if (JSON.stringify(normalized) !== raw) {
       writeProjects(normalized);
     }
 
@@ -354,6 +418,36 @@ export async function fetchProjectsFromApi(): Promise<PortfolioProject[] | null>
   } catch {
     return null;
   }
+}
+
+export async function fetchProjectsFromPrivateApi(token: string): Promise<PortfolioProject[] | null> {
+  try {
+    const response = await fetch(PRIVATE_API, {
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` }
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const projects = parseApiList((await response.json()) as unknown);
+    writeProjects(projects);
+    return projects;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchProjectsForCurrentSession(): Promise<PortfolioProject[] | null> {
+  const token = getAccessToken();
+  if (token) {
+    const privateProjects = await fetchProjectsFromPrivateApi(token);
+    if (privateProjects !== null) {
+      return privateProjects;
+    }
+  }
+
+  return fetchProjectsFromApi();
 }
 
 export async function fetchProjectByIdFromApi(projectId: string): Promise<PortfolioProject | null> {
@@ -431,7 +525,7 @@ export async function createProjectWithOptions(input: PortfolioProject, upload?:
       }
 
       if (responseOk) {
-        const synced = await fetchProjectsFromApi();
+        const synced = await fetchProjectsForCurrentSession();
         if (synced !== null) {
           return synced;
         }
@@ -487,7 +581,7 @@ export async function updateProject(projectId: string, patch: PortfolioProject, 
       }
 
       if (responseOk) {
-        const synced = await fetchProjectsFromApi();
+        const synced = await fetchProjectsForCurrentSession();
         if (synced !== null) {
           return synced;
         }
@@ -523,7 +617,7 @@ export async function deleteProject(projectId: string, options: AdminMutationOpt
       });
 
       if (response.ok) {
-        const synced = await fetchProjectsFromApi();
+        const synced = await fetchProjectsForCurrentSession();
         if (synced !== null) {
           return synced;
         }
@@ -555,7 +649,7 @@ export function useProjectPosts(): PortfolioProject[] {
       setProjects(readProjects());
     }
 
-    void fetchProjectsFromApi().then((items) => {
+    void fetchProjectsForCurrentSession().then((items) => {
       if (items) {
         setProjects(items);
       }
@@ -578,9 +672,9 @@ export function useProjectPost(projectId?: string): PortfolioProject | undefined
 }
 
 export function useShowcasePosts(): PortfolioProject[] {
-  return useProjectPosts().filter(isPortfolioPost);
+  return useProjectPosts().filter((project) => isPortfolioPost(project) && isPortfolioPubliclyVisible(project));
 }
 
 export function useRuntimeProjects(): PortfolioProject[] {
-  return useProjectPosts().filter(isPortfolioProject);
+  return useProjectPosts().filter((project) => isPortfolioProject(project) && isPortfolioPubliclyVisible(project));
 }

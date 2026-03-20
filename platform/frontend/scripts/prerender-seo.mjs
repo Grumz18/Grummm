@@ -297,11 +297,23 @@ function renderDetailShell(entry, related) {
   </main>`;
 }
 
-function updateMeta(html, { title, description, keywords, url }) {
+function renderNotFoundShell() {
+  return `<main class="seo-shell">
+    ${mainNav()}
+    <section id="not-found">
+      <h1>404 - Page not found</h1>
+      <p>This route does not exist or is no longer available on Grummm.</p>
+      <p><a href="/">Back home</a> | <a href="/projects">Open projects</a></p>
+    </section>
+  </main>`;
+}
+
+function updateMeta(html, { title, description, keywords, url, robots = "index,follow,max-image-preview:large" }) {
   return html
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(title)}</title>`)
     .replace(/<meta name="description" content="[^"]*"\s*\/>/, `<meta name="description" content="${escapeHtml(description)}" />`)
     .replace(/<meta name="keywords" content="[^"]*"\s*\/>/, `<meta name="keywords" content="${escapeHtml(keywords)}" />`)
+    .replace(/<meta name="robots" content="[^"]*"\s*\/?>/, `<meta name="robots" content="${escapeHtml(robots)}" />`)
     .replace(/<meta property="og:title" content="[^"]*"\s*\/>/, `<meta property="og:title" content="${escapeHtml(title)}" />`)
     .replace(/<meta property="og:description" content="[^"]*"\s*\/>/, `<meta property="og:description" content="${escapeHtml(description)}" />`)
     .replace(/<meta property="og:url" content="[^"]*"\s*\/>/, `<meta property="og:url" content="${escapeHtml(url)}" />`)
@@ -331,7 +343,8 @@ function renderPage(baseHtml, page) {
       title: page.title,
       description: page.description,
       keywords: page.keywords,
-      url: `${siteUrl}${page.route}`
+      url: `${siteUrl}${page.route}`,
+      robots: page.robots
     }),
     page.shell
   );
@@ -407,6 +420,15 @@ async function main() {
       shell: renderDetailShell(entry, related)
     }));
   }
+
+  await writeRoutePage("/404", renderPage(baseHtml, {
+    route: "/404",
+    title: "404 | Grummm",
+    description: "This route does not exist or is no longer available on Grummm.",
+    keywords: "grummm, 404, page not found",
+    robots: "noindex,nofollow,noarchive",
+    shell: renderNotFoundShell()
+  }));
 
   await fs.writeFile(path.join(distDir, "sitemap.xml"), buildSitemap(entries), "utf8");
 }

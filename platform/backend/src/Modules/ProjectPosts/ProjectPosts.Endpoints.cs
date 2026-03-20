@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Plugins;
@@ -19,6 +20,12 @@ public sealed partial class ProjectPostsModule
 {
     private static readonly XNamespace SitemapNamespace = "http://www.sitemaps.org/schemas/sitemap/0.9";
     private static readonly FileExtensionContentTypeProvider ViewerContentTypeProvider = new();
+    private static readonly Regex ViewerQuotedStaticPathRegex = new(
+        "(?<prefix>[\"'])/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^\"']*)?(?:#[^\"']*)?)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex ViewerCssUrlStaticPathRegex = new(
+        "(?<prefix>url\\(\\s*[\"']?)/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^)\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^)\"']*)?(?:#[^)\"']*)?)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public partial void MapEndpoints(IEndpointRouteBuilder app)
     {
@@ -29,7 +36,7 @@ public sealed partial class ProjectPostsModule
 
         app.MapGet("/sitemap.xml", async (HttpContext context, IProjectPostRepository repository, CancellationToken cancellationToken) =>
         {
-            var items = await repository.ListAsync(cancellationToken);
+            var items = (await repository.ListAsync(cancellationToken)).Where(IsPubliclyVisible).ToArray();
             var xml = BuildSitemapXml(context, items);
             return Results.Text(xml, "application/xml; charset=utf-8");
         });
@@ -37,7 +44,15 @@ public sealed partial class ProjectPostsModule
         publicGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
         {
             var items = await repository.ListAsync(cancellationToken);
-            return Results.Ok(new { items = items.Select(ToPublicProjectPostDto).ToArray() });
+            return Results.Ok(new { items = items.Where(IsPubliclyVisible).Select(ToPublicProjectPostDto).ToArray() });
+        });
+
+        publicGroup.MapGet("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        {
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            return item is null || !IsPubliclyVisible(item)
+                ? Results.NotFound()
+                : Results.Ok(ToPublicProjectPostDto(item));
         });
 
         publicGroup.MapGet("/{id}/viewer/{**assetPath}", async (
@@ -48,17 +63,12 @@ public sealed partial class ProjectPostsModule
             CancellationToken cancellationToken) =>
         {
             var item = await repository.GetByIdAsync(id, cancellationToken);
-            if (item is null
-                || item.Kind != ProjectEntryKind.Project
-                || item.Template != TemplateType.Static
-                || !item.PublicDemoEnabled
-                || string.IsNullOrWhiteSpace(item.FrontendPath)
-                || !Directory.Exists(item.FrontendPath))
+            if (!CanServePublicDemo(item))
             {
                 return Results.NotFound();
             }
 
-            if (!TryResolveProjectViewerFile(item.FrontendPath, assetPath, out var fullPath) || fullPath is null)
+            if (!TryResolveProjectViewerFile(item!.FrontendPath!, assetPath, out var fullPath) || fullPath is null)
             {
                 return Results.NotFound();
             }
@@ -67,19 +77,24 @@ public sealed partial class ProjectPostsModule
             httpContext.Response.Headers.Append("X-Robots-Tag", "noindex, nofollow");
             httpContext.Response.Headers.Append("Referrer-Policy", "same-origin");
 
-            return Results.File(fullPath, GetViewerContentType(fullPath), enableRangeProcessing: false);
-        });
+            if (TryBuildRewrittenViewerResponse(id, assetPath, fullPath, httpContext, out var rewrittenResponse))
+            {
+                return rewrittenResponse;
+            }
 
-        publicGroup.MapGet("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
-        {
-            var item = await repository.GetByIdAsync(id, cancellationToken);
-            return item is null ? Results.NotFound() : Results.Ok(ToPublicProjectPostDto(item));
+            return BuildViewerInternalRedirectResult(id, item.FrontendPath!, fullPath, httpContext);
         });
 
         privateGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
         {
             var items = await repository.ListAsync(cancellationToken);
-            return Results.Ok(new { items = items.Select(ToPublicProjectPostDto).ToArray() });
+            return Results.Ok(new { items });
+        });
+
+        privateGroup.MapGet("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        {
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            return item is null ? Results.NotFound() : Results.Ok(item);
         });
 
         publicContentGroup.MapGet("/landing", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
@@ -96,17 +111,28 @@ public sealed partial class ProjectPostsModule
             return Results.Ok(updated);
         });
 
-        privateGroup.MapPost("/", async (UpsertProjectPostRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        privateGroup.MapPost("/", async (
+            UpsertProjectPostRequest request,
+            IProjectPostRepository repository,
+            IProjectTemplateRuntimeFeature runtimeFeature,
+            CancellationToken cancellationToken) =>
         {
             ValidateDto(request);
+            ValidateRuntimeTemplateAvailability(request.Template, request.Kind, runtimeFeature);
             var normalized = Normalize(request);
             var created = await repository.UpsertAsync(normalized, cancellationToken);
             return Results.Created($"/api/app/projects/{created.Id}", created);
         });
 
-        privateGroup.MapPut("/{id}", async (string id, UpsertProjectPostRequest request, IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        privateGroup.MapPut("/{id}", async (
+            string id,
+            UpsertProjectPostRequest request,
+            IProjectPostRepository repository,
+            IProjectTemplateRuntimeFeature runtimeFeature,
+            CancellationToken cancellationToken) =>
         {
             ValidateDto(request);
+            ValidateRuntimeTemplateAvailability(request.Template, request.Kind, runtimeFeature);
             var normalized = Normalize(request) with { Id = id.Trim() };
             var updated = await repository.UpsertAsync(normalized, cancellationToken);
             return Results.Ok(updated);
@@ -117,6 +143,7 @@ public sealed partial class ProjectPostsModule
                 string id,
                 HttpRequest httpRequest,
                 UploadWithTemplateCommandHandler commandHandler,
+                IProjectTemplateRuntimeFeature runtimeFeature,
                 CancellationToken cancellationToken) =>
             {
                 if (!httpRequest.HasFormContentType)
@@ -136,6 +163,7 @@ public sealed partial class ProjectPostsModule
                         .ToArray());
 
                 ValidateDto(request);
+                ValidateRuntimeTemplateAvailability(request.TemplateType, runtimeFeature);
                 var command = UploadWithTemplateMappings.ToCommand(
                     id: id,
                     request: request,
@@ -145,48 +173,6 @@ public sealed partial class ProjectPostsModule
                 var updated = await commandHandler.HandleAsync(command, cancellationToken);
 
                 return updated is null ? Results.NotFound() : Results.Ok(updated);
-            });
-
-        var dynamicPluginGroup = app.MapGroup("/api/app/{slug}").RequireAuthorization("AdminOnly");
-        dynamicPluginGroup.MapMethods("/{**pluginPath}",
-            ["GET", "POST", "PUT", "PATCH", "DELETE"],
-            async (
-                string slug,
-                string? pluginPath,
-                HttpContext httpContext,
-                ICSharpTemplatePluginRuntime pluginRuntime,
-                IPythonTemplateRuntime pythonRuntime,
-                CancellationToken cancellationToken) =>
-            {
-                if (string.Equals(slug, "projects", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(slug, "tasks", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(slug, "auth", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(slug, "security", StringComparison.OrdinalIgnoreCase))
-                {
-                    return Results.NotFound();
-                }
-
-                var dispatchPath = "/" + (pluginPath ?? string.Empty);
-                var dispatchResult = await pluginRuntime.DispatchAsync(
-                    slug,
-                    dispatchPath,
-                    httpContext.Request.Method,
-                    httpContext,
-                    cancellationToken);
-
-                if (dispatchResult is not null)
-                {
-                    return dispatchResult;
-                }
-
-                var pythonResult = await pythonRuntime.DispatchAsync(
-                    slug,
-                    dispatchPath,
-                    httpContext.Request.Method,
-                    httpContext,
-                    cancellationToken);
-
-                return pythonResult ?? Results.NotFound();
             });
 
         privateGroup.MapDelete("/{id}", async (
@@ -207,9 +193,75 @@ public sealed partial class ProjectPostsModule
 
             return deleted ? Results.NoContent() : Results.NotFound();
         });
+
+        MapRuntimeEndpoints(app);
     }
 
-    private static ProjectPostDto ToPublicProjectPostDto(ProjectPostDto item) => item with { FrontendPath = null, BackendPath = null };
+    private static ProjectPostDto ToPublicProjectPostDto(ProjectPostDto item) => item with
+    {
+        PublicDemoEnabled = IsPublicDemoEnabled(item),
+        FrontendPath = null,
+        BackendPath = null
+    };
+
+    private static bool IsPubliclyVisible(ProjectPostDto item)
+    {
+        return item.Kind == ProjectEntryKind.Post || item.Visibility != ProjectVisibility.Private;
+    }
+
+    private static bool CanServePublicDemo(ProjectPostDto? item)
+    {
+        return item is not null
+            && item.Kind == ProjectEntryKind.Project
+            && item.Template == TemplateType.Static
+            && IsPublicDemoEnabled(item)
+            && !string.IsNullOrWhiteSpace(item.FrontendPath)
+            && Directory.Exists(item.FrontendPath);
+    }
+
+    private static bool IsPublicDemoEnabled(ProjectPostDto item)
+    {
+        return item.Kind == ProjectEntryKind.Project
+            && item.Template == TemplateType.Static
+            && (item.Visibility == ProjectVisibility.Demo || item.PublicDemoEnabled);
+    }
+
+    partial void MapRuntimeEndpoints(IEndpointRouteBuilder app);
+
+    private static void ValidateRuntimeTemplateAvailability(
+        string templateType,
+        IProjectTemplateRuntimeFeature runtimeFeature)
+    {
+        if (!Enum.TryParse<TemplateType>(templateType, ignoreCase: true, out var parsedTemplate))
+        {
+            return;
+        }
+
+        ValidateRuntimeTemplateAvailability(parsedTemplate, runtimeFeature);
+    }
+
+    private static void ValidateRuntimeTemplateAvailability(
+        TemplateType template,
+        IProjectTemplateRuntimeFeature runtimeFeature)
+    {
+        if (!runtimeFeature.IsEnabled && template is not TemplateType.None and not TemplateType.Static)
+        {
+            throw new ValidationException("Runtime templates are disabled on this deployment. Use Static or No template.");
+        }
+    }
+
+    private static void ValidateRuntimeTemplateAvailability(
+        TemplateType template,
+        ProjectEntryKind kind,
+        IProjectTemplateRuntimeFeature runtimeFeature)
+    {
+        if (kind == ProjectEntryKind.Post)
+        {
+            return;
+        }
+
+        ValidateRuntimeTemplateAvailability(template, runtimeFeature);
+    }
 
     private static string BuildSitemapXml(HttpContext context, IReadOnlyList<ProjectPostDto> items)
     {
@@ -300,5 +352,90 @@ public sealed partial class ProjectPostsModule
         return ViewerContentTypeProvider.TryGetContentType(filePath, out var contentType)
             ? contentType
             : "application/octet-stream";
+    }
+
+    private static bool TryBuildRewrittenViewerResponse(
+        string projectId,
+        string? assetPath,
+        string fullPath,
+        HttpContext httpContext,
+        out IResult? response)
+    {
+        response = null;
+
+        var extension = Path.GetExtension(fullPath);
+        if (!IsRewriteableViewerTextFile(extension))
+        {
+            return false;
+        }
+
+        var content = File.ReadAllText(fullPath);
+        var viewerBasePath = ResolveViewerBasePath(httpContext, projectId);
+        var rewritten = RewriteViewerContent(content, viewerBasePath, string.IsNullOrWhiteSpace(assetPath));
+
+        if (string.Equals(content, rewritten, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        response = Results.Text(rewritten, GetViewerContentType(fullPath));
+        return true;
+    }
+
+    private static string ResolveViewerBasePath(HttpContext httpContext, string projectId)
+    {
+        var forwardedPath = httpContext.Request.Headers["X-Viewer-Base-Path"].ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(forwardedPath) && forwardedPath.StartsWith("/", StringComparison.Ordinal))
+        {
+            return forwardedPath.EndsWith("/", StringComparison.Ordinal) ? forwardedPath : $"{forwardedPath}/";
+        }
+
+        return $"/api/public/projects/{projectId}/viewer/";
+    }
+
+    private static IResult BuildViewerInternalRedirectResult(
+        string projectId,
+        string rootDirectory,
+        string fullPath,
+        HttpContext httpContext)
+    {
+        var relativePath = Path.GetRelativePath(Path.GetFullPath(rootDirectory), fullPath).Replace('\\', '/');
+        if (string.IsNullOrWhiteSpace(relativePath) || relativePath.StartsWith("../", StringComparison.Ordinal))
+        {
+            return Results.NotFound();
+        }
+
+        httpContext.Response.Headers["X-Accel-Redirect"] = $"/__project_frontend_public/{projectId}/{relativePath}";
+        return Results.Empty;
+    }
+
+    private static bool IsRewriteableViewerTextFile(string extension)
+    {
+        return extension.Equals(".html", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".js", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".mjs", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".css", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string RewriteViewerContent(string content, string viewerBasePath, bool isHtmlDocument)
+    {
+        var rewritten = ViewerQuotedStaticPathRegex.Replace(
+            content,
+            match => $"{match.Groups["prefix"].Value}{viewerBasePath}{match.Groups["path"].Value}");
+
+        rewritten = ViewerCssUrlStaticPathRegex.Replace(
+            rewritten,
+            match => $"{match.Groups["prefix"].Value}{viewerBasePath}{match.Groups["path"].Value}");
+
+        if (isHtmlDocument && !rewritten.Contains("<base ", StringComparison.OrdinalIgnoreCase))
+        {
+            var baseTag = $"<base href=\"{viewerBasePath}\">";
+            if (rewritten.Contains("<head>", StringComparison.OrdinalIgnoreCase))
+            {
+                rewritten = rewritten.Replace("<head>", $"<head>{baseTag}", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        return rewritten;
     }
 }

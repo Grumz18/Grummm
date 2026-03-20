@@ -9,7 +9,15 @@ import { ProjectNotFoundCard } from "../components/ProjectNotFoundCard";
 import { ProjectScreensGallery } from "../components/ProjectScreensGallery";
 import { RelatedEntriesSection } from "../components/RelatedEntriesSection";
 import { formatPublishedMeta } from "../formatPublishedDate";
-import { getPortfolioKind, isPortfolioPost, isPortfolioProject, useProjectPost, useProjectPosts } from "../data/project-store";
+import {
+  getPortfolioKind,
+  isPortfolioPost,
+  isPortfolioProject,
+  isPortfolioPublicDemoEnabled,
+  isPortfolioPubliclyVisible,
+  useProjectPost,
+  useProjectPosts
+} from "../data/project-store";
 import { useSwipeBack } from "../hooks/useSwipeBack";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
@@ -35,17 +43,21 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
 
   const resolvedKind = useMemo(() => (project ? getPortfolioKind(project) : null), [project]);
   const relatedPosts = useMemo(
-    () => allEntries.filter((entry) => entry.id !== id && isPortfolioPost(entry)).slice(0, 3),
+    () => allEntries.filter((entry) => entry.id !== id && isPortfolioPost(entry) && isPortfolioPubliclyVisible(entry)).slice(0, 3),
     [allEntries, id]
   );
   const relatedProjects = useMemo(
-    () => allEntries.filter((entry) => entry.id !== id && isPortfolioProject(entry)).slice(0, 3),
+    () => allEntries.filter((entry) => entry.id !== id && isPortfolioProject(entry) && isPortfolioPubliclyVisible(entry)).slice(0, 3),
     [allEntries, id]
   );
   const publishedMeta = project ? formatPublishedMeta(project.publishedAt, language) ?? undefined : undefined;
-  const demoActionLabel = language === "ru" ? "\u041F\u043E\u0441\u043C\u043E\u0442\u0440\u0435\u0442\u044C \u043F\u0440\u043E\u0435\u043A\u0442" : "View project";
-  const publicDemoUrl = project ? `/api/public/projects/${project.id}/viewer/` : undefined;
-  const canShowPublicDemo = Boolean(project && mode === "project" && project.publicDemoEnabled);
+  const demoActionLabel = language === "ru" ? "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C demo \u043F\u0440\u043E\u0435\u043A\u0442\u0430" : "Show project demo";
+  const publicDemoUrl = project ? `/${project.id}/viewer/` : undefined;
+  const canShowPublicDemo = Boolean(
+    project
+    && mode === "project"
+    && isPortfolioPublicDemoEnabled(project)
+  );
   const detailTitle = project
     ? `${project.title[language] || project.title.en || project.id} | Grummm`
     : `${mode === "post" ? t("posts.title", language) : t("projects.title", language)} | Grummm`;
@@ -70,6 +82,22 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     language,
     keywords: detailKeywords
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const previousRootBehavior = root.style.scrollBehavior;
+    const previousBodyBehavior = body.style.scrollBehavior;
+
+    root.style.scrollBehavior = "auto";
+    body.style.scrollBehavior = "auto";
+    window.scrollTo(0, 0);
+
+    return () => {
+      root.style.scrollBehavior = previousRootBehavior;
+      body.style.scrollBehavior = previousBodyBehavior;
+    };
+  }, [mode, id]);
 
   function openLightbox(index: number) {
     setLightboxIndex(index);
@@ -141,7 +169,7 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [lightboxIndex, project]);
 
-  if (!project || resolvedKind !== mode) {
+  if (!project || resolvedKind !== mode || !isPortfolioPubliclyVisible(project)) {
     return (
       <section className="project-detail-page" data-gsap="reveal">
         <ProjectNotFoundCard
@@ -182,31 +210,6 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
         </>
       ) : (
         <>
-          {canShowPublicDemo && publicDemoUrl ? (
-            <LiquidGlass as="section" className="project-demo project-detail__media-panel" data-gsap="reveal">
-              <div className="liquid-glass__content project-demo__shell">
-                <div className="project-demo__header">
-                  <div>
-                    <p className="section-heading__eyebrow">Public demo</p>
-                    <h2>{project.title[language]}</h2>
-                    <p>{project.summary[language]}</p>
-                  </div>
-                </div>
-                <div className="project-demo__frame-wrap">
-                  <iframe
-                    className="project-demo__frame"
-                    src={publicDemoUrl}
-                    title={`${project.title[language]} demo`}
-                    loading="lazy"
-                    referrerPolicy="same-origin"
-                    sandbox="allow-scripts allow-forms allow-modals allow-downloads"
-                  />
-                </div>
-                <p className="project-demo__hint">Public demo is limited to safe static interactions. Server runtime remains private.</p>
-              </div>
-            </LiquidGlass>
-          ) : null}
-
           <ProjectDetailSummary
             imageSrc={project.heroImage[theme]}
             imageAlt={project.title[language]}

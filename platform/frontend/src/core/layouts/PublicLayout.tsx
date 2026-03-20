@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
+import { CookieNotice } from "../../public/components/CookieNotice";
 import { PublicHeader } from "../../public/components/PublicHeader";
 import { useGsapEnhancements } from "../../shared/ui/useGsapEnhancements";
 import { useRef } from "react";
@@ -18,6 +19,7 @@ export function PublicLayout() {
             <Outlet />
           </div>
         </main>
+        <CookieNotice />
       </div>
     </div>
   );

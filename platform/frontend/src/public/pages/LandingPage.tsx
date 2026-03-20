@@ -3,7 +3,7 @@ import { LandingAboutSection } from "../components/LandingAboutSection";
 import { LandingHeroSection } from "../components/LandingHeroSection";
 import { PortfolioSection } from "../components/PortfolioSection";
 import { useLandingContent } from "../data/landing-content-store";
-import { isPortfolioPost, isPortfolioProject, useProjectPosts } from "../data/project-store";
+import { useRuntimeProjects, useShowcasePosts } from "../data/project-store";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
@@ -17,11 +17,10 @@ const HERO_HIGHLIGHTS = ["Modular Monolith", "Plugin Runtime", "Admin Workspace"
 export function LandingPage() {
   const navigate = useNavigate();
   const { theme, language } = usePreferences();
-  const projects = useProjectPosts();
+  const featuredPosts = useShowcasePosts().slice(0, 3);
+  const featuredProjects = useRuntimeProjects().slice(0, 3);
   const landingContent = useLandingContent();
 
-  const featuredPosts = projects.filter(isPortfolioPost).slice(0, 3);
-  const featuredProjects = projects.filter(isPortfolioProject).slice(0, 3);
 
   const heroEyebrow = fallback(landingContent.heroEyebrow[language], t("landing.hero.fallbackEyebrow", language));
   const heroTitle = fallback(landingContent.heroTitle[language], t("landing.hero.fallbackTitle", language));

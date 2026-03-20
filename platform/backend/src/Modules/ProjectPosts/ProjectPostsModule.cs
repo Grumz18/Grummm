@@ -19,17 +19,12 @@ public sealed partial class ProjectPostsModule : IModule
 {
     public void RegisterServices(IServiceCollection services)
     {
-        services.AddReverseProxy();
-
         services.AddOptions<ClamAvOptions>()
             .BindConfiguration("ClamAv");
-        services.AddOptions<PythonTemplateRuntimeOptions>()
-            .BindConfiguration("PythonRuntime");
         services.AddSingleton<IProjectFileMalwareScanner, ClamAvNetProjectFileMalwareScanner>();
-        services.AddSingleton<ICSharpTemplatePluginRuntime, CSharpTemplatePluginRuntime>();
-        services.AddSingleton<IPythonTemplateRuntime, PythonTemplateRuntime>();
-        services.AddHostedService<CSharpTemplatePluginBootstrapHostedService>();
-        services.AddHostedService<PythonTemplatePluginBootstrapHostedService>();
+        services.AddSingleton<ICSharpTemplatePluginRuntime, NoopCSharpTemplatePluginRuntime>();
+        services.AddSingleton<IPythonTemplateRuntime, NoopPythonTemplateRuntime>();
+        services.AddSingleton<IProjectTemplateRuntimeFeature, DisabledProjectTemplateRuntimeFeature>();
 
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {
@@ -44,9 +39,11 @@ public sealed partial class ProjectPostsModule : IModule
             return new PostgresProjectPostRepository(connectionString);
         });
         services.AddSingleton<UploadWithTemplateCommandHandler>();
+        RegisterRuntimeServices(services);
     }
 
     public partial void MapEndpoints(IEndpointRouteBuilder app);
+    partial void RegisterRuntimeServices(IServiceCollection services);
 
     private static ProjectPostDto Normalize(UpsertProjectPostRequest request)
     {
@@ -74,9 +71,10 @@ public sealed partial class ProjectPostsModule : IModule
         var backendPath = kind == ProjectEntryKind.Post || string.IsNullOrWhiteSpace(request.BackendPath)
             ? null
             : request.BackendPath.Trim();
+        var visibility = NormalizeVisibility(request, kind, template);
         var publicDemoEnabled = kind == ProjectEntryKind.Project
             && template == TemplateType.Static
-            && request.PublicDemoEnabled;
+            && visibility == ProjectVisibility.Demo;
 
         var screenshots = (request.Screenshots is { Length: > 0 } ? request.Screenshots : [request.HeroImage])
             .Select(s => new ThemedAssetDto(
@@ -87,6 +85,7 @@ public sealed partial class ProjectPostsModule : IModule
         return new ProjectPostDto(
             Id: request.Id.Trim(),
             Kind: kind,
+            Visibility: visibility,
             Title: new LocalizedTextDto(request.Title.En.Trim(), request.Title.Ru.Trim()),
             Summary: new LocalizedTextDto(request.Summary.En.Trim(), request.Summary.Ru.Trim()),
             Description: new LocalizedTextDto(fallbackDescriptionEn, fallbackDescriptionRu),
@@ -114,6 +113,26 @@ public sealed partial class ProjectPostsModule : IModule
                || !string.IsNullOrWhiteSpace(request.BackendPath)
             ? ProjectEntryKind.Project
             : ProjectEntryKind.Post;
+    }
+
+    private static ProjectVisibility NormalizeVisibility(UpsertProjectPostRequest request, ProjectEntryKind kind, TemplateType template)
+    {
+        if (kind == ProjectEntryKind.Post)
+        {
+            return ProjectVisibility.Public;
+        }
+
+        if (request.Visibility == ProjectVisibility.Private)
+        {
+            return ProjectVisibility.Private;
+        }
+
+        if (request.Visibility == ProjectVisibility.Demo && template == TemplateType.Static)
+        {
+            return ProjectVisibility.Demo;
+        }
+
+        return ProjectVisibility.Public;
     }
 
     private static ProjectPostContentBlockDto[] NormalizeContentBlocks(ProjectPostContentBlockDto[]? blocks)

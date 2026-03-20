@@ -11,7 +11,7 @@ import {
   useProjectPosts,
   type ProjectUploadBundle
 } from "../../public/data/project-store";
-import type { PortfolioContentBlock, PortfolioProject, TemplateType } from "../../public/types";
+import type { PortfolioContentBlock, PortfolioProject, PortfolioVisibility, TemplateType } from "../../public/types";
 
 interface DraftProject {
   id: string;
@@ -29,7 +29,7 @@ interface DraftProject {
   includeVideo: boolean;
   videoUrl: string;
   templateType: TemplateType;
-  publicDemoEnabled: boolean;
+  visibility: PortfolioVisibility;
   frontendFiles: File[];
   backendFiles: File[];
 }
@@ -40,14 +40,23 @@ interface TemplateOption {
   value: TemplateType;
   label: string;
   description: string;
+  disabled?: boolean;
 }
+
+const RUNTIME_TEMPLATE_OPTIONS_ENABLED = false;
 
 const TEMPLATE_OPTIONS: TemplateOption[] = [
   { value: "None", label: "No template", description: "Editorial-style entry without runtime bundle." },
   { value: "Static", label: "Static", description: "Static frontend only, without server runtime." },
-  { value: "CSharp", label: "C#", description: "ASP.NET runtime with frontend and DLL bundle." },
-  { value: "Python", label: "Python", description: "Python service with requirements and app files." },
-  { value: "JavaScript", label: "JavaScript", description: "Node.js runtime with package-based backend." }
+  { value: "CSharp", label: "C#", description: "ASP.NET runtime with frontend and DLL bundle.", disabled: !RUNTIME_TEMPLATE_OPTIONS_ENABLED },
+  { value: "Python", label: "Python", description: "Python service with requirements and app files.", disabled: !RUNTIME_TEMPLATE_OPTIONS_ENABLED },
+  { value: "JavaScript", label: "JavaScript", description: "Node.js runtime with package-based backend.", disabled: !RUNTIME_TEMPLATE_OPTIONS_ENABLED }
+];
+
+const VISIBILITY_OPTIONS: Array<{ value: PortfolioVisibility; label: string; hint: string }> = [
+  { value: "public", label: "Public", hint: "Visible in public catalog." },
+  { value: "private", label: "Private", hint: "Visible only in admin workspace." },
+  { value: "demo", label: "Demo", hint: "Public entry with sandboxed demo." }
 ];
 
 const TEMPLATE_INSTRUCTIONS: Record<Exclude<TemplateType, "None">, { frontend: string; backend: string }> = {
@@ -56,16 +65,16 @@ const TEMPLATE_INSTRUCTIONS: Record<Exclude<TemplateType, "None">, { frontend: s
     backend: "Backend is not required for Static template and will be ignored."
   },
   CSharp: {
-    frontend: "Upload frontend build if project contains client part.",
-    backend: "Upload compiled DLLs, .deps.json and optionally .runtimeconfig.json."
+    frontend: "Runtime-backed templates are disabled on this deployment.",
+    backend: "Re-enable runtime templates separately before uploading C# bundles."
   },
   Python: {
-    frontend: "Upload frontend build if project contains client part.",
-    backend: "Upload Python service files: app.py, requirements.txt and dependencies."
+    frontend: "Runtime-backed templates are disabled on this deployment.",
+    backend: "Re-enable runtime templates separately before uploading Python bundles."
   },
   JavaScript: {
-    frontend: "Upload dist/index.html and assets for frontend layer.",
-    backend: "Upload Node.js backend with package.json and related files."
+    frontend: "Runtime-backed templates are disabled on this deployment.",
+    backend: "Re-enable runtime templates separately before uploading Node.js bundles."
   }
 };
 
@@ -79,7 +88,7 @@ const DEFAULT_FRONTEND_PATH: Record<TemplateType, string | undefined> = {
 
 const DEFAULT_BACKEND_PATH: Record<TemplateType, string | undefined> = {
   None: undefined,
-  Static: "/services/static",
+  Static: undefined,
   CSharp: "/services/csharp",
   Python: "/services/python",
   JavaScript: "/services/js"
@@ -102,7 +111,7 @@ function emptyDraft(): DraftProject {
     includeVideo: false,
     videoUrl: "",
     templateType: "None",
-    publicDemoEnabled: false,
+    visibility: "public",
     frontendFiles: [],
     backendFiles: []
   };
@@ -124,6 +133,10 @@ function fileToDataUrl(file: File): Promise<string> {
 async function imageFileToOptimizedDataUrl(file: File): Promise<string> {
   const source = await fileToDataUrl(file);
   if (!file.type.startsWith("image/")) {
+    return source;
+  }
+
+  if (file.type === "image/gif") {
     return source;
   }
 
@@ -296,9 +309,13 @@ function TemplateTypeSelect({
                 aria-selected={selected}
                 className={`template-select__option${selected ? " is-selected" : ""}`}
                 onClick={() => {
+                  if (option.disabled) {
+                    return;
+                  }
                   onChange(option.value);
                   setOpen(false);
                 }}
+                disabled={option.disabled}
               >
                 <span className="template-select__option-copy">
                   <strong>{option.label}</strong>
@@ -331,7 +348,7 @@ function toDraft(project: PortfolioProject): DraftProject {
     includeVideo: Boolean(project.videoUrl),
     videoUrl: project.videoUrl ?? "",
     templateType: project.template ?? "None",
-    publicDemoEnabled: Boolean(project.publicDemoEnabled),
+    visibility: project.visibility ?? (project.publicDemoEnabled ? "demo" : "public"),
     frontendFiles: [],
     backendFiles: []
   };
@@ -353,10 +370,14 @@ function fromDraft(draft: DraftProject, kind: "post" | "project"): PortfolioProj
   const fallbackDescriptionEn = draft.descriptionEn.trim() || firstTextBlockValue(contentBlocks, "en") || draft.summaryEn || "No description yet.";
   const fallbackDescriptionRu = draft.descriptionRu.trim() || firstTextBlockValue(contentBlocks, "ru") || draft.summaryRu || draft.summaryEn || "No description yet.";
   const templateType = kind === "post" ? "None" : draft.templateType;
+  const visibility = kind === "post"
+    ? "public"
+    : (draft.visibility === "demo" && templateType !== "Static" ? "public" : draft.visibility);
 
   return {
     id: draft.id,
     kind,
+    visibility,
     title: { en: draft.titleEn || "Untitled", ru: draft.titleRu || draft.titleEn || "No title" },
     summary: { en: draft.summaryEn || "No summary yet.", ru: draft.summaryRu || draft.summaryEn || "No summary yet." },
     description: { en: fallbackDescriptionEn, ru: fallbackDescriptionRu },
@@ -368,7 +389,7 @@ function fromDraft(draft: DraftProject, kind: "post" | "project"): PortfolioProj
       : (draft.screenshots.length > 0 ? draft.screenshots.map((image) => ({ light: image, dark: image })) : [{ light: coverLight, dark: coverDark }]),
     videoUrl: kind === "post" ? undefined : (draft.includeVideo ? draft.videoUrl || undefined : undefined),
     template: templateType,
-    publicDemoEnabled: kind === "project" && templateType === "Static" && draft.publicDemoEnabled,
+    publicDemoEnabled: kind === "project" && templateType === "Static" && visibility === "demo",
     frontendPath: kind === "post" ? undefined : DEFAULT_FRONTEND_PATH[templateType],
     backendPath: kind === "post" ? undefined : DEFAULT_BACKEND_PATH[templateType]
   };
@@ -448,19 +469,19 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
         deletePrompt: "Delete this post permanently?"
       }
     : {
-        eyebrow: "Runtime workspace",
+        eyebrow: "Projects workspace",
         title: "Projects editor",
-        description: "Build runtime-ready projects: content, media, bundles and server publishing in one place.",
-        listTitle: "Runtime projects",
+        description: "Manage static project entries, public demos, and private project pages in one place.",
+        listTitle: "Projects",
         listHint: "Open a project card to edit content or upload a new build.",
         createLabel: "New project",
         editTitle: "Edit project",
         createTitle: "Create project",
-        editorHint: "Pick template type, fill content, and upload frontend/backend bundles if needed.",
+        editorHint: "Pick post or static project flow, fill content, and upload frontend build when needed.",
         submitCreate: "Create project",
         submitEdit: "Save changes",
-        empty: "No template projects yet.",
-        deletePrompt: "Delete this project with runtime data permanently?"
+        empty: "No projects yet.",
+        deletePrompt: "Delete this project permanently?"
       };
 
   const projects = useProjectPosts();
@@ -677,26 +698,41 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                           setDraft((current) => ({
                             ...current,
                             templateType: nextTemplateType,
-                            publicDemoEnabled: nextTemplateType === "Static" ? current.publicDemoEnabled : false,
+                            visibility: nextTemplateType === "Static" ? current.visibility : (current.visibility === "demo" ? "public" : current.visibility),
                             backendFiles: nextTemplateType === "Static" ? [] : current.backendFiles
                           }));
                         }}
                       />
                     </label>
                     <div className="admin-projects__template-note admin-projects__template-note--compact">
-                      <strong>Public demo</strong>
-                      {draft.templateType === "Static" ? (
-                        <label className="admin-toggle admin-toggle--inline">
-                          <input
-                            type="checkbox"
-                            checked={draft.publicDemoEnabled}
-                            onChange={(event) => setDraft((current) => ({ ...current, publicDemoEnabled: event.target.checked }))}
-                          />
-                          <span>Enable sandboxed public demo for visitors</span>
-                        </label>
-                      ) : (
-                        <p className="admin-muted">Public demo is available only for Static projects. Server runtimes stay private.</p>
-                      )}
+                      <strong>Project visibility</strong>
+                      <div className="admin-visibility-switch" role="group" aria-label="Project visibility">
+                        {VISIBILITY_OPTIONS.map((option) => {
+                          const disabled = option.value === "demo" && draft.templateType !== "Static";
+                          const selected = draft.visibility === option.value;
+
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={selected ? "is-active" : ""}
+                              disabled={disabled}
+                              onClick={() => setDraft((current) => ({
+                                ...current,
+                                visibility: disabled ? current.visibility : option.value
+                              }))}
+                            >
+                              <strong>{option.label}</strong>
+                              <small>{option.hint}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {!RUNTIME_TEMPLATE_OPTIONS_ENABLED ? (
+                        <p className="admin-muted">This deployment supports posts, private static projects, and public static demos. Runtime-backed templates are disabled.</p>
+                      ) : draft.templateType !== "Static" ? (
+                        <p className="admin-muted">Demo mode is available only for Static projects. Server runtimes remain private behind admin routes.</p>
+                      ) : null}
                     </div>
                   </>
                 ) : (
@@ -851,7 +887,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                     <span>{draft.heroLight ? "Light cover set" : "No light cover"}</span>
                     <span>{draft.heroDark ? "Dark cover set" : "No dark cover"}</span>
                     <span>{isPostsMode ? `${draft.contentBlocks.length} blocks` : `${draft.screenshots.length} screenshots`}</span>
-                    <span>{isPostsMode ? "Structured post" : (draft.publicDemoEnabled && draft.templateType === "Static" ? "Public demo enabled" : (draft.includeVideo && draft.videoUrl ? "Video attached" : "No video"))}</span>
+                    <span>{isPostsMode ? "Structured post" : (draft.visibility === "private" ? "Private project" : (draft.visibility === "demo" && draft.templateType === "Static" ? "Public demo enabled" : "Public project"))}</span>
                   </div>
                 </div>
               </section>
