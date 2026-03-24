@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { CookieNotice } from "../../public/components/CookieNotice";
 import { PublicHeader } from "../../public/components/PublicHeader";
+import { usePublicRouteSwipe } from "../../public/hooks/usePublicRouteSwipe";
 import { useGsapEnhancements } from "../../shared/ui/useGsapEnhancements";
 import { useRef } from "react";
 
@@ -9,6 +10,7 @@ export function PublicLayout() {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useGsapEnhancements(rootRef, [location.pathname]);
+  usePublicRouteSwipe(rootRef);
 
   return (
     <div ref={rootRef} data-layout="public" className="public-layout">

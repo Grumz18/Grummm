@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,6 +18,8 @@ namespace Platform.Modules.ProjectPosts;
 
 public sealed partial class ProjectPostsModule : IModule
 {
+    private static readonly Regex ProjectIdRegex = new("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
+
     public void RegisterServices(IServiceCollection services)
     {
         services.AddOptions<ClamAvOptions>()
@@ -47,6 +50,8 @@ public sealed partial class ProjectPostsModule : IModule
 
     private static ProjectPostDto Normalize(UpsertProjectPostRequest request)
     {
+        ValidateProjectId(request.Id);
+
         var tags = (request.Tags ?? Array.Empty<string>())
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .Select(t => t!.Trim())
@@ -99,6 +104,15 @@ public sealed partial class ProjectPostsModule : IModule
             Template: template,
             FrontendPath: frontendPath,
             BackendPath: backendPath);
+    }
+
+    internal static void ValidateProjectId(string? id)
+    {
+        var normalized = id?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized) || !ProjectIdRegex.IsMatch(normalized))
+        {
+            throw new ValidationException("Project id must be a lowercase slug containing only letters, digits, and hyphens.");
+        }
     }
 
     private static ProjectEntryKind NormalizeKind(UpsertProjectPostRequest request)
@@ -159,7 +173,37 @@ public sealed partial class ProjectPostsModule : IModule
                     Id: id,
                     Type: ProjectPostContentBlockType.Image,
                     Content: null,
-                    ImageUrl: block.ImageUrl.Trim()));
+                    ImageUrl: block.ImageUrl.Trim(),
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null));
+                continue;
+            }
+
+            if (block.Type == ProjectPostContentBlockType.Video)
+            {
+                if (string.IsNullOrWhiteSpace(block.VideoUrl))
+                {
+                    continue;
+                }
+
+                var enCaption = block.Content?.En.Trim() ?? string.Empty;
+                var ruCaption = block.Content?.Ru.Trim() ?? string.Empty;
+                var hasCaption = !string.IsNullOrWhiteSpace(enCaption) || !string.IsNullOrWhiteSpace(ruCaption);
+                int? scrollSpan = block.PinEnabled
+                    ? Math.Clamp(block.ScrollSpan ?? 160, 80, 320)
+                    : null;
+
+                normalized.Add(new ProjectPostContentBlockDto(
+                    Id: id,
+                    Type: ProjectPostContentBlockType.Video,
+                    Content: hasCaption ? new LocalizedLongTextDto(enCaption, ruCaption) : null,
+                    ImageUrl: null,
+                    VideoUrl: block.VideoUrl.Trim(),
+                    PosterUrl: string.IsNullOrWhiteSpace(block.PosterUrl) ? null : block.PosterUrl.Trim(),
+                    PinEnabled: block.PinEnabled,
+                    ScrollSpan: scrollSpan));
                 continue;
             }
 
@@ -174,7 +218,11 @@ public sealed partial class ProjectPostsModule : IModule
                 Id: id,
                 Type: block.Type,
                 Content: new LocalizedLongTextDto(en, ru),
-                ImageUrl: null));
+                ImageUrl: null,
+                VideoUrl: null,
+                PosterUrl: null,
+                PinEnabled: false,
+                ScrollSpan: null));
         }
 
         return normalized.ToArray();
@@ -201,6 +249,10 @@ public sealed partial class ProjectPostsModule : IModule
 
     private static LandingContentDto Normalize(UpsertLandingContentRequest request)
     {
+        var aboutSubtitle = request.AboutSubtitle is null
+            ? new LocalizedTextDto(string.Empty, string.Empty)
+            : new LocalizedTextDto(request.AboutSubtitle.En.Trim(), request.AboutSubtitle.Ru.Trim());
+
         return new LandingContentDto(
             HeroEyebrow: new LocalizedTextDto(request.HeroEyebrow.En.Trim(), request.HeroEyebrow.Ru.Trim()),
             HeroTitle: new LocalizedTextDto(request.HeroTitle.En.Trim(), request.HeroTitle.Ru.Trim()),
@@ -209,7 +261,8 @@ public sealed partial class ProjectPostsModule : IModule
             AboutText: new LocalizedTextDto(request.AboutText.En.Trim(), request.AboutText.Ru.Trim()),
             PortfolioTitle: new LocalizedTextDto(request.PortfolioTitle.En.Trim(), request.PortfolioTitle.Ru.Trim()),
             PortfolioText: new LocalizedTextDto(request.PortfolioText.En.Trim(), request.PortfolioText.Ru.Trim()),
-            AboutPhoto: string.IsNullOrWhiteSpace(request.AboutPhoto) ? null : request.AboutPhoto.Trim());
+            AboutPhoto: string.IsNullOrWhiteSpace(request.AboutPhoto) ? null : request.AboutPhoto.Trim(),
+            AboutSubtitle: aboutSubtitle);
     }
 
     private static void ValidateDto<T>(T request)

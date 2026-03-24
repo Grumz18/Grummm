@@ -1,4 +1,5 @@
 import { ParagraphText } from "./ParagraphText";
+import { PostVideoBlock } from "./PostVideoBlock";
 import { formatPublishedMeta } from "../formatPublishedDate";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
@@ -29,6 +30,17 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
                 <figure key={block.id} className="post-content__block post-content__block--image post-content__figure" data-gsap-post-block>
                   <img src={block.imageUrl} alt="Post block" loading="lazy" />
                 </figure>
+              );
+            }
+
+            if (block.type === "video" && block.videoUrl) {
+              return (
+                <PostVideoBlock
+                  key={block.id}
+                  block={block}
+                  language={language}
+                  title={project.title[language] || project.title.en || project.id}
+                />
               );
             }
 

@@ -205,7 +205,7 @@ export async function logoutAdmin(accessToken?: string): Promise<void> {
   });
 }
 
-export async function requestPasswordEmailCode(email: string, accessToken: string): Promise<string | undefined> {
+export async function requestPasswordEmailCode(email: string, accessToken: string): Promise<void> {
   const response = await fetch("/api/app/auth/request-email-code", {
     method: "POST",
     headers: {
@@ -219,12 +219,9 @@ export async function requestPasswordEmailCode(email: string, accessToken: strin
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-
-  const payload = (await response.json()) as { debugCode?: string };
-  return payload.debugCode;
 }
 
-export async function requestLoginEmailCode(email: string): Promise<string | undefined> {
+export async function requestLoginEmailCode(email: string): Promise<void> {
   const csrf = await fetchCsrfToken();
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (csrf) {
@@ -241,9 +238,6 @@ export async function requestLoginEmailCode(email: string): Promise<string | und
   if (!response.ok) {
     throw new Error(await parseError(response));
   }
-
-  const payload = (await response.json()) as { debugCode?: string };
-  return payload.debugCode;
 }
 
 export async function changeAdminPassword(

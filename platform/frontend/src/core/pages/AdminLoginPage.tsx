@@ -33,8 +33,8 @@ export function AdminLoginPage() {
     setError("");
     setCodeHint("");
     try {
-      const debugCode = await requestLoginEmailCode(email.trim());
-      setCodeHint(debugCode ? t("login.hint.debug", language, { code: debugCode }) : t("login.hint.sent", language));
+      await requestLoginEmailCode(email.trim());
+      setCodeHint(t("login.hint.sent", language));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("login.error.requestCode", language));
     } finally {

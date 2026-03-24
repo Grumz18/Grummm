@@ -1,7 +1,6 @@
-﻿import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ProjectCardGrid } from "../components/ProjectCardGrid";
 import { ProjectsCatalogHeader } from "../components/ProjectsCatalogHeader";
-import { useSwipeBack } from "../hooks/useSwipeBack";
 import { useRuntimeProjects } from "../data/project-store";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
@@ -11,7 +10,6 @@ export function ProjectsPage() {
   const navigate = useNavigate();
   const { theme, language } = usePreferences();
   const projects = useRuntimeProjects();
-  const canHover = (typeof window !== "undefined" && window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) ?? false;
   const seoKeywords = language === "ru"
     ? "grummm, \u043f\u0440\u043e\u0435\u043a\u0442\u044b, runtime \u0434\u0435\u043c\u043e, \u043c\u043e\u0434\u0443\u043b\u0438, \u0448\u0430\u0431\u043b\u043e\u043d\u044b, \u0432\u0438\u0442\u0440\u0438\u043d\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432"
     : "grummm, projects, runtime demos, modules, templates, showcase projects";
@@ -23,8 +21,6 @@ export function ProjectsPage() {
     language,
     keywords: seoKeywords
   });
-
-  useSwipeBack(() => navigate("/"), { enabled: !canHover, edgeOnly: true });
 
   return (
     <section className="projects-page" data-gsap="reveal">

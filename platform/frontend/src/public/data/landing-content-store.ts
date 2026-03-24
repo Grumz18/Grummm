@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { getCurrentLanguage, t } from "../../shared/i18n";
+import { getCurrentAccessToken } from "../../core/auth/auth-session";
 import type { LocalizedText } from "../types";
 
 const STORAGE_KEY = "platform.landing.content.v2";
 const UPDATE_EVENT = "platform:landing:updated";
 const PUBLIC_API = "/api/public/content/landing";
 const PRIVATE_API = "/api/app/content/landing";
-const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 
 export interface LandingContent {
   heroEyebrow: LocalizedText;
   heroTitle: LocalizedText;
   heroDescription: LocalizedText;
   aboutTitle: LocalizedText;
+  aboutSubtitle: LocalizedText;
   aboutText: LocalizedText;
   portfolioTitle: LocalizedText;
   portfolioText: LocalizedText;
@@ -36,6 +37,10 @@ const seedLandingContent: LandingContent = {
     ru: "О платформе",
     en: "About the platform"
   },
+  aboutSubtitle: {
+    ru: "\u0427\u0442\u043e \u044f \u0434\u0435\u043b\u0430\u044e",
+    en: "What I build"
+  },
   aboutText: {
     ru: "Я создаю прикладные web-проекты: от идеи и интерфейса до backend-логики и деплоя. Здесь виден мой подход к архитектуре, безопасности и развитию продукта",
     en: "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my approach to architecture, security, and product thinking"
@@ -57,10 +62,27 @@ function cloneSeed(): LandingContent {
     heroTitle: { ...seedLandingContent.heroTitle },
     heroDescription: { ...seedLandingContent.heroDescription },
     aboutTitle: { ...seedLandingContent.aboutTitle },
+    aboutSubtitle: { ...seedLandingContent.aboutSubtitle },
     aboutText: { ...seedLandingContent.aboutText },
     portfolioTitle: { ...seedLandingContent.portfolioTitle },
     portfolioText: { ...seedLandingContent.portfolioText },
     aboutPhoto: seedLandingContent.aboutPhoto
+  };
+}
+
+function normalizeLandingContent(source?: Partial<LandingContent> | null): LandingContent {
+  const base = cloneSeed();
+  return {
+    ...base,
+    ...source,
+    heroEyebrow: source?.heroEyebrow ?? base.heroEyebrow,
+    heroTitle: source?.heroTitle ?? base.heroTitle,
+    heroDescription: source?.heroDescription ?? base.heroDescription,
+    aboutTitle: source?.aboutTitle ?? base.aboutTitle,
+    aboutSubtitle: source?.aboutSubtitle ?? base.aboutSubtitle,
+    aboutText: source?.aboutText ?? base.aboutText,
+    portfolioTitle: source?.portfolioTitle ?? base.portfolioTitle,
+    portfolioText: source?.portfolioText ?? base.portfolioText
   };
 }
 
@@ -71,7 +93,7 @@ function writeLandingContent(next: LandingContent) {
 
 function getAccessToken(): string | null {
   try {
-    const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    const token = getCurrentAccessToken();
     return token && token.trim().length > 0 ? token : null;
   } catch {
     return null;
@@ -102,10 +124,7 @@ export function readLandingContent(): LandingContent {
       return initial;
     }
 
-    return {
-      ...cloneSeed(),
-      ...parsed
-    };
+    return normalizeLandingContent(parsed);
   } catch {
     const initial = cloneSeed();
     writeLandingContent(initial);
@@ -114,10 +133,7 @@ export function readLandingContent(): LandingContent {
 }
 
 export function saveLandingContent(content: LandingContent): LandingContent {
-  const normalized: LandingContent = {
-    ...cloneSeed(),
-    ...content
-  };
+  const normalized = normalizeLandingContent(content);
   writeLandingContent(normalized);
   return normalized;
 }
@@ -136,11 +152,8 @@ export async function fetchLandingContentFromApi(): Promise<LandingContent | nul
       return null;
     }
 
-    const payload = (await response.json()) as LandingContent;
-    const normalized: LandingContent = {
-      ...cloneSeed(),
-      ...payload
-    };
+    const payload = (await response.json()) as Partial<LandingContent>;
+    const normalized = normalizeLandingContent(payload);
     writeLandingContent(normalized);
     return normalized;
   } catch {
@@ -153,10 +166,7 @@ export async function saveLandingContentToServer(
   content: LandingContent,
   options: LandingMutationOptions = {}
 ): Promise<LandingContent> {
-  const normalized: LandingContent = {
-    ...cloneSeed(),
-    ...content
-  };
+  const normalized = normalizeLandingContent(content);
 
   const token = ensureAccessToken(Boolean(options.serverOnly));
 
@@ -186,11 +196,8 @@ export async function saveLandingContentToServer(
       return normalized;
     }
 
-    const payload = (await response.json()) as LandingContent;
-    const synced: LandingContent = {
-      ...cloneSeed(),
-      ...payload
-    };
+    const payload = (await response.json()) as Partial<LandingContent>;
+    const synced = normalizeLandingContent(payload);
     writeLandingContent(synced);
     return synced;
   } catch {

@@ -83,7 +83,8 @@ public sealed class AdminSecurityService(
         CancellationToken cancellationToken)
     {
         EnsureInitialized();
-        if (!string.Equals(email?.Trim(), _adminOptions.Email, StringComparison.OrdinalIgnoreCase))
+        var normalizedEmail = email?.Trim() ?? string.Empty;
+        if (!string.Equals(normalizedEmail, _adminOptions.Email, StringComparison.OrdinalIgnoreCase))
         {
             return new RequestEmailCodeResult(false, ErrorCode: "invalid_email");
         }
@@ -128,7 +129,7 @@ public sealed class AdminSecurityService(
             };
             using var message = new MailMessage(
                 from: _emailOptions.FromEmail,
-                to: email.Trim(),
+                to: normalizedEmail,
                 subject: subject,
                 body: body);
 

@@ -23,6 +23,10 @@ export function AdminLandingContentPage() {
   const [landingDraft, setLandingDraft] = useState<LandingDraft>(() => readLandingContent());
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState("");
+  const aboutSubtitleRuLabel = language === "ru"
+    ? "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435 (RU): \u043f\u043e\u0434\u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a"
+    : "About (RU): subtitle";
+  const aboutSubtitleEnLabel = "About (EN): subtitle";
 
   async function handleLandingPhoto(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -93,12 +97,22 @@ export function AdminLandingContentPage() {
             <input value={landingDraft.aboutTitle.en} onChange={(e) => setLandingDraft((current) => ({ ...current, aboutTitle: { ...current.aboutTitle, en: e.target.value } }))} />
           </label>
           <label>
+            {aboutSubtitleRuLabel}
+            <input value={landingDraft.aboutSubtitle.ru} onChange={(e) => setLandingDraft((current) => ({ ...current, aboutSubtitle: { ...current.aboutSubtitle, ru: e.target.value } }))} />
+          </label>
+          <label>
+            {aboutSubtitleEnLabel}
+            <input value={landingDraft.aboutSubtitle.en} onChange={(e) => setLandingDraft((current) => ({ ...current, aboutSubtitle: { ...current.aboutSubtitle, en: e.target.value } }))} />
+          </label>
+          <label>
             {t("landingAdmin.ru.aboutText", language)}
             <textarea rows={3} value={landingDraft.aboutText.ru} onChange={(e) => setLandingDraft((current) => ({ ...current, aboutText: { ...current.aboutText, ru: e.target.value } }))} />
+            <small className="admin-muted">{t("landingAdmin.ru.blankLine", language)}</small>
           </label>
           <label>
             {t("landingAdmin.en.aboutText", language)}
             <textarea rows={3} value={landingDraft.aboutText.en} onChange={(e) => setLandingDraft((current) => ({ ...current, aboutText: { ...current.aboutText, en: e.target.value } }))} />
+            <small className="admin-muted">{t("landingAdmin.en.blankLine", language)}</small>
           </label>
           <label>
             {t("landingAdmin.ru.portfolioTitle", language)}

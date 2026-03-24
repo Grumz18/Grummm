@@ -1,7 +1,7 @@
 export type Language = "en" | "ru";
 export type ThemeMode = "light" | "dark";
 export type PortfolioEntryKind = "post" | "project";
-export type PortfolioContentBlockType = "paragraph" | "subheading" | "image";
+export type PortfolioContentBlockType = "paragraph" | "subheading" | "image" | "video";
 export type PortfolioVisibility = "public" | "private" | "demo";
 
 export interface LocalizedText {
@@ -21,6 +21,10 @@ export interface PortfolioContentBlock {
   type: PortfolioContentBlockType;
   content?: LocalizedText;
   imageUrl?: string;
+  videoUrl?: string;
+  posterUrl?: string;
+  pinEnabled?: boolean;
+  scrollSpan?: number;
 }
 
 export interface PortfolioProject {

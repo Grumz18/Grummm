@@ -9,6 +9,10 @@ namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 internal static class ProjectTemplateStorage
 {
     private const string StorageRootPath = "/var/projects";
+    private const long MaxArchiveEntryBytes = 100L * 1024 * 1024;
+    private const long MaxArchiveExpandedBytes = 250L * 1024 * 1024;
+    private const int MaxArchiveEntryCount = 500;
+    private static readonly Regex ProjectIdRegex = new("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled);
     private static readonly Regex RootQuotedStaticPathRegex = new(
         "(?<prefix>[\"'])/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^\"']*)?(?:#[^\"']*)?)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -16,12 +20,33 @@ internal static class ProjectTemplateStorage
         "(?<prefix>url\\(\\s*[\"']?)/(?<path>(?!(?:/|api/|app/|posts/|projects/|#|\\?))[^)\"'\\s?#]+\\.(?:css|js|mjs|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|json|webmanifest|txt|map)(?:\\?[^)\"']*)?(?:#[^)\"']*)?)",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
-    public static string GetProjectRoot(string id) => Path.Combine(StorageRootPath, id);
+    public static bool IsValidProjectId(string? id)
+    {
+        var normalized = id?.Trim();
+        return !string.IsNullOrWhiteSpace(normalized) && ProjectIdRegex.IsMatch(normalized);
+    }
+
+    public static string GetProjectRoot(string id)
+    {
+        var normalizedId = NormalizeProjectId(id);
+        var rootFullPath = Path.GetFullPath(StorageRootPath);
+        var candidate = Path.GetFullPath(Path.Combine(rootFullPath, normalizedId));
+        var expectedPrefix = rootFullPath.EndsWith(Path.DirectorySeparatorChar)
+            ? rootFullPath
+            : $"{rootFullPath}{Path.DirectorySeparatorChar}";
+
+        if (!candidate.StartsWith(expectedPrefix, StringComparison.Ordinal))
+        {
+            throw new ValidationException("Project id produced an invalid storage path.");
+        }
+
+        return candidate;
+    }
     public static string GetFrontendFolder(string id) => Path.Combine(GetProjectRoot(id), "frontend");
     public static string GetBackendFolder(string id) => Path.Combine(GetProjectRoot(id), "backend");
-    public static string GetFrontendPath(string id) => $"/var/projects/{id}/frontend";
+    public static string GetFrontendPath(string id) => $"/var/projects/{NormalizeProjectId(id)}/frontend";
     public static string? GetBackendPath(string id, TemplateType templateType) =>
-        templateType == TemplateType.Static ? null : $"/var/projects/{id}/backend";
+        templateType == TemplateType.Static ? null : $"/var/projects/{NormalizeProjectId(id)}/backend";
 
     public static void ResetProjectFolder(string id)
     {
@@ -87,30 +112,65 @@ internal static class ProjectTemplateStorage
 
     private static async Task ExtractZipArchiveAsync(string baseFolder, IFormFile file, CancellationToken cancellationToken)
     {
-        await using var uploadStream = file.OpenReadStream();
-        await using var buffer = new MemoryStream();
-        await uploadStream.CopyToAsync(buffer, cancellationToken);
-        buffer.Position = 0;
-
-        using var archive = new ZipArchive(buffer, ZipArchiveMode.Read, leaveOpen: false);
-        foreach (var entry in archive.Entries)
+        var tempArchivePath = Path.Combine(Path.GetTempPath(), $"grummm-upload-{Guid.NewGuid():N}.zip");
+        try
         {
-            if (string.IsNullOrEmpty(entry.Name))
+            await using (var uploadStream = file.OpenReadStream())
+            await using (var tempStream = File.Create(tempArchivePath))
             {
-                continue;
+                await uploadStream.CopyToAsync(tempStream, cancellationToken);
             }
 
-            var relativePath = SanitizeRelativePath(entry.FullName);
-            var fullPath = Path.Combine(baseFolder, relativePath);
-            var directory = Path.GetDirectoryName(fullPath);
-            if (!string.IsNullOrWhiteSpace(directory))
+            await using var archiveStream = File.OpenRead(tempArchivePath);
+            using var archive = new ZipArchive(archiveStream, ZipArchiveMode.Read, leaveOpen: false);
+            if (archive.Entries.Count > MaxArchiveEntryCount)
             {
-                Directory.CreateDirectory(directory);
+                throw new ValidationException("Archive contains too many files.");
             }
 
-            await using var destination = File.Create(fullPath);
-            await using var entryStream = entry.Open();
-            await entryStream.CopyToAsync(destination, cancellationToken);
+            long totalExpandedBytes = 0;
+            foreach (var entry in archive.Entries)
+            {
+                if (string.IsNullOrEmpty(entry.Name))
+                {
+                    continue;
+                }
+
+                if (entry.Length > MaxArchiveEntryBytes)
+                {
+                    throw new ValidationException($"Archive entry '{entry.FullName}' exceeds the allowed size.");
+                }
+
+                totalExpandedBytes += entry.Length;
+                if (totalExpandedBytes > MaxArchiveExpandedBytes)
+                {
+                    throw new ValidationException("Archive expands beyond the allowed size.");
+                }
+
+                if (entry.CompressedLength > 0 && entry.Length > 1_000_000 && entry.Length / Math.Max(entry.CompressedLength, 1) > 200)
+                {
+                    throw new ValidationException($"Archive entry '{entry.FullName}' has an unsafe compression ratio.");
+                }
+
+                var relativePath = SanitizeRelativePath(entry.FullName);
+                var fullPath = Path.Combine(baseFolder, relativePath);
+                var directory = Path.GetDirectoryName(fullPath);
+                if (!string.IsNullOrWhiteSpace(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                await using var destination = File.Create(fullPath);
+                await using var entryStream = entry.Open();
+                await entryStream.CopyToAsync(destination, cancellationToken);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempArchivePath))
+            {
+                File.Delete(tempArchivePath);
+            }
         }
     }
 
@@ -202,5 +262,16 @@ internal static class ProjectTemplateStorage
         }
 
         return Path.Combine(segments);
+    }
+
+    private static string NormalizeProjectId(string id)
+    {
+        var normalized = id.Trim();
+        if (!ProjectIdRegex.IsMatch(normalized))
+        {
+            throw new ValidationException("Project id must be a lowercase slug containing only letters, digits, and hyphens.");
+        }
+
+        return normalized;
     }
 }

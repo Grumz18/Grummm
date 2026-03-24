@@ -26,7 +26,8 @@ public enum ProjectPostContentBlockType
 {
     Paragraph = 0,
     Subheading = 1,
-    Image = 2
+    Image = 2,
+    Video = 3
 }
 
 public sealed class LocalizedText
@@ -47,6 +48,10 @@ public sealed class ProjectPostContentBlock
     public ProjectPostContentBlockType Type { get; set; } = ProjectPostContentBlockType.Paragraph;
     public LocalizedText Content { get; set; } = new();
     public string? ImageUrl { get; set; }
+    public string? VideoUrl { get; set; }
+    public string? PosterUrl { get; set; }
+    public bool PinEnabled { get; set; }
+    public int? ScrollSpan { get; set; }
 }
 
 public sealed class ProjectPost

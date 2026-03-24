@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentLanguage, t } from "../../shared/i18n";
+import { getCurrentAccessToken } from "../../core/auth/auth-session";
 import { seedProjects } from "./projects";
 import type {
   LocalizedText,
@@ -16,7 +17,6 @@ const STORAGE_KEY = "platform.projects.posts.v2";
 const UPDATE_EVENT = "platform:projects:updated";
 const PUBLIC_API = "/api/public/projects";
 const PRIVATE_API = "/api/app/projects";
-const ACCESS_TOKEN_KEY = "platform.auth.accessToken";
 const SEED_KIND_BY_ID = new Map(seedProjects.map((project) => [project.id, project.kind]));
 const SEED_VISIBILITY_BY_ID = new Map(seedProjects.map((project) => [project.id, project.visibility]));
 const SEED_PUBLISHED_AT_BY_ID = new Map(
@@ -81,6 +81,10 @@ function normalizeContentBlockType(value: string | undefined): PortfolioContentB
     return "image";
   }
 
+  if (normalized === "video") {
+    return "video";
+  }
+
   return "paragraph";
 }
 
@@ -96,12 +100,22 @@ function normalizeContentBlocks(blocks?: PortfolioContentBlock[] | null): Portfo
         id: typeof block?.id === "string" && block.id.trim().length > 0 ? block.id.trim() : `block-${index + 1}`,
         type,
         content: type === "image" ? undefined : normalizeLocalizedText(block?.content),
-        imageUrl: typeof block?.imageUrl === "string" ? block.imageUrl : undefined
+        imageUrl: typeof block?.imageUrl === "string" ? block.imageUrl : undefined,
+        videoUrl: typeof block?.videoUrl === "string" ? block.videoUrl : undefined,
+        posterUrl: typeof block?.posterUrl === "string" ? block.posterUrl : undefined,
+        pinEnabled: type === "video" ? Boolean(block?.pinEnabled) : undefined,
+        scrollSpan: type === "video" && typeof block?.scrollSpan === "number" && Number.isFinite(block.scrollSpan)
+          ? Math.min(320, Math.max(80, Math.round(block.scrollSpan)))
+          : undefined
       };
     })
     .filter((block) => {
       if (block.type === "image") {
         return Boolean(block.imageUrl);
+      }
+
+      if (block.type === "video") {
+        return Boolean(block.videoUrl);
       }
 
       return Boolean(block.content?.en?.trim() || block.content?.ru?.trim());
@@ -276,7 +290,7 @@ function writeProjects(next: PortfolioProject[]): void {
 
 function getAccessToken(): string | null {
   try {
-    const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+    const token = getCurrentAccessToken();
     return token && token.trim().length > 0 ? token : null;
   } catch {
     return null;

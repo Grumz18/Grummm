@@ -364,6 +364,10 @@ function fromDraft(draft: DraftProject, kind: "post" | "project"): PortfolioProj
       return Boolean(block.imageUrl);
     }
 
+    if (block.type === "video") {
+      return Boolean(block.videoUrl);
+    }
+
     return Boolean(block.content?.en?.trim() || block.content?.ru?.trim());
   });
 

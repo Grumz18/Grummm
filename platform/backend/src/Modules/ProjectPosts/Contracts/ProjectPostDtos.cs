@@ -20,7 +20,11 @@ public sealed record ProjectPostContentBlockDto(
     [property: Required, MaxLength(80)] string Id,
     [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectPostContentBlockType>))] ProjectPostContentBlockType Type,
     LocalizedLongTextDto? Content,
-    [property: MaxLength(5_000_000)] string? ImageUrl);
+    [property: MaxLength(5_000_000)] string? ImageUrl,
+    [property: MaxLength(5_000_000)] string? VideoUrl,
+    [property: MaxLength(5_000_000)] string? PosterUrl,
+    bool PinEnabled,
+    [property: Range(80, 320)] int? ScrollSpan);
 
 public sealed record ProjectPostDto(
     [property: Required, MaxLength(80)] string Id,
@@ -41,7 +45,7 @@ public sealed record ProjectPostDto(
     [property: MaxLength(500)] string? BackendPath);
 
 public sealed record UpsertProjectPostRequest(
-    [property: Required, MaxLength(80)] string Id,
+    [property: Required, MaxLength(80), RegularExpression("^[a-z0-9]+(?:-[a-z0-9]+)*$")] string Id,
     [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectEntryKind>))] ProjectEntryKind Kind,
     [property: JsonConverter(typeof(JsonStringEnumConverter<ProjectVisibility>))] ProjectVisibility Visibility,
     LocalizedTextDto Title,

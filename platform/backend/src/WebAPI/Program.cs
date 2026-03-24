@@ -298,7 +298,7 @@ publicAuth.MapPost("/request-login-email-code", async (
         return Results.BadRequest(new { error = result.ErrorCode ?? "email_code_request_failed" });
     }
 
-    return Results.Ok(new { status = "email_code_sent", debugCode = result.DebugCode });
+    return Results.Ok(new { status = "email_code_sent" });
 }).RequireRateLimiting("auth-email-code");
 
 publicAuth.MapPost("/confirm-session", async (
@@ -398,7 +398,7 @@ privateAuth.MapPost("/request-email-code", async (
         return Results.BadRequest(new { error = result.ErrorCode ?? "email_code_request_failed" });
     }
 
-    return Results.Ok(new { status = "email_code_sent", debugCode = result.DebugCode });
+    return Results.Ok(new { status = "email_code_sent" });
 }).RequireRateLimiting("auth-email-code");
 
 privateAuth.MapPost("/change-password", (HttpContext context, ChangePasswordRequest request, IAdminSecurityService adminSecurityService) =>

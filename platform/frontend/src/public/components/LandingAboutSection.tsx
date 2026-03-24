@@ -3,7 +3,8 @@ import { ParagraphText } from "./ParagraphText";
 interface LandingAboutSectionProps {
   eyebrow: string;
   title: string;
-  intro: string;
+  subtitle: string;
+  text: string;
   portfolioTitle: string;
   portfolioText: string;
   photo?: string;
@@ -14,7 +15,8 @@ interface LandingAboutSectionProps {
 export function LandingAboutSection({
   eyebrow,
   title,
-  intro,
+  subtitle,
+  text,
   portfolioTitle,
   portfolioText,
   photo,
@@ -38,7 +40,11 @@ export function LandingAboutSection({
           <div className="about-section__intro">
             <p className="section-heading__eyebrow">{eyebrow}</p>
             <h2>{title}</h2>
-            <p className="about-section__lead">{intro}</p>
+          </div>
+
+          <div className="about-section__block">
+            <h3>{subtitle}</h3>
+            <ParagraphText text={text} className="about-section__paragraph" />
           </div>
 
           <div className="about-section__story">

@@ -10,7 +10,8 @@ public sealed record LandingContentDto(
     LocalizedTextDto AboutText,
     LocalizedTextDto PortfolioTitle,
     LocalizedTextDto PortfolioText,
-    [property: MaxLength(5_000_000)] string? AboutPhoto);
+    [property: MaxLength(5_000_000)] string? AboutPhoto,
+    LocalizedTextDto? AboutSubtitle = null);
 
 public sealed record UpsertLandingContentRequest(
     LocalizedTextDto HeroEyebrow,
@@ -20,4 +21,5 @@ public sealed record UpsertLandingContentRequest(
     LocalizedTextDto AboutText,
     LocalizedTextDto PortfolioTitle,
     LocalizedTextDto PortfolioText,
-    [property: MaxLength(5_000_000)] string? AboutPhoto);
+    [property: MaxLength(5_000_000)] string? AboutPhoto,
+    LocalizedTextDto? AboutSubtitle = null);

@@ -4,6 +4,11 @@ namespace Platform.Modules.ProjectPosts.Contracts;
 
 public static class ProjectPostMappings
 {
+    private static bool HasContent(ProjectPostContentBlock block)
+    {
+        return !string.IsNullOrWhiteSpace(block.Content.En) || !string.IsNullOrWhiteSpace(block.Content.Ru);
+    }
+
     public static ProjectPostDto ToDto(ProjectPost project)
     {
         return new ProjectPostDto(
@@ -53,8 +58,14 @@ public static class ProjectPostMappings
         return new ProjectPostContentBlockDto(
             Id: block.Id,
             Type: block.Type,
-            Content: block.Type == ProjectPostContentBlockType.Image ? null : new LocalizedLongTextDto(block.Content.En, block.Content.Ru),
-            ImageUrl: block.ImageUrl);
+            Content: block.Type == ProjectPostContentBlockType.Image || !HasContent(block)
+                ? null
+                : new LocalizedLongTextDto(block.Content.En, block.Content.Ru),
+            ImageUrl: block.ImageUrl,
+            VideoUrl: block.VideoUrl,
+            PosterUrl: block.PosterUrl,
+            PinEnabled: block.PinEnabled,
+            ScrollSpan: block.ScrollSpan);
     }
 
     private static ProjectPostContentBlock ToDomain(ProjectPostContentBlockDto block)
@@ -68,7 +79,11 @@ public static class ProjectPostMappings
                 En = block.Content?.En ?? string.Empty,
                 Ru = block.Content?.Ru ?? string.Empty
             },
-            ImageUrl = block.ImageUrl
+            ImageUrl = block.ImageUrl,
+            VideoUrl = block.VideoUrl,
+            PosterUrl = block.PosterUrl,
+            PinEnabled = block.PinEnabled,
+            ScrollSpan = block.ScrollSpan
         };
     }
 }

@@ -1,4 +1,3 @@
-import { HeroActions } from "./HeroActions";
 import { HeroMorphTitle } from "./HeroMorphTitle";
 import type { Language } from "../types";
 
@@ -9,10 +8,6 @@ interface LandingHeroSectionProps {
   highlightsLabel: string;
   highlights: string[];
   language: Language;
-  onOpenProjects: () => void;
-  onOpenAdmin: () => void;
-  openProjectsLabel: string;
-  openAdminLabel: string;
 }
 
 export function LandingHeroSection({
@@ -21,11 +16,7 @@ export function LandingHeroSection({
   description,
   highlightsLabel: _highlightsLabel,
   highlights: _highlights,
-  language,
-  onOpenProjects,
-  onOpenAdmin,
-  openProjectsLabel,
-  openAdminLabel
+  language
 }: LandingHeroSectionProps) {
   return (
     <section className="hero liquid-glass" data-gsap="reveal">
@@ -58,12 +49,6 @@ export function LandingHeroSection({
 
           <div className="hero__details">
             <p className="hero__lead">{description}</p>
-            <HeroActions
-              actions={[
-                { label: openProjectsLabel, onClick: onOpenProjects },
-                { label: openAdminLabel, onClick: onOpenAdmin, variant: "ghost" }
-              ]}
-            />
           </div>
         </div>
       </div>

@@ -9,6 +9,18 @@
   - `develop` -> `staging`
   - `main` -> `production`
 
+## Current release assumptions
+
+- Frontend production build is `vite build && node scripts/prerender-seo.mjs`.
+- Backend Docker publish runs with runtime templates disabled by default:
+  - `/p:EnableRuntimeTemplates=false`
+- Public static demos are exposed by short routes:
+  - `/{project-slug}/viewer/`
+- Public web includes top-level mobile swipe navigation between:
+  - `/`
+  - `/projects`
+  - `/posts`
+
 ## Workflow
 
 - File: `.github/workflows/pipeline.yml`
@@ -53,3 +65,27 @@
   - `POSTGRES_IMAGE`
 
 The workflow exports these variables before `docker compose pull` and `docker compose up -d`.
+
+## Post-deploy smoke
+
+- Build verification:
+  - `npm run build --workspace @platform/frontend`
+  - `dotnet build platform/backend/src/WebAPI/WebAPI.csproj --configuration Release`
+- Public routes:
+  - `/`
+  - `/projects`
+  - `/posts`
+  - `/404`
+- Demo routes:
+  - open a published static demo by `/{project-slug}/viewer/`
+  - confirm assets/styles load correctly inside viewer
+- Public content:
+  - confirm hero renders without CTA buttons
+  - confirm `About` block layout/content renders correctly
+  - if a post contains a `video` block, confirm it renders and scroll behavior remains stable
+- Mobile-only navigation:
+  - on a coarse-pointer device, swipe left/right between `/`, `/projects`, `/posts`
+  - verify vertical scroll is not hijacked
+- Security checks:
+  - login/reauth UI must not display debug email codes
+  - public demo viewer must stay sandboxed

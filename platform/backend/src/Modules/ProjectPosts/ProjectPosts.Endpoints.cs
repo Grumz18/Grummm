@@ -49,6 +49,11 @@ public sealed partial class ProjectPostsModule
 
         publicGroup.MapGet("/{id}", async (string id, IProjectPostRepository repository, CancellationToken cancellationToken) =>
         {
+            if (!ProjectTemplateStorage.IsValidProjectId(id))
+            {
+                return Results.NotFound();
+            }
+
             var item = await repository.GetByIdAsync(id, cancellationToken);
             return item is null || !IsPubliclyVisible(item)
                 ? Results.NotFound()
@@ -62,13 +67,19 @@ public sealed partial class ProjectPostsModule
             IProjectPostRepository repository,
             CancellationToken cancellationToken) =>
         {
-            var item = await repository.GetByIdAsync(id, cancellationToken);
-            if (!CanServePublicDemo(item))
+            if (!ProjectTemplateStorage.IsValidProjectId(id))
             {
                 return Results.NotFound();
             }
 
-            if (!TryResolveProjectViewerFile(item!.FrontendPath!, assetPath, out var fullPath) || fullPath is null)
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            var frontendRoot = ProjectTemplateStorage.GetFrontendFolder(id);
+            if (!CanServePublicDemo(item, frontendRoot))
+            {
+                return Results.NotFound();
+            }
+
+            if (!TryResolveProjectViewerFile(frontendRoot, assetPath, out var fullPath) || fullPath is null)
             {
                 return Results.NotFound();
             }
@@ -82,7 +93,7 @@ public sealed partial class ProjectPostsModule
                 return rewrittenResponse;
             }
 
-            return BuildViewerInternalRedirectResult(id, item.FrontendPath!, fullPath, httpContext);
+            return BuildViewerInternalRedirectResult(id, frontendRoot, fullPath, httpContext);
         });
 
         privateGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
@@ -131,6 +142,7 @@ public sealed partial class ProjectPostsModule
             IProjectTemplateRuntimeFeature runtimeFeature,
             CancellationToken cancellationToken) =>
         {
+            ValidateProjectId(id);
             ValidateDto(request);
             ValidateRuntimeTemplateAvailability(request.Template, request.Kind, runtimeFeature);
             var normalized = Normalize(request) with { Id = id.Trim() };
@@ -151,6 +163,7 @@ public sealed partial class ProjectPostsModule
                     throw new ValidationException("Content-Type must be multipart/form-data.");
                 }
 
+                ValidateProjectId(id);
                 var form = await httpRequest.ReadFormAsync(cancellationToken);
 
                 var request = new UploadWithTemplateRequest(
@@ -182,6 +195,7 @@ public sealed partial class ProjectPostsModule
             IPythonTemplateRuntime pythonRuntime,
             CancellationToken cancellationToken) =>
         {
+            ValidateProjectId(id);
             await pluginRuntime.UnloadForSlugAsync(id, cancellationToken);
             await pythonRuntime.UnloadForSlugAsync(id, cancellationToken);
             var deleted = await repository.DeleteAsync(id, cancellationToken);
@@ -209,14 +223,13 @@ public sealed partial class ProjectPostsModule
         return item.Kind == ProjectEntryKind.Post || item.Visibility != ProjectVisibility.Private;
     }
 
-    private static bool CanServePublicDemo(ProjectPostDto? item)
+    private static bool CanServePublicDemo(ProjectPostDto? item, string frontendRoot)
     {
         return item is not null
             && item.Kind == ProjectEntryKind.Project
             && item.Template == TemplateType.Static
             && IsPublicDemoEnabled(item)
-            && !string.IsNullOrWhiteSpace(item.FrontendPath)
-            && Directory.Exists(item.FrontendPath);
+            && Directory.Exists(frontendRoot);
     }
 
     private static bool IsPublicDemoEnabled(ProjectPostDto item)

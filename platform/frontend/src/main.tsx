@@ -4,6 +4,7 @@ import {
   AUTH_ACCESS_TOKEN_STORAGE_KEY,
   AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY,
   AUTH_SESSION_STORAGE_KEY,
+  clearCurrentAccessToken,
   type AuthSession
 } from "./core/auth/auth-session";
 import { AppRouter } from "./core/routing";
@@ -20,8 +21,9 @@ function getInitialSession(): AuthSession {
 
   try {
     const raw = window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY);
-    const accessToken = window.localStorage.getItem(AUTH_ACCESS_TOKEN_STORAGE_KEY) ?? undefined;
-    const accessTokenExpiresAtUtc = window.localStorage.getItem(AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY) ?? undefined;
+    window.localStorage.removeItem(AUTH_ACCESS_TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+    clearCurrentAccessToken();
     if (!raw) {
       return fallback;
     }
@@ -35,12 +37,10 @@ function getInitialSession(): AuthSession {
       return {
         isAuthenticated: true,
         role: parsed.role,
-        accessToken,
-        accessTokenExpiresAtUtc,
         adminEmail: parsed.adminEmail
       };
     }
-    return { isAuthenticated: true, accessToken, accessTokenExpiresAtUtc, adminEmail: parsed.adminEmail };
+    return { isAuthenticated: true, adminEmail: parsed.adminEmail };
   } catch {
     return fallback;
   }

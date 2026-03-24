@@ -11,7 +11,8 @@ interface AdminPostBlocksEditorProps {
 const BLOCK_OPTIONS: Array<{ type: PortfolioContentBlockType; label: string }> = [
   { type: "paragraph", label: "Paragraph" },
   { type: "subheading", label: "Subheading" },
-  { type: "image", label: "Image" }
+  { type: "image", label: "Image" },
+  { type: "video", label: "Video" }
 ];
 
 function createBlock(type: PortfolioContentBlockType): PortfolioContentBlock {
@@ -19,7 +20,11 @@ function createBlock(type: PortfolioContentBlockType): PortfolioContentBlock {
     id: `${type}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     type,
     content: type === "image" ? undefined : { en: "", ru: "" },
-    imageUrl: type === "image" ? "" : undefined
+    imageUrl: type === "image" ? "" : undefined,
+    videoUrl: type === "video" ? "" : undefined,
+    posterUrl: type === "video" ? "" : undefined,
+    pinEnabled: type === "video" ? true : undefined,
+    scrollSpan: type === "video" ? 160 : undefined
   };
 }
 
@@ -68,7 +73,7 @@ export function AdminPostBlocksEditor({ blocks, disabled, onChange, onCreateImag
       <div className="admin-post-blocks__header">
         <div>
           <strong>Post body</strong>
-          <p className="admin-muted">Build the post from localized blocks. Add paragraphs, subheadings, and images after the summary.</p>
+          <p className="admin-muted">Build the post from localized blocks. Add paragraphs, subheadings, images, and CDN-hosted MP4 scenes after the summary.</p>
         </div>
 
         <div className="admin-post-blocks__actions">
@@ -90,12 +95,14 @@ export function AdminPostBlocksEditor({ blocks, disabled, onChange, onCreateImag
       {blocks.length === 0 ? (
         <div className="admin-post-blocks__empty">
           <strong>No blocks yet</strong>
-          <p className="admin-muted">Use the plus button to add the first paragraph, subheading, or image.</p>
+          <p className="admin-muted">Use the plus button to add the first paragraph, subheading, image, or video scene.</p>
         </div>
       ) : (
         <div className="admin-post-blocks__list">
           {blocks.map((block, index) => {
-            const isText = block.type !== "image";
+            const isImage = block.type === "image";
+            const isVideo = block.type === "video";
+            const isText = !isImage && !isVideo;
             return (
               <article key={block.id} className="admin-post-block">
                 <div className="admin-post-block__toolbar">
@@ -132,13 +139,100 @@ export function AdminPostBlocksEditor({ blocks, disabled, onChange, onCreateImag
                       />
                     </label>
                   </div>
-                ) : (
+                ) : isImage ? (
                   <div className="admin-post-block__image">
                     <label>
                       Image or GIF
                       <input type="file" accept="image/*" onChange={(event) => void handleImageSelect(block.id, event)} />
                     </label>
                     {block.imageUrl ? <img src={block.imageUrl} alt="Post block preview" loading="lazy" /> : <p className="admin-muted">Upload one static image or animated GIF for this block.</p>}
+                  </div>
+                ) : (
+                  <div className="admin-post-block__video">
+                    <div className="admin-post-block__fields">
+                      <label>
+                        MP4 URL
+                        <input
+                          type="url"
+                          placeholder="https://cdn.example.com/post-scene.mp4"
+                          value={block.videoUrl ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            videoUrl: event.target.value
+                          }))}
+                        />
+                      </label>
+                      <label>
+                        Poster URL
+                        <input
+                          type="url"
+                          placeholder="https://cdn.example.com/post-scene-poster.jpg"
+                          value={block.posterUrl ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            posterUrl: event.target.value
+                          }))}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="admin-post-block__video-settings">
+                      <label className="admin-toggle admin-toggle--inline">
+                        <input
+                          type="checkbox"
+                          checked={block.pinEnabled ?? false}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            pinEnabled: event.target.checked,
+                            scrollSpan: event.target.checked ? current.scrollSpan ?? 160 : undefined
+                          }))}
+                        />
+                        <span>Pin and sync playback with scroll on desktop</span>
+                      </label>
+
+                      <label>
+                        Scroll span (vh)
+                        <input
+                          type="number"
+                          min={80}
+                          max={320}
+                          step={10}
+                          value={block.scrollSpan ?? 160}
+                          disabled={disabled || !(block.pinEnabled ?? false)}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            scrollSpan: Math.min(320, Math.max(80, Number(event.target.value) || 160))
+                          }))}
+                        />
+                      </label>
+                    </div>
+
+                    <div className="admin-post-block__fields">
+                      <label>
+                        Caption (EN)
+                        <textarea
+                          rows={3}
+                          value={block.content?.en ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            content: { ...(current.content ?? { en: "", ru: "" }), en: event.target.value }
+                          }))}
+                        />
+                      </label>
+                      <label>
+                        Caption (RU)
+                        <textarea
+                          rows={3}
+                          value={block.content?.ru ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            content: { ...(current.content ?? { en: "", ru: "" }), ru: event.target.value }
+                          }))}
+                        />
+                      </label>
+                    </div>
+
+                    <p className="admin-muted">Use CDN links only. Static MP4 with optional poster keeps the editor lightweight and avoids uploading heavy video files into the platform.</p>
                   </div>
                 )}
               </article>

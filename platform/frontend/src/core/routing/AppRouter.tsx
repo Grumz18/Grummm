@@ -11,6 +11,8 @@ import {
   AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY,
   AUTH_SESSION_STORAGE_KEY,
   AuthSessionProvider,
+  clearCurrentAccessToken,
+  setCurrentAccessToken,
   type AuthSession,
   type AuthSessionContextValue,
   type SignInPayload
@@ -22,7 +24,7 @@ import { AdminOverviewPage } from "../pages/AdminOverviewPage";
 import { AdminSecurityPage } from "../pages/AdminSecurityPage";
 import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
 import { PrivateAppLayout, PublicLayout } from "../layouts";
-import { confirmAdminSession, requestLoginEmailCode } from "../auth/auth-api";
+import { confirmAdminSession, refreshAdminAccessToken, requestLoginEmailCode } from "../auth/auth-api";
 import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { t } from "../../shared/i18n";
@@ -161,6 +163,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
     }
   })();
   const [authSession, setAuthSession] = useState<AuthSession>(session);
+  const [authBootstrapping, setAuthBootstrapping] = useState<boolean>(session.isAuthenticated && !session.accessToken);
   const [reauthOpen, setReauthOpen] = useState(false);
   const [reauthEmail, setReauthEmail] = useState(session.adminEmail ?? "");
   const [reauthCode, setReauthCode] = useState("");
@@ -168,6 +171,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
   const [reauthHint, setReauthHint] = useState("");
   const [reauthBusy, setReauthBusy] = useState(false);
   const [reauthSendingCode, setReauthSendingCode] = useState(false);
+  const shouldDelayRoutes = authBootstrapping && typeof window !== "undefined" && window.location.pathname.startsWith("/app");
 
   function storeSession(next: AuthSession): void {
     if (!next.isAuthenticated) {
@@ -175,6 +179,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
         window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
         window.localStorage.removeItem(AUTH_ACCESS_TOKEN_STORAGE_KEY);
         window.localStorage.removeItem(AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+        clearCurrentAccessToken();
       } catch {
         return;
       }
@@ -186,12 +191,9 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
         AUTH_SESSION_STORAGE_KEY,
         JSON.stringify({ isAuthenticated: true, role: next.role, adminEmail: next.adminEmail })
       );
-      if (next.accessToken) {
-        window.localStorage.setItem(AUTH_ACCESS_TOKEN_STORAGE_KEY, next.accessToken);
-      }
-      if (next.accessTokenExpiresAtUtc) {
-        window.localStorage.setItem(AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY, next.accessTokenExpiresAtUtc);
-      }
+      window.localStorage.removeItem(AUTH_ACCESS_TOKEN_STORAGE_KEY);
+      window.localStorage.removeItem(AUTH_ACCESS_TOKEN_EXPIRES_AT_STORAGE_KEY);
+      setCurrentAccessToken(next.accessToken, next.accessTokenExpiresAtUtc);
     } catch {
       return;
     }
@@ -208,14 +210,60 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
 
   function signOutWithCleanup(): void {
     closeReauthDialog();
+    setAuthBootstrapping(false);
     const next: AuthSession = { isAuthenticated: false };
     setAuthSession(next);
     storeSession(next);
   }
 
   useEffect(() => {
+    if (!session.isAuthenticated || session.accessToken) {
+      setAuthBootstrapping(false);
+      setCurrentAccessToken(session.accessToken, session.accessTokenExpiresAtUtc);
+      return;
+    }
+
+    let active = true;
+    setAuthBootstrapping(true);
+    void refreshAdminAccessToken()
+      .then((result) => {
+        if (!active) {
+          return;
+        }
+        const next: AuthSession = {
+          isAuthenticated: true,
+          role: session.role ?? "Admin",
+          accessToken: result.accessToken,
+          accessTokenExpiresAtUtc: result.accessTokenExpiresAtUtc,
+          adminEmail: session.adminEmail
+        };
+        setAuthSession(next);
+        storeSession(next);
+      })
+      .catch(() => {
+        if (!active) {
+          return;
+        }
+        signOutWithCleanup();
+      })
+      .finally(() => {
+        if (active) {
+          setAuthBootstrapping(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session]);
+
+  useEffect(() => {
     if (!authSession.isAuthenticated) {
       closeReauthDialog();
+      return;
+    }
+
+    if (authBootstrapping) {
       return;
     }
 
@@ -244,7 +292,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
     return () => {
       window.clearTimeout(timer);
     };
-  }, [authSession.isAuthenticated, authSession.accessTokenExpiresAtUtc, authSession.adminEmail]);
+  }, [authSession.isAuthenticated, authSession.accessTokenExpiresAtUtc, authSession.adminEmail, authBootstrapping]);
 
   async function handleReauthRequestCode() {
     if (!reauthEmail.trim()) {
@@ -256,8 +304,8 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
     setReauthError("");
     setReauthHint("");
     try {
-      const debugCode = await requestLoginEmailCode(reauthEmail.trim());
-      setReauthHint(debugCode ? t("reauth.hint.debug", language, { code: debugCode }) : t("reauth.hint.sent", language));
+      await requestLoginEmailCode(reauthEmail.trim());
+      setReauthHint(t("reauth.hint.sent", language));
     } catch (error) {
       setReauthError(error instanceof Error ? error.message : t("reauth.error.sendCode", language));
     } finally {
@@ -302,6 +350,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
         accessTokenExpiresAtUtc: payload.accessTokenExpiresAtUtc,
         adminEmail: payload.adminEmail
       };
+      setAuthBootstrapping(false);
       setAuthSession(next);
       storeSession(next);
     },
@@ -315,7 +364,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
       <PreferencesProvider>
         <BrowserRouter>
           <PublicAnalyticsTracker />
-          <AppRoutes />
+          {shouldDelayRoutes ? null : <AppRoutes />}
           {reauthOpen && authSession.isAuthenticated ? (
             <div className="auth-reauth-overlay" role="dialog" aria-modal="true" aria-label={t("reauth.dialogAria", language)}>
               <section className="auth-reauth-modal">

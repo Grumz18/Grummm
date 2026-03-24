@@ -1,4 +1,3 @@
-﻿import { useNavigate } from "react-router-dom";
 import { LandingAboutSection } from "../components/LandingAboutSection";
 import { LandingHeroSection } from "../components/LandingHeroSection";
 import { PortfolioSection } from "../components/PortfolioSection";
@@ -15,17 +14,16 @@ function fallback(value: string | undefined, next: string): string {
 const HERO_HIGHLIGHTS = ["Modular Monolith", "Plugin Runtime", "Admin Workspace"];
 
 export function LandingPage() {
-  const navigate = useNavigate();
   const { theme, language } = usePreferences();
   const featuredPosts = useShowcasePosts().slice(0, 3);
   const featuredProjects = useRuntimeProjects().slice(0, 3);
   const landingContent = useLandingContent();
 
-
   const heroEyebrow = fallback(landingContent.heroEyebrow[language], t("landing.hero.fallbackEyebrow", language));
   const heroTitle = fallback(landingContent.heroTitle[language], t("landing.hero.fallbackTitle", language));
   const heroDescription = fallback(landingContent.heroDescription[language], t("landing.hero.fallbackDescription", language));
   const aboutTitle = fallback(landingContent.aboutTitle[language], t("landing.about.fallbackTitle", language));
+  const aboutSubtitle = fallback(landingContent.aboutSubtitle[language], t("landing.about.fallbackSubtitle", language));
   const aboutText = fallback(landingContent.aboutText[language], t("landing.about.fallbackText", language));
   const portfolioTitle = fallback(landingContent.portfolioTitle[language], t("landing.about.fallbackPortfolioTitle", language));
   const portfolioText = fallback(landingContent.portfolioText[language], t("landing.about.fallbackPortfolioText", language));
@@ -57,10 +55,6 @@ export function LandingPage() {
         highlightsLabel={t("landing.hero.highlights", language)}
         highlights={HERO_HIGHLIGHTS}
         language={language}
-        onOpenProjects={() => navigate("/projects")}
-        onOpenAdmin={() => navigate("/login")}
-        openProjectsLabel={t("landing.hero.openProjects", language)}
-        openAdminLabel={t("landing.hero.openAdmin", language)}
       />
 
       <PortfolioSection
@@ -88,7 +82,8 @@ export function LandingPage() {
       <LandingAboutSection
         eyebrow={t("landing.about.eyebrow", language)}
         title={aboutTitle}
-        intro={aboutText}
+        subtitle={aboutSubtitle}
+        text={aboutText}
         portfolioTitle={portfolioTitle}
         portfolioText={portfolioText}
         photo={landingContent.aboutPhoto}

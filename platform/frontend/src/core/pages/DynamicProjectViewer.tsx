@@ -6,12 +6,15 @@ import { t } from "../../shared/i18n";
 import type { PortfolioProject } from "../../public/types";
 
 function renderViewer(project: PortfolioProject) {
+  const isStaticTemplate = project.template === "Static";
   return (
     <iframe
       title={`${project.id}-preview`}
       data-testid="dynamic-project-frame"
       className="dynamic-project-viewer__frame"
       src={`/app/${project.id}/index.html`}
+      sandbox={isStaticTemplate ? "allow-scripts allow-forms allow-downloads" : undefined}
+      referrerPolicy="same-origin"
     />
   );
 }
@@ -76,9 +79,11 @@ export function DynamicProjectViewer() {
           <p className="admin-muted">{t("viewer.template", language, { template: project.template ?? "None" })}</p>
         </div>
         <div className="dynamic-project-viewer__actions">
-          <a className="glass-button glass-button--ghost" href={`/app/${project.id}/index.html`} target="_blank" rel="noreferrer">
-            {t("viewer.openFull", language)}
-          </a>
+          {project.template !== "Static" ? (
+            <a className="glass-button glass-button--ghost" href={`/app/${project.id}/index.html`} target="_blank" rel="noreferrer">
+              {t("viewer.openFull", language)}
+            </a>
+          ) : null}
         </div>
       </header>
       {renderViewer(project)}

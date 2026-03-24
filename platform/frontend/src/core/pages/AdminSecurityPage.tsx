@@ -30,8 +30,8 @@ export function AdminSecurityPage() {
 
     setBusyCode(true);
     try {
-      const debugCode = await requestPasswordEmailCode(email.trim(), auth.accessToken);
-      setStatus(debugCode ? t("security.status.debug", language, { code: debugCode }) : t("security.status.codeSent", language));
+      await requestPasswordEmailCode(email.trim(), auth.accessToken);
+      setStatus(t("security.status.codeSent", language));
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : t("security.error.requestCode", language));
     } finally {
