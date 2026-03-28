@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent 
 import { useDropzone, type DropEvent } from "react-dropzone";
 import { useSearchParams } from "react-router-dom";
 import { AdminPostBlocksEditor } from "../components/AdminPostBlocksEditor";
+import { useNotification } from "../components/Notifications";
 import { formatPublishedMeta } from "../../public/formatPublishedDate";
 import {
   createProjectWithOptions,
@@ -496,6 +497,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
   const heroDarkInputRef = useRef<HTMLInputElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftProject>(() => emptyDraft());
+  const notify = useNotification();
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState("");
 
@@ -629,8 +631,11 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
       if (editingId === projectId) {
         startCreate();
       }
+      notify.success(isPostsMode ? "Post deleted" : "Project deleted");
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Failed to delete item.");
+      const msg = error instanceof Error ? error.message : "Failed to delete item.";
+      setServerError(msg);
+      notify.error(msg);
     } finally {
       setBusy(false);
     }
@@ -665,9 +670,12 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
       } else {
         await createProjectWithOptions(project, upload, { serverOnly: true });
       }
+      notify.success(editingId ? "Saved successfully" : "Created successfully");
       startCreate();
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Failed to synchronize with server.");
+      const msg = error instanceof Error ? error.message : "Failed to synchronize with server.";
+      setServerError(msg);
+      notify.error(msg);
     } finally {
       setBusy(false);
     }

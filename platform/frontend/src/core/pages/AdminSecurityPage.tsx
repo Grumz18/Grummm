@@ -3,12 +3,14 @@ import { usePreferences } from "../../public/preferences";
 import { t } from "../../shared/i18n";
 import { changeAdminPassword, requestPasswordEmailCode } from "../auth/auth-api";
 import { useAuthSession } from "../auth/auth-session";
+import { useNotification } from "../components/Notifications";
 
 const ADMIN_EMAIL = "serbul11@mail.ru";
 
 export function AdminSecurityPage() {
   const auth = useAuthSession();
   const { language } = usePreferences();
+  const notify = useNotification();
   const [email, setEmail] = useState(ADMIN_EMAIL);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,8 +34,11 @@ export function AdminSecurityPage() {
     try {
       await requestPasswordEmailCode(email.trim(), auth.accessToken);
       setStatus(t("security.status.codeSent", language));
+      notify.info(t("security.status.codeSent", language));
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : t("security.error.requestCode", language));
+      const msg = requestError instanceof Error ? requestError.message : t("security.error.requestCode", language);
+      setError(msg);
+      notify.error(msg);
     } finally {
       setBusyCode(false);
     }
@@ -66,8 +71,11 @@ export function AdminSecurityPage() {
       setConfirmPassword("");
       setEmailCode("");
       setStatus(t("security.status.changed", language));
+      notify.success(t("security.status.changed", language));
     } catch (changeError) {
-      setError(changeError instanceof Error ? changeError.message : t("security.error.change", language));
+      const msg = changeError instanceof Error ? changeError.message : t("security.error.change", language);
+      setError(msg);
+      notify.error(msg);
     } finally {
       setBusyChange(false);
     }

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { deleteProject, useProjectPosts } from "../../public/data/project-store";
 import { downloadPlatformBackup } from "../auth/auth-api";
 import { useAuthSession } from "../auth/auth-session";
+import { useNotification } from "../components/Notifications";
 
 interface AnalyticsPostView {
   postId: string;
@@ -128,6 +129,7 @@ async function readServiceState(endpoint: "/health" | "/ready"): Promise<Service
 
 export function AdminOverviewPage() {
   const auth = useAuthSession();
+  const notify = useNotification();
   const navigate = useNavigate();
   const items = useProjectPosts();
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
@@ -242,8 +244,11 @@ export function AdminOverviewPage() {
     setError("");
     try {
       await deleteProject(itemId, { serverOnly: true });
+      notify.success(`"${title}" deleted`);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Failed to delete item.");
+      const msg = deleteError instanceof Error ? deleteError.message : "Failed to delete item.";
+      setError(msg);
+      notify.error(msg);
     }
   }
 
@@ -260,9 +265,12 @@ export function AdminOverviewPage() {
     try {
       const fileName = await downloadPlatformBackup(auth.accessToken);
       setBackupMessage(`Backup downloaded: ${fileName}`);
+      notify.success(`Backup downloaded: ${fileName}`);
       await refreshDashboard(auth.accessToken, false);
     } catch (backupError) {
-      setError(backupError instanceof Error ? backupError.message : "Failed to create backup.");
+      const msg = backupError instanceof Error ? backupError.message : "Failed to create backup.";
+      setError(msg);
+      notify.error(msg);
     } finally {
       setCreatingBackup(false);
     }

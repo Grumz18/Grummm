@@ -24,6 +24,7 @@ import { AdminOverviewPage } from "../pages/AdminOverviewPage";
 import { AdminSecurityPage } from "../pages/AdminSecurityPage";
 import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
 import { PrivateAppLayout, PublicLayout } from "../layouts";
+import { NotificationProvider } from "../components/Notifications";
 import { confirmAdminSession, refreshAdminAccessToken, requestLoginEmailCode } from "../auth/auth-api";
 import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -362,6 +363,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
   return (
     <AuthSessionProvider value={sessionValue}>
       <PreferencesProvider>
+        <NotificationProvider>
         <BrowserRouter>
           <PublicAnalyticsTracker />
           {shouldDelayRoutes ? null : <AppRoutes />}
@@ -409,6 +411,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
             </div>
           ) : null}
         </BrowserRouter>
+        </NotificationProvider>
       </PreferencesProvider>
     </AuthSessionProvider>
   );

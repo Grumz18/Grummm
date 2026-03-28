@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { useDropzone } from "react-dropzone";
 import type { PortfolioContentBlock, PortfolioContentBlockType } from "../../public/types";
 
@@ -17,13 +17,18 @@ interface PostVideoUploadFieldProps {
   onUpdate: (updater: (block: PortfolioContentBlock) => PortfolioContentBlock) => void;
 }
 
-const BLOCK_OPTIONS: Array<{ type: PortfolioContentBlockType; label: string }> = [
-  { type: "paragraph", label: "Paragraph" },
-  { type: "subheading", label: "Subheading" },
-  { type: "callout", label: "Callout" },
-  { type: "numberedList", label: "Numbered list" },
-  { type: "image", label: "Image" },
-  { type: "video", label: "Video" }
+interface BlockInserterProps {
+  disabled: boolean;
+  onInsert: (type: PortfolioContentBlockType) => void;
+}
+
+const BLOCK_OPTIONS: Array<{ type: PortfolioContentBlockType; label: string; icon: string }> = [
+  { type: "paragraph", label: "Paragraph", icon: "¶" },
+  { type: "subheading", label: "Subheading", icon: "H" },
+  { type: "callout", label: "Callout", icon: "❝" },
+  { type: "numberedList", label: "List", icon: "#" },
+  { type: "image", label: "Image", icon: "▣" },
+  { type: "video", label: "Video", icon: "▶" }
 ];
 
 function getBlockLabel(type: PortfolioContentBlockType): string {
@@ -69,6 +74,61 @@ function getTextHelp(type: PortfolioContentBlockType): string | null {
   }
 
   return null;
+}
+
+function BlockInserter({ disabled, onInsert }: BlockInserterProps) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  return (
+    <div className={`block-inserter${open ? " is-open" : ""}`} ref={ref}>
+      <button
+        type="button"
+        className="block-inserter__trigger"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-label="Insert block"
+      >
+        <span className="block-inserter__line" />
+        <span className="block-inserter__plus">+</span>
+        <span className="block-inserter__line" />
+      </button>
+
+      {open ? (
+        <div className="block-inserter__picker" role="listbox" aria-label="Choose block type">
+          {BLOCK_OPTIONS.map((option) => (
+            <button
+              key={option.type}
+              type="button"
+              className="block-inserter__option"
+              onClick={() => {
+                onInsert(option.type);
+                setOpen(false);
+              }}
+              disabled={disabled}
+              title={option.label}
+            >
+              <span className="block-inserter__icon">{option.icon}</span>
+              <span className="block-inserter__label">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function PostVideoUploadField({ block, disabled, onUploadVideoFile, onUpdate }: PostVideoUploadFieldProps) {
@@ -198,11 +258,10 @@ export function AdminPostBlocksEditor({
   onCreateImageDataUrl,
   onUploadVideoFile
 }: AdminPostBlocksEditorProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  function appendBlock(type: PortfolioContentBlockType) {
-    onChange([...blocks, createBlock(type)]);
-    setPickerOpen(false);
+  function insertBlockAt(index: number, type: PortfolioContentBlockType) {
+    const next = [...blocks];
+    next.splice(index, 0, createBlock(type));
+    onChange(next);
   }
 
   function updateBlock(blockId: string, updater: (block: PortfolioContentBlock) => PortfolioContentBlock) {
@@ -242,32 +301,19 @@ export function AdminPostBlocksEditor({
       <div className="admin-post-blocks__header">
         <div>
           <strong>Post body</strong>
-          <p className="admin-muted">Build the post from localized blocks. Add paragraphs, subheadings, callouts, numbered lists, images, and drag-and-drop MP4 scenes after the summary.</p>
-        </div>
-
-        <div className="admin-post-blocks__actions">
-          {pickerOpen ? (
-            <div className="admin-post-blocks__picker" role="listbox" aria-label="Add post block">
-              {BLOCK_OPTIONS.map((option) => (
-                <button key={option.type} type="button" onClick={() => appendBlock(option.type)} disabled={disabled}>
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <button type="button" className="admin-post-blocks__add" onClick={() => setPickerOpen((value) => !value)} disabled={disabled}>
-            +
-          </button>
+          <p className="admin-muted">Build the post from localized blocks. Click <strong>+</strong> between blocks to insert a paragraph, subheading, callout, numbered list, image, or video scene.</p>
         </div>
       </div>
 
       {blocks.length === 0 ? (
         <div className="admin-post-blocks__empty">
-          <strong>No blocks yet</strong>
-          <p className="admin-muted">Use the plus button to add the first paragraph, subheading, callout, numbered list, image, or video scene.</p>
+          <BlockInserter disabled={disabled} onInsert={(type) => insertBlockAt(0, type)} />
+          <p className="admin-muted">Use the plus button above to add the first block.</p>
         </div>
       ) : (
         <div className="admin-post-blocks__list">
+          <BlockInserter disabled={disabled} onInsert={(type) => insertBlockAt(0, type)} />
+
           {blocks.map((block, index) => {
             const isImage = block.type === "image";
             const isVideo = block.type === "video";
@@ -275,61 +321,65 @@ export function AdminPostBlocksEditor({
             const textHelp = getTextHelp(block.type);
 
             return (
-              <article key={block.id} className="admin-post-block">
-                <div className="admin-post-block__toolbar">
-                  <span className="admin-status-badge admin-status-badge--neutral">{getBlockLabel(block.type)}</span>
-                  <div className="admin-post-block__toolbar-actions">
-                    <button type="button" onClick={() => moveBlock(block.id, -1)} disabled={disabled || index === 0}>Up</button>
-                    <button type="button" onClick={() => moveBlock(block.id, 1)} disabled={disabled || index === blocks.length - 1}>Down</button>
-                    <button type="button" onClick={() => onChange(blocks.filter((item) => item.id !== block.id))} disabled={disabled}>Remove</button>
+              <div key={block.id} className="admin-post-block__wrap">
+                <article className="admin-post-block">
+                  <div className="admin-post-block__toolbar">
+                    <span className="admin-status-badge admin-status-badge--neutral">{getBlockLabel(block.type)}</span>
+                    <div className="admin-post-block__toolbar-actions">
+                      <button type="button" onClick={() => moveBlock(block.id, -1)} disabled={disabled || index === 0}>Up</button>
+                      <button type="button" onClick={() => moveBlock(block.id, 1)} disabled={disabled || index === blocks.length - 1}>Down</button>
+                      <button type="button" onClick={() => onChange(blocks.filter((item) => item.id !== block.id))} disabled={disabled}>Remove</button>
+                    </div>
                   </div>
-                </div>
 
-                {isText ? (
-                  <div className="admin-post-block__fields">
-                    <label>
-                      Content (EN)
-                      <textarea
-                        rows={getTextRows(block.type)}
-                        placeholder={block.type === "numberedList" ? "1st item\n2nd item\n3rd item" : undefined}
-                        value={block.content?.en ?? ""}
-                        onChange={(event) => updateBlock(block.id, (current) => ({
-                          ...current,
-                          content: { ...(current.content ?? { en: "", ru: "" }), en: event.target.value }
-                        }))}
-                      />
-                    </label>
-                    <label>
-                      Content (RU)
-                      <textarea
-                        rows={getTextRows(block.type)}
-                        placeholder={block.type === "numberedList" ? "Первый пункт\nВторой пункт\nТретий пункт" : undefined}
-                        value={block.content?.ru ?? ""}
-                        onChange={(event) => updateBlock(block.id, (current) => ({
-                          ...current,
-                          content: { ...(current.content ?? { en: "", ru: "" }), ru: event.target.value }
-                        }))}
-                      />
-                    </label>
-                    {textHelp ? <p className="admin-muted admin-post-block__hint">{textHelp}</p> : null}
-                  </div>
-                ) : isImage ? (
-                  <div className="admin-post-block__image">
-                    <label>
-                      Image or GIF
-                      <input type="file" accept="image/*" onChange={(event) => void handleImageSelect(block.id, event)} />
-                    </label>
-                    {block.imageUrl ? <img src={block.imageUrl} alt="Post block preview" loading="lazy" /> : <p className="admin-muted">Upload one static image or animated GIF for this block.</p>}
-                  </div>
-                ) : (
-                  <PostVideoUploadField
-                    block={block}
-                    disabled={disabled}
-                    onUploadVideoFile={onUploadVideoFile}
-                    onUpdate={(updater) => updateBlock(block.id, updater)}
-                  />
-                )}
-              </article>
+                  {isText ? (
+                    <div className="admin-post-block__fields">
+                      <label>
+                        Content (EN)
+                        <textarea
+                          rows={getTextRows(block.type)}
+                          placeholder={block.type === "numberedList" ? "1st item\n2nd item\n3rd item" : undefined}
+                          value={block.content?.en ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            content: { ...(current.content ?? { en: "", ru: "" }), en: event.target.value }
+                          }))}
+                        />
+                      </label>
+                      <label>
+                        Content (RU)
+                        <textarea
+                          rows={getTextRows(block.type)}
+                          placeholder={block.type === "numberedList" ? "Первый пункт\nВторой пункт\nТретий пункт" : undefined}
+                          value={block.content?.ru ?? ""}
+                          onChange={(event) => updateBlock(block.id, (current) => ({
+                            ...current,
+                            content: { ...(current.content ?? { en: "", ru: "" }), ru: event.target.value }
+                          }))}
+                        />
+                      </label>
+                      {textHelp ? <p className="admin-muted admin-post-block__hint">{textHelp}</p> : null}
+                    </div>
+                  ) : isImage ? (
+                    <div className="admin-post-block__image">
+                      <label>
+                        Image or GIF
+                        <input type="file" accept="image/*" onChange={(event) => void handleImageSelect(block.id, event)} />
+                      </label>
+                      {block.imageUrl ? <img src={block.imageUrl} alt="Post block preview" loading="lazy" /> : <p className="admin-muted">Upload one static image or animated GIF for this block.</p>}
+                    </div>
+                  ) : (
+                    <PostVideoUploadField
+                      block={block}
+                      disabled={disabled}
+                      onUploadVideoFile={onUploadVideoFile}
+                      onUpdate={(updater) => updateBlock(block.id, updater)}
+                    />
+                  )}
+                </article>
+
+                <BlockInserter disabled={disabled} onInsert={(type) => insertBlockAt(index + 1, type)} />
+              </div>
             );
           })}
         </div>

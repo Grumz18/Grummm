@@ -1,6 +1,7 @@
 ﻿import { useState, type ChangeEvent, type FormEvent } from "react";
 import { t } from "../../shared/i18n";
 import { usePreferences } from "../../public/preferences";
+import { useNotification } from "../components/Notifications";
 import {
   readLandingContent,
   saveLandingContentToServer,
@@ -20,6 +21,7 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function AdminLandingContentPage() {
   const { language } = usePreferences();
+  const notify = useNotification();
   const [landingDraft, setLandingDraft] = useState<LandingDraft>(() => readLandingContent());
   const [busy, setBusy] = useState(false);
   const [serverError, setServerError] = useState("");
@@ -49,8 +51,11 @@ export function AdminLandingContentPage() {
     try {
       const saved = await saveLandingContentToServer(landingDraft, { serverOnly: true });
       setLandingDraft(saved);
+      notify.success("Landing content saved");
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : t("landingAdmin.error.sync", language));
+      const msg = error instanceof Error ? error.message : t("landingAdmin.error.sync", language);
+      setServerError(msg);
+      notify.error(msg);
     } finally {
       setBusy(false);
     }

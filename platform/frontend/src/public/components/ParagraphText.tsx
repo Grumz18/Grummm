@@ -5,6 +5,10 @@ interface ParagraphTextProps {
   className?: string;
 }
 
+function addNbsp(text: string): string {
+  return text.replace(/ ([а-яёА-ЯЁa-zA-Z]) /g, "\u00A0$1\u00A0");
+}
+
 function toParagraphs(text: string): string[] {
   return text
     .replace(/\r\n/g, "\n")
@@ -26,7 +30,7 @@ export function ParagraphText({ text, className }: ParagraphTextProps) {
         <p key={paragraphIdx} className={className}>
           {paragraph.split("\n").map((line, lineIdx) => (
             <Fragment key={lineIdx}>
-              {line}
+              {addNbsp(line)}
               {lineIdx < paragraph.split("\n").length - 1 ? <br /> : null}
             </Fragment>
           ))}
