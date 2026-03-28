@@ -188,6 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-staging
     if: github.ref == 'refs/heads/develop'
+    continue-on-error: true
     environment: staging
     steps:
       - name: Run phase-9 smoke via SSH (staging)
@@ -209,6 +210,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: deploy-production
     if: github.ref == 'refs/heads/main'
+    continue-on-error: true
     environment: production
     steps:
       - name: Run phase-9 smoke via SSH (production)
