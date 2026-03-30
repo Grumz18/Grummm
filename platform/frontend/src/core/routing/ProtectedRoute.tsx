@@ -11,6 +11,10 @@ export function ProtectedRoute({ children, adminOnly = false }: ProtectedRoutePr
   const session = useAuthSession();
   const location = useLocation();
 
+  if (session.bootstrapping) {
+    return null;
+  }
+
   if (!session.isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }

@@ -100,19 +100,22 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 });
+var isDevelopment = builder.Environment.IsDevelopment();
+var cookieSecurePolicy = isDevelopment ? CookieSecurePolicy.SameAsRequest : CookieSecurePolicy.Always;
+var csrfCookieName = isDevelopment ? "platform-csrf" : "__Host-platform-csrf";
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
-    options.Cookie.Name = "__Host-platform-csrf";
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.Name = csrfCookieName;
+    options.Cookie.SameSite = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict;
     options.Cookie.HttpOnly = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = cookieSecurePolicy;
 });
 builder.Services.Configure<CookiePolicyOptions>(options =>
 {
-    options.MinimumSameSitePolicy = SameSiteMode.Strict;
+    options.MinimumSameSitePolicy = isDevelopment ? SameSiteMode.Lax : SameSiteMode.Strict;
     options.HttpOnly = Microsoft.AspNetCore.CookiePolicy.HttpOnlyPolicy.Always;
-    options.Secure = CookieSecurePolicy.Always;
+    options.Secure = cookieSecurePolicy;
 });
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection("Jwt"))
@@ -122,7 +125,13 @@ builder.Services.Configure<AuthCookieOptions>(builder.Configuration.GetSection("
 builder.Services.Configure<AdminSecurityOptions>(builder.Configuration.GetSection("AdminSecurity"));
 builder.Services.Configure<EmailVerificationOptions>(builder.Configuration.GetSection("EmailVerification"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
-builder.Services.AddSingleton<IRefreshTokenStore, InMemoryRefreshTokenStore>();
+builder.Services.AddSingleton<IRefreshTokenStore>(sp =>
+{
+    var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("Platform");
+    return string.IsNullOrWhiteSpace(connectionString)
+        ? new InMemoryRefreshTokenStore()
+        : new PostgresRefreshTokenStore(connectionString);
+});
 builder.Services.AddSingleton<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddSingleton<IAdminSecurityService, AdminSecurityService>();
 builder.Services.AddSingleton<IEmailCodeThrottleService, EmailCodeThrottleService>();

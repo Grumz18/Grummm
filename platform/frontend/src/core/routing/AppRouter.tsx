@@ -172,7 +172,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
   const [reauthHint, setReauthHint] = useState("");
   const [reauthBusy, setReauthBusy] = useState(false);
   const [reauthSendingCode, setReauthSendingCode] = useState(false);
-  const shouldDelayRoutes = authBootstrapping && typeof window !== "undefined" && window.location.pathname.startsWith("/app");
+
 
   function storeSession(next: AuthSession): void {
     if (!next.isAuthenticated) {
@@ -343,6 +343,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
 
   const sessionValue = useMemo<AuthSessionContextValue>(() => ({
     ...authSession,
+    bootstrapping: authBootstrapping,
     signIn: (payload: SignInPayload) => {
       const next: AuthSession = {
         isAuthenticated: true,
@@ -358,7 +359,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
     signOut: () => {
       signOutWithCleanup();
     }
-  }), [authSession]);
+  }), [authSession, authBootstrapping]);
 
   return (
     <AuthSessionProvider value={sessionValue}>
@@ -366,7 +367,7 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
         <NotificationProvider>
         <BrowserRouter>
           <PublicAnalyticsTracker />
-          {shouldDelayRoutes ? null : <AppRoutes />}
+          <AppRoutes />
           {reauthOpen && authSession.isAuthenticated ? (
             <div className="auth-reauth-overlay" role="dialog" aria-modal="true" aria-label={t("reauth.dialogAria", language)}>
               <section className="auth-reauth-modal">

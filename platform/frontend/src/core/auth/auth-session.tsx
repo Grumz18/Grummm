@@ -23,12 +23,14 @@ export interface SignInPayload {
 }
 
 export interface AuthSessionContextValue extends AuthSession {
+  bootstrapping: boolean;
   signIn: (payload: SignInPayload) => void;
   signOut: () => void;
 }
 
 const defaultSession: AuthSessionContextValue = {
   isAuthenticated: false,
+  bootstrapping: false,
   accessToken: undefined,
   signIn: () => undefined,
   signOut: () => undefined
