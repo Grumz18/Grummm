@@ -146,26 +146,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync compose files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.STAGING_SSH_HOST }}
-          username: ${{ secrets.STAGING_SSH_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.deploy.yml"
-          target: ${{ vars.STAGING_DEPLOY_PATH || '/opt' }}
-          overwrite: true
+      - name: Encode compose files
+        id: compose
+        run: |
+          echo "base=$(base64 -w0 docker-compose.yml)" >> "$GITHUB_OUTPUT"
+          echo "deploy=$(base64 -w0 docker-compose.deploy.yml)" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via SSH (staging)
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          COMPOSE_BASE: ${{ steps.compose.outputs.base }}
+          COMPOSE_DEPLOY: ${{ steps.compose.outputs.deploy }}
         with:
           host: ${{ secrets.STAGING_SSH_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             DEPLOY_PATH="${{ vars.STAGING_DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt"; fi
             cd "$DEPLOY_PATH"
+            echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
+            echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
@@ -184,26 +186,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Sync compose files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.PRODUCTION_SSH_HOST }}
-          username: ${{ secrets.PRODUCTION_SSH_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          source: "docker-compose.yml,docker-compose.deploy.yml"
-          target: ${{ vars.PRODUCTION_DEPLOY_PATH || '/opt' }}
-          overwrite: true
+      - name: Encode compose files
+        id: compose
+        run: |
+          echo "base=$(base64 -w0 docker-compose.yml)" >> "$GITHUB_OUTPUT"
+          echo "deploy=$(base64 -w0 docker-compose.deploy.yml)" >> "$GITHUB_OUTPUT"
 
       - name: Deploy via SSH (production)
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          COMPOSE_BASE: ${{ steps.compose.outputs.base }}
+          COMPOSE_DEPLOY: ${{ steps.compose.outputs.deploy }}
         with:
           host: ${{ secrets.PRODUCTION_SSH_HOST }}
           username: ${{ secrets.PRODUCTION_SSH_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             DEPLOY_PATH="${{ vars.PRODUCTION_DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt"; fi
             cd "$DEPLOY_PATH"
+            echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
+            echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
