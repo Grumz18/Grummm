@@ -34,7 +34,11 @@ const BLOCK_OPTIONS: Array<{ type: PortfolioContentBlockType; labelKey: string; 
   { type: "image", labelKey: "admin.blocks.image", icon: "▣" },
   { type: "video", labelKey: "admin.blocks.video", icon: "▶" },
   { type: "collage", labelKey: "admin.blocks.collage", icon: "⊞" },
-  { type: "typewriter", labelKey: "admin.blocks.typewriter", icon: "⌨" }
+  { type: "typewriter", labelKey: "admin.blocks.typewriter", icon: "⌨" },
+  { type: "codeSnippet", labelKey: "admin.blocks.codeSnippet", icon: "</>" },
+  { type: "infoBox", labelKey: "admin.blocks.infoBox", icon: "ℹ" },
+  { type: "exercise", labelKey: "admin.blocks.exercise", icon: "🎯" },
+  { type: "quiz", labelKey: "admin.blocks.quiz", icon: "?" }
 ];
 
 function getBlockLabel(type: PortfolioContentBlockType, language: Language): string {
@@ -53,7 +57,13 @@ function createBlock(type: PortfolioContentBlockType): PortfolioContentBlock {
     videoUrl: type === "video" ? "" : undefined,
     posterUrl: undefined,
     pinEnabled: undefined,
-    scrollSpan: type === "typewriter" ? 80 : undefined
+    scrollSpan: type === "typewriter" ? 80 : undefined,
+    codeLanguage: type === "codeSnippet" ? "javascript" : undefined,
+    infoBoxVariant: type === "infoBox" ? "tip" : undefined,
+    hints: type === "exercise" ? [] : undefined,
+    quizOptions: type === "quiz" ? [{ en: "", ru: "" }, { en: "", ru: "" }] : undefined,
+    quizCorrectIndex: type === "quiz" ? 0 : undefined,
+    quizExplanation: type === "quiz" ? { en: "", ru: "" } : undefined
   };
 }
 
@@ -62,6 +72,10 @@ function getTextRows(type: PortfolioContentBlockType): number {
   if (type === "callout") return 4;
   if (type === "numberedList") return 6;
   if (type === "typewriter") return 4;
+  if (type === "codeSnippet") return 10;
+  if (type === "infoBox") return 4;
+  if (type === "exercise") return 5;
+  if (type === "quiz") return 3;
   return 5;
 }
 
@@ -69,8 +83,25 @@ function getTextHelp(type: PortfolioContentBlockType, language: Language): strin
   if (type === "numberedList") return t("admin.blocks.listHelp", language);
   if (type === "callout") return t("admin.blocks.calloutHelp", language);
   if (type === "typewriter") return t("admin.blocks.typewriterHelp", language);
+  if (type === "codeSnippet") return t("admin.blocks.codeSnippetHelp", language);
+  if (type === "quiz") return t("admin.blocks.quizHelp", language);
   return null;
 }
+
+const CODE_LANGUAGES = [
+  { value: "javascript", label: "JavaScript" },
+  { value: "python", label: "Python" },
+  { value: "csharp", label: "C#" },
+  { value: "html", label: "HTML" },
+  { value: "css", label: "CSS" }
+];
+
+const INFO_BOX_VARIANTS = [
+  { value: "tip", labelKey: "admin.blocks.infoBoxTip" },
+  { value: "warning", labelKey: "admin.blocks.infoBoxWarning" },
+  { value: "important", labelKey: "admin.blocks.infoBoxImportant" },
+  { value: "note", labelKey: "admin.blocks.infoBoxNote" }
+] as const;
 
 function BlockInserter({ disabled, language, onInsert }: BlockInserterProps) {
   const [open, setOpen] = useState(false);
@@ -376,30 +407,66 @@ export function AdminPostBlocksEditor({
 
                   {isText ? (
                     <div className="admin-post-block__fields">
+                      {block.type === "codeSnippet" ? (
+                        <label>
+                          {t("admin.blocks.codeLanguageLabel", language)}
+                          <select
+                            value={block.codeLanguage ?? "javascript"}
+                            onChange={(event) => updateBlock(block.id, (current) => ({
+                              ...current,
+                              codeLanguage: event.target.value
+                            }))}
+                          >
+                            {CODE_LANGUAGES.map((lang) => (
+                              <option key={lang.value} value={lang.value}>{lang.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                      {block.type === "infoBox" ? (
+                        <label>
+                          {t("admin.blocks.infoBoxVariantLabel", language)}
+                          <select
+                            value={block.infoBoxVariant ?? "tip"}
+                            onChange={(event) => updateBlock(block.id, (current) => ({
+                              ...current,
+                              infoBoxVariant: event.target.value as "tip" | "warning" | "important" | "note"
+                            }))}
+                          >
+                            {INFO_BOX_VARIANTS.map((v) => (
+                              <option key={v.value} value={v.value}>{t(v.labelKey, language)}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
                       <label>
-                        {t("admin.blocks.contentEn", language)}
+                        {block.type === "codeSnippet" ? t("admin.blocks.codeContentEn", language) : t("admin.blocks.contentEn", language)}
                         <textarea
                           rows={getTextRows(block.type)}
-                          placeholder={block.type === "numberedList" ? "1st item\n2nd item\n3rd item" : undefined}
+                          placeholder={block.type === "numberedList" ? "1st item\n2nd item\n3rd item" : block.type === "codeSnippet" ? 'console.log("Hello!");' : undefined}
                           value={block.content?.en ?? ""}
+                          className={block.type === "codeSnippet" ? "admin-post-block__code-textarea" : undefined}
+                          spellCheck={block.type === "codeSnippet" ? false : undefined}
                           onChange={(event) => updateBlock(block.id, (current) => ({
                             ...current,
                             content: { ...(current.content ?? { en: "", ru: "" }), en: event.target.value }
                           }))}
                         />
                       </label>
-                      <label>
-                        {t("admin.blocks.contentRu", language)}
-                        <textarea
-                          rows={getTextRows(block.type)}
-                          placeholder={block.type === "numberedList" ? "Первый пункт\nВторой пункт\nТретий пункт" : undefined}
-                          value={block.content?.ru ?? ""}
-                          onChange={(event) => updateBlock(block.id, (current) => ({
-                            ...current,
-                            content: { ...(current.content ?? { en: "", ru: "" }), ru: event.target.value }
-                          }))}
-                        />
-                      </label>
+                      {block.type !== "codeSnippet" ? (
+                        <label>
+                          {t("admin.blocks.contentRu", language)}
+                          <textarea
+                            rows={getTextRows(block.type)}
+                            placeholder={block.type === "numberedList" ? "Первый пункт\nВторой пункт\nТретий пункт" : undefined}
+                            value={block.content?.ru ?? ""}
+                            onChange={(event) => updateBlock(block.id, (current) => ({
+                              ...current,
+                              content: { ...(current.content ?? { en: "", ru: "" }), ru: event.target.value }
+                            }))}
+                          />
+                        </label>
+                      ) : null}
                       {block.type === "typewriter" ? (
                         <label>
                           {t("admin.blocks.typewriterSpeed", language)}
@@ -415,6 +482,131 @@ export function AdminPostBlocksEditor({
                             }))}
                           />
                         </label>
+                      ) : null}
+                      {block.type === "exercise" ? (
+                        <div className="admin-post-block__hints">
+                          <strong>{t("admin.blocks.exerciseHints", language)}</strong>
+                          {(block.hints ?? []).map((hint, hintIndex) => (
+                            <div key={hintIndex} className="admin-post-block__hint-row">
+                              <span className="admin-muted">{t("blocks.exercise.hint", language)} {hintIndex + 1}</span>
+                              <input
+                                type="text"
+                                placeholder="English"
+                                value={hint.en}
+                                onChange={(event) => updateBlock(block.id, (current) => {
+                                  const hints = [...(current.hints ?? [])];
+                                  hints[hintIndex] = { ...hints[hintIndex]!, en: event.target.value };
+                                  return { ...current, hints };
+                                })}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Русский"
+                                value={hint.ru}
+                                onChange={(event) => updateBlock(block.id, (current) => {
+                                  const hints = [...(current.hints ?? [])];
+                                  hints[hintIndex] = { ...hints[hintIndex]!, ru: event.target.value };
+                                  return { ...current, hints };
+                                })}
+                              />
+                              <button type="button" onClick={() => updateBlock(block.id, (current) => ({
+                                ...current,
+                                hints: (current.hints ?? []).filter((_, i) => i !== hintIndex)
+                              }))} disabled={disabled}>&times;</button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="admin-post-block__add-btn"
+                            onClick={() => updateBlock(block.id, (current) => ({
+                              ...current,
+                              hints: [...(current.hints ?? []), { en: "", ru: "" }]
+                            }))}
+                            disabled={disabled}
+                          >
+                            + {t("admin.blocks.exerciseAddHint", language)}
+                          </button>
+                        </div>
+                      ) : null}
+                      {block.type === "quiz" ? (
+                        <div className="admin-post-block__quiz">
+                          <strong>{t("admin.blocks.quizOptions", language)}</strong>
+                          {(block.quizOptions ?? []).map((option, optIndex) => (
+                            <div key={optIndex} className="admin-post-block__quiz-option">
+                              <label className="admin-post-block__quiz-correct">
+                                <input
+                                  type="radio"
+                                  name={`quiz-correct-${block.id}`}
+                                  checked={block.quizCorrectIndex === optIndex}
+                                  onChange={() => updateBlock(block.id, (current) => ({
+                                    ...current,
+                                    quizCorrectIndex: optIndex
+                                  }))}
+                                />
+                                {String.fromCharCode(65 + optIndex)}
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="English"
+                                value={option.en}
+                                onChange={(event) => updateBlock(block.id, (current) => {
+                                  const opts = [...(current.quizOptions ?? [])];
+                                  opts[optIndex] = { ...opts[optIndex]!, en: event.target.value };
+                                  return { ...current, quizOptions: opts };
+                                })}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Русский"
+                                value={option.ru}
+                                onChange={(event) => updateBlock(block.id, (current) => {
+                                  const opts = [...(current.quizOptions ?? [])];
+                                  opts[optIndex] = { ...opts[optIndex]!, ru: event.target.value };
+                                  return { ...current, quizOptions: opts };
+                                })}
+                              />
+                              <button type="button" onClick={() => updateBlock(block.id, (current) => {
+                                const opts = (current.quizOptions ?? []).filter((_, i) => i !== optIndex);
+                                const correctIdx = (current.quizCorrectIndex ?? 0) >= optIndex
+                                  ? Math.max(0, (current.quizCorrectIndex ?? 0) - 1)
+                                  : current.quizCorrectIndex ?? 0;
+                                return { ...current, quizOptions: opts, quizCorrectIndex: correctIdx };
+                              })} disabled={disabled || (block.quizOptions ?? []).length <= 2}>&times;</button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            className="admin-post-block__add-btn"
+                            onClick={() => updateBlock(block.id, (current) => ({
+                              ...current,
+                              quizOptions: [...(current.quizOptions ?? []), { en: "", ru: "" }]
+                            }))}
+                            disabled={disabled || (block.quizOptions ?? []).length >= 6}
+                          >
+                            + {t("admin.blocks.quizAddOption", language)}
+                          </button>
+                          <div className="admin-post-block__quiz-explanation">
+                            <strong>{t("admin.blocks.quizExplanation", language)}</strong>
+                            <input
+                              type="text"
+                              placeholder="English explanation"
+                              value={block.quizExplanation?.en ?? ""}
+                              onChange={(event) => updateBlock(block.id, (current) => ({
+                                ...current,
+                                quizExplanation: { ...(current.quizExplanation ?? { en: "", ru: "" }), en: event.target.value }
+                              }))}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Русское пояснение"
+                              value={block.quizExplanation?.ru ?? ""}
+                              onChange={(event) => updateBlock(block.id, (current) => ({
+                                ...current,
+                                quizExplanation: { ...(current.quizExplanation ?? { en: "", ru: "" }), ru: event.target.value }
+                              }))}
+                            />
+                          </div>
+                        </div>
                       ) : null}
                       {textHelp ? <p className="admin-muted admin-post-block__hint">{textHelp}</p> : null}
                     </div>

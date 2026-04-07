@@ -25,7 +25,13 @@ public sealed record ProjectPostContentBlockDto(
     [property: MaxLength(5_000_000)] string? VideoUrl,
     [property: MaxLength(5_000_000)] string? PosterUrl,
     bool PinEnabled,
-    [property: Range(80, 320)] int? ScrollSpan);
+    [property: Range(80, 320)] int? ScrollSpan,
+    [property: MaxLength(30)] string? CodeLanguage,
+    [property: MaxLength(20)] string? InfoBoxVariant,
+    LocalizedLongTextDto[]? Hints,
+    LocalizedLongTextDto[]? QuizOptions,
+    int? QuizCorrectIndex,
+    LocalizedLongTextDto? QuizExplanation);
 
 public sealed record ProjectPostDto(
     [property: Required, MaxLength(80)] string Id,
