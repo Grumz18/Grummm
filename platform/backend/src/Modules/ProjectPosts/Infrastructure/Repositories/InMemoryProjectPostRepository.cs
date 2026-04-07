@@ -237,7 +237,13 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
                     VideoUrl: null,
                     PosterUrl: null,
                     PinEnabled: false,
-                    ScrollSpan: null)
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null)
             ],
             Tags: ["Showcase", "Modular Monolith", "React", "ASP.NET Core 9", "Docker"],
             PublicDemoEnabled: false,
