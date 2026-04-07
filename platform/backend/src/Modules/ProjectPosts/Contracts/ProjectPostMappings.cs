@@ -67,7 +67,15 @@ public static class ProjectPostMappings
             VideoUrl: block.VideoUrl,
             PosterUrl: block.PosterUrl,
             PinEnabled: block.PinEnabled,
-            ScrollSpan: block.ScrollSpan);
+            ScrollSpan: block.ScrollSpan,
+            CodeLanguage: block.CodeLanguage,
+            InfoBoxVariant: block.InfoBoxVariant,
+            Hints: block.Hints?.Select(h => new LocalizedLongTextDto(h.En, h.Ru)).ToArray(),
+            QuizOptions: block.QuizOptions?.Select(o => new LocalizedLongTextDto(o.En, o.Ru)).ToArray(),
+            QuizCorrectIndex: block.QuizCorrectIndex,
+            QuizExplanation: block.QuizExplanation is not null
+                ? new LocalizedLongTextDto(block.QuizExplanation.En, block.QuizExplanation.Ru)
+                : null);
     }
 
     private static ProjectPostContentBlock ToDomain(ProjectPostContentBlockDto block)
@@ -86,7 +94,15 @@ public static class ProjectPostMappings
             VideoUrl = block.VideoUrl,
             PosterUrl = block.PosterUrl,
             PinEnabled = block.PinEnabled,
-            ScrollSpan = block.ScrollSpan
+            ScrollSpan = block.ScrollSpan,
+            CodeLanguage = block.CodeLanguage,
+            InfoBoxVariant = block.InfoBoxVariant,
+            Hints = block.Hints?.Select(h => new LocalizedText { En = h.En, Ru = h.Ru }).ToArray(),
+            QuizOptions = block.QuizOptions?.Select(o => new LocalizedText { En = o.En, Ru = o.Ru }).ToArray(),
+            QuizCorrectIndex = block.QuizCorrectIndex,
+            QuizExplanation = block.QuizExplanation is not null
+                ? new LocalizedText { En = block.QuizExplanation.En, Ru = block.QuizExplanation.Ru }
+                : null
         };
     }
 }

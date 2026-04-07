@@ -96,6 +96,22 @@ function normalizeContentBlockType(value: string | undefined): PortfolioContentB
     return "callout";
   }
 
+  if (normalized === "codesnippet" || normalized === "code-snippet" || normalized === "code") {
+    return "codeSnippet";
+  }
+
+  if (normalized === "infobox" || normalized === "info-box") {
+    return "infoBox";
+  }
+
+  if (normalized === "exercise") {
+    return "exercise";
+  }
+
+  if (normalized === "quiz") {
+    return "quiz";
+  }
+
   return "paragraph";
 }
 
@@ -117,7 +133,13 @@ function normalizeContentBlocks(blocks?: PortfolioContentBlock[] | null): Portfo
         pinEnabled: type === "video" ? Boolean(block?.pinEnabled) : undefined,
         scrollSpan: type === "video" && typeof block?.scrollSpan === "number" && Number.isFinite(block.scrollSpan)
           ? Math.min(320, Math.max(80, Math.round(block.scrollSpan)))
-          : undefined
+          : undefined,
+        codeLanguage: type === "codeSnippet" && typeof block?.codeLanguage === "string" ? block.codeLanguage : undefined,
+        infoBoxVariant: type === "infoBox" && typeof block?.infoBoxVariant === "string" ? block.infoBoxVariant as "tip" | "warning" | "important" | "note" : undefined,
+        hints: type === "exercise" && Array.isArray(block?.hints) ? block.hints.map(normalizeLocalizedText) : undefined,
+        quizOptions: type === "quiz" && Array.isArray(block?.quizOptions) ? block.quizOptions.map(normalizeLocalizedText) : undefined,
+        quizCorrectIndex: type === "quiz" && typeof block?.quizCorrectIndex === "number" ? block.quizCorrectIndex : undefined,
+        quizExplanation: type === "quiz" && block?.quizExplanation ? normalizeLocalizedText(block.quizExplanation) : undefined
       };
     })
     .filter((block) => {

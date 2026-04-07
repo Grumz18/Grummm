@@ -31,7 +31,11 @@ public enum ProjectPostContentBlockType
     NumberedList = 4,
     Callout = 5,
     Collage = 6,
-    Typewriter = 7
+    Typewriter = 7,
+    CodeSnippet = 8,
+    InfoBox = 9,
+    Exercise = 10,
+    Quiz = 11
 }
 
 public sealed class LocalizedText
@@ -57,6 +61,12 @@ public sealed class ProjectPostContentBlock
     public string? PosterUrl { get; set; }
     public bool PinEnabled { get; set; }
     public int? ScrollSpan { get; set; }
+    public string? CodeLanguage { get; set; }
+    public string? InfoBoxVariant { get; set; }
+    public LocalizedText[]? Hints { get; set; }
+    public LocalizedText[]? QuizOptions { get; set; }
+    public int? QuizCorrectIndex { get; set; }
+    public LocalizedText? QuizExplanation { get; set; }
 }
 
 public sealed class ProjectPost

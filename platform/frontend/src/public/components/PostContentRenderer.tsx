@@ -2,6 +2,10 @@ import { ParagraphText } from "./ParagraphText";
 import { PostVideoBlock } from "./PostVideoBlock";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { TypewriterText } from "./TypewriterText";
+import { CodeSnippetBlock } from "./CodeSnippetBlock";
+import { QuizBlock } from "./QuizBlock";
+import { InfoBoxBlock } from "./InfoBoxBlock";
+import { ExerciseBlock } from "./ExerciseBlock";
 import { formatPublishedMeta } from "../formatPublishedDate";
 import type { Language, PortfolioProject, ThemeMode } from "../types";
 
@@ -137,6 +141,45 @@ export function PostContentRenderer({ project, language, theme }: PostContentRen
                   <blockquote className="post-content__callout">
                     <ParagraphText text={value} className="post-content__callout-text" />
                   </blockquote>
+                </div>
+              );
+            }
+
+            if (block.type === "codeSnippet") {
+              return (
+                <div key={block.id} className="post-content__block post-content__block--code-snippet" data-gsap-post-block>
+                  <CodeSnippetBlock code={value} language={block.codeLanguage ?? "javascript"} uiLanguage={language} />
+                </div>
+              );
+            }
+
+            if (block.type === "infoBox") {
+              const variant = block.infoBoxVariant ?? "note";
+              return (
+                <div key={block.id} className="post-content__block post-content__block--info-box" data-gsap-post-block>
+                  <InfoBoxBlock variant={variant} text={value} language={language} />
+                </div>
+              );
+            }
+
+            if (block.type === "exercise") {
+              return (
+                <div key={block.id} className="post-content__block post-content__block--exercise" data-gsap-post-block>
+                  <ExerciseBlock text={value} hints={block.hints ?? []} language={language} />
+                </div>
+              );
+            }
+
+            if (block.type === "quiz" && block.quizOptions && block.quizOptions.length > 0) {
+              return (
+                <div key={block.id} className="post-content__block post-content__block--quiz" data-gsap-post-block>
+                  <QuizBlock
+                    question={value}
+                    options={block.quizOptions}
+                    correctIndex={block.quizCorrectIndex ?? 0}
+                    explanation={block.quizExplanation}
+                    language={language}
+                  />
                 </div>
               );
             }

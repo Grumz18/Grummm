@@ -178,7 +178,13 @@ public sealed partial class ProjectPostsModule : IModule
                     VideoUrl: null,
                     PosterUrl: null,
                     PinEnabled: false,
-                    ScrollSpan: null));
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null));
                 continue;
             }
 
@@ -205,7 +211,13 @@ public sealed partial class ProjectPostsModule : IModule
                     VideoUrl: block.VideoUrl.Trim(),
                     PosterUrl: string.IsNullOrWhiteSpace(block.PosterUrl) ? null : block.PosterUrl.Trim(),
                     PinEnabled: block.PinEnabled,
-                    ScrollSpan: scrollSpan));
+                    ScrollSpan: scrollSpan,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null));
                 continue;
             }
 
@@ -225,7 +237,13 @@ public sealed partial class ProjectPostsModule : IModule
                 VideoUrl: null,
                 PosterUrl: null,
                 PinEnabled: false,
-                ScrollSpan: null));
+                ScrollSpan: null,
+                CodeLanguage: block.CodeLanguage,
+                InfoBoxVariant: block.InfoBoxVariant,
+                Hints: block.Hints,
+                QuizOptions: block.QuizOptions,
+                QuizCorrectIndex: block.QuizCorrectIndex,
+                QuizExplanation: block.QuizExplanation));
         }
 
         return normalized.ToArray();
