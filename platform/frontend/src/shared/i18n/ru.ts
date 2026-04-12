@@ -362,4 +362,6 @@ export const ru = {
   ,"postActions.platforms.vk": "ВКонтакте"
   ,"postActions.platforms.linkedin": "LinkedIn"
   ,"postActions.platforms.instagram": "Instagram (скопировать ссылку)"
+  
+  ,"public.scroll.top": "Наверх"
 } as const;

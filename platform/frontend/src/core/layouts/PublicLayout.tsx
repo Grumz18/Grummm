@@ -7,12 +7,16 @@ import { usePublicRouteSwipe } from "../../public/hooks/usePublicRouteSwipe";
 import { useGsapEnhancements } from "../../shared/ui/useGsapEnhancements";
 import { useRef } from "react";
 
+import type { Language } from "../../public/types";
+
 export function PublicLayout() {
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useGsapEnhancements(rootRef, [location.pathname]);
   usePublicRouteSwipe(rootRef);
+
+  const language: Language = "ru";
 
   return (
     <div ref={rootRef} data-layout="public" className="public-layout">
@@ -21,7 +25,7 @@ export function PublicLayout() {
         <main className="public-layout__content">
           <div className="public-layout__main">
             <Outlet />
-            <ScrollToTopButton />
+            <ScrollToTopButton language={language} />
           </div>
         </main>
         <PublicFooter />
