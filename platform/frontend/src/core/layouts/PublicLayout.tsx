@@ -2,6 +2,8 @@ import { Outlet, useLocation } from "react-router-dom";
 import { CookieNotice } from "../../public/components/CookieNotice";
 import { PublicFooter } from "../../public/components/PublicFooter";
 import { PublicHeader } from "../../public/components/PublicHeader";
+import { ScrollToTopButton } from "../../public/components/ScrollToTopButton";
+import { usePreferences } from "../../public/preferences";
 import { usePublicRouteSwipe } from "../../public/hooks/usePublicRouteSwipe";
 import { useGsapEnhancements } from "../../shared/ui/useGsapEnhancements";
 import { useRef } from "react";
@@ -9,6 +11,7 @@ import { useRef } from "react";
 export function PublicLayout() {
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const { language } = usePreferences();
 
   useGsapEnhancements(rootRef, [location.pathname]);
   usePublicRouteSwipe(rootRef);
@@ -20,6 +23,7 @@ export function PublicLayout() {
         <main className="public-layout__content">
           <div className="public-layout__main">
             <Outlet />
+            <ScrollToTopButton language={language} />
           </div>
         </main>
         <PublicFooter />

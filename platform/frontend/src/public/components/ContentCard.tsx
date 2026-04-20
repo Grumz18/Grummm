@@ -5,7 +5,9 @@ import {
   getPortfolioKind,
   isPortfolioPublicDemoEnabled
 } from "../data/project-store";
+import { usePreferences } from "../preferences";
 import type { Language, PortfolioProject } from "../types";
+import { ProgressiveImage } from "./ProgressiveImage";
 
 interface ContentCardProps {
   item: PortfolioProject;
@@ -14,13 +16,63 @@ interface ContentCardProps {
   className?: string;
 }
 
+function pickFirstNonEmpty(...values: Array<string | undefined>): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function resolveCoverSrc(item: PortfolioProject, theme: "light" | "dark"): string {
+  const hero = pickFirstNonEmpty(item.heroImage[theme], item.heroImage.light, item.heroImage.dark);
+  if (hero) {
+    return hero;
+  }
+
+  const screenshot = item.screenshots.find((asset) =>
+    Boolean((asset[theme] && asset[theme].trim().length > 0) || (asset.light && asset.light.trim().length > 0) || (asset.dark && asset.dark.trim().length > 0))
+  );
+  if (screenshot) {
+    return pickFirstNonEmpty(screenshot[theme], screenshot.light, screenshot.dark);
+  }
+
+  const mediaBlock = (item.contentBlocks ?? []).find((block) => {
+    if (block.type === "image" && typeof block.imageUrl === "string" && block.imageUrl.trim().length > 0) {
+      return true;
+    }
+    if (block.type === "video" && typeof block.posterUrl === "string" && block.posterUrl.trim().length > 0) {
+      return true;
+    }
+    return block.type === "collage" && Array.isArray(block.images) && block.images.some((image) => typeof image === "string" && image.trim().length > 0);
+  });
+
+  if (!mediaBlock) {
+    return "";
+  }
+
+  if (mediaBlock.type === "image") {
+    return mediaBlock.imageUrl?.trim() ?? "";
+  }
+
+  if (mediaBlock.type === "video") {
+    return mediaBlock.posterUrl?.trim() ?? "";
+  }
+
+  return mediaBlock.images?.find((image) => typeof image === "string" && image.trim().length > 0) ?? "";
+}
+
 export default function ContentCard({ item, language, href, className }: ContentCardProps) {
+  const { theme } = usePreferences();
   const kind = getPortfolioKind(item);
   const isPost = kind === "post";
   const isDemo = isPortfolioPublicDemoEnabled(item);
+  const isCompact = className?.includes("content-card--compact") ?? false;
   const title = item.title[language] || item.title.en || item.id;
   const summary = item.summary[language] || item.summary.en || item.description[language] || item.description.en;
   const publishedAt = formatPublishedDate(item.publishedAt, language);
+  const coverSrc = resolveCoverSrc(item, theme);
 
   const kindLabel = isPost ? (language === "ru" ? "Пост" : "Post") : (language === "ru" ? "Проект" : "Project");
   const ctaLabel = isDemo
@@ -37,6 +89,16 @@ export default function ContentCard({ item, language, href, className }: Content
   return (
     <article className={classes.join(" ")}>
       <Link to={href} className="content-card__link" aria-label={title}>
+        {!isCompact && coverSrc ? (
+          <ProgressiveImage
+            src={coverSrc}
+            alt={title}
+            loading="lazy"
+            wrapperClassName="content-card__cover"
+            className="content-card__cover-image"
+          />
+        ) : null}
+
         <div className="content-card__badges">
           <span className={`content-card__badge ${isPost ? "content-card__badge--post" : "content-card__badge--project"}`}>
             {kindLabel}

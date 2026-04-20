@@ -1,6 +1,9 @@
-import { NavLink } from "react-router-dom";
+import { useLayoutEffect, useRef } from "react";
+import { gsap } from "gsap";
+import { NavLink, useLocation } from "react-router-dom";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
+import grummmLogo from "../../images/grummmLogo.svg";
 
 const NAV_ITEMS = [
   { to: "/", key: "public.nav.home", end: true },
@@ -9,15 +12,6 @@ const NAV_ITEMS = [
 ] as const;
 
 const GITHUB_URL = "https://github.com/Grumz18/Grummm";
-
-function BrandMark() {
-  return (
-    <svg className="rs-brand__svg" viewBox="0 0 100 100" aria-hidden="true">
-      <polygon points="50,4 94,28 94,72 50,96 6,72 6,28" stroke="currentColor" strokeWidth="6" fill="none" />
-      <text x="50" y="67" textAnchor="middle" fontFamily="IBM Plex Sans, sans-serif" fontWeight="700" fontSize="46" fill="currentColor">G</text>
-    </svg>
-  );
-}
 
 function GitHubGlyph() {
   return (
@@ -28,22 +22,81 @@ function GitHubGlyph() {
 }
 
 export function PublicHeader() {
+  const location = useLocation();
   const { theme, language, setTheme, setLanguage } = usePreferences();
   const nextLanguage = language === "ru" ? "en" : "ru";
   const nextTheme = theme === "dark" ? "light" : "dark";
+  const navRef = useRef<HTMLElement | null>(null);
+  const navIndicatorRef = useRef<HTMLSpanElement | null>(null);
+
+  useLayoutEffect(() => {
+    const navElement = navRef.current;
+    const indicatorElement = navIndicatorRef.current;
+    if (!navElement || !indicatorElement) {
+      return;
+    }
+
+    const syncIndicator = () => {
+      const activeElement = navElement.querySelector<HTMLAnchorElement>(".rs-nav-pill__link[aria-current='page']");
+      if (!activeElement) {
+        indicatorElement.style.opacity = "0";
+        return;
+      }
+
+      indicatorElement.style.opacity = "1";
+      gsap.killTweensOf(indicatorElement);
+      gsap.to(indicatorElement, {
+        x: activeElement.offsetLeft,
+        y: activeElement.offsetTop,
+        width: activeElement.offsetWidth,
+        height: activeElement.offsetHeight,
+        duration: 0.46,
+        ease: "expo.out",
+        overwrite: true,
+        force3D: true
+      });
+    };
+
+    syncIndicator();
+    window.addEventListener("resize", syncIndicator);
+
+    const ready = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready;
+    if (ready) {
+      void ready.then(() => syncIndicator());
+    }
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => syncIndicator());
+      observer.observe(navElement);
+      const links = navElement.querySelectorAll<HTMLAnchorElement>(".rs-nav-pill__link");
+      for (const link of links) {
+        observer.observe(link);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", syncIndicator);
+      observer?.disconnect();
+      gsap.killTweensOf(indicatorElement);
+    };
+  }, [location.pathname, language]);
 
   return (
     <header className="public-header rs-public-header">
       <div className="rs-public-header__inner">
         <NavLink to="/" className="rs-brand" aria-label="Grummm">
-          <span className="rs-brand__mark" aria-hidden="true"><BrandMark /></span>
+          <span className="rs-brand__mark" aria-hidden="true">
+            <img src={grummmLogo} alt="" className="rs-brand__image" />
+          </span>
           <span className="rs-brand__copy">
             <strong>Grummm</strong>
             <small>{t("public.brand.subtitle", language)}</small>
           </span>
         </NavLink>
 
-        <nav className="rs-nav-pill" aria-label={t("public.nav.primary", language)}>
+        <nav className="rs-nav-pill" aria-label={t("public.nav.primary", language)} ref={navRef}>
+          <span aria-hidden="true" className="rs-nav-pill__indicator" ref={navIndicatorRef} />
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}

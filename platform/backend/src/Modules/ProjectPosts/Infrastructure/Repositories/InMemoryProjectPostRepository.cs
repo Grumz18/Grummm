@@ -296,15 +296,15 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             HeroDescription: new LocalizedTextDto(
                 "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
                 "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом"),
-            AboutTitle: new LocalizedTextDto("About the platform", "О платформе"),
-            AboutSubtitle: new LocalizedTextDto("What I build", "Что я делаю"),
+            AboutTitle: new LocalizedTextDto("About Me", "\u041e\u0431\u043e \u043c\u043d\u0435"),
+            AboutSubtitle: new LocalizedTextDto("About", "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435"),
             AboutText: new LocalizedTextDto(
-                "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my approach to architecture, security, and product thinking",
-                "Я создаю прикладные web-проекты: от идеи и интерфейса до backend-логики и деплоя. Здесь виден мой подход к архитектуре, безопасности и развитию продукта"),
+                "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18",
+                "\u0421\u0435\u0440\u0431\u0443\u043b\u044c \u0418\u0433\u043e\u0440\u044c \u0418\u0433\u043e\u0440\u0435\u0432\u0438\u0447\nGitHub: https://github.com/Grumz18"),
             PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
             PortfolioText: new LocalizedTextDto(
                 "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action",
                 "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе"),
-            AboutPhoto: null);
+            AboutPhoto: "/src/images/profile-main.jpeg");
     }
 }

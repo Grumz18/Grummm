@@ -91,32 +91,47 @@ export function LandingPage() {
   return (
     <section className="rs-landing-page">
       <section className="rs-hero">
-        <p className="rs-hero__label">
-          <span className="rs-hero__dot rs-hero__dot--post" />
-          <span className="rs-hero__dot rs-hero__dot--accent" />
-          <span className="rs-hero__dot rs-hero__dot--demo" />
-          <span>{heroEyebrow}</span>
-        </p>
+        <div className="rs-hero__top">
+          <div className="rs-hero__content">
+            <p className="rs-hero__label">
+              <span className="rs-hero__dot rs-hero__dot--post" />
+              <span className="rs-hero__dot rs-hero__dot--accent" />
+              <span className="rs-hero__dot rs-hero__dot--demo" />
+              <span>{heroEyebrow}</span>
+            </p>
 
-        <h1 className="rs-hero__title">
-          {parsedHeroTitle.main}
-          {parsedHeroTitle.accent ? (
-            <>
-              <br />
-              <span>{parsedHeroTitle.accent}</span>
-            </>
-          ) : null}
-        </h1>
+            <h1 className="rs-hero__title">
+              {parsedHeroTitle.main}
+              {parsedHeroTitle.accent ? (
+                <>
+                  <br />
+                  <span>{parsedHeroTitle.accent}</span>
+                </>
+              ) : null}
+            </h1>
 
-        <p className="rs-hero__subtitle">{heroDescription}</p>
+            <p className="rs-hero__subtitle">{heroDescription}</p>
 
-        <div className="rs-hero__actions">
-          <Link className="rs-btn rs-btn--accent" to="/projects">
-            {t("landing.hero.openProjects", language)}
-          </Link>
-          <a className="rs-btn rs-btn--border" href={GITHUB_URL} target="_blank" rel="noreferrer">
-            GitHub
-          </a>
+            <div className="rs-hero__actions">
+              <Link className="rs-btn rs-btn--accent" to="/projects">
+                {t("landing.hero.openProjects", language)}
+              </Link>
+              <a className="rs-btn rs-btn--border" href={GITHUB_URL} target="_blank" rel="noreferrer">
+                GitHub
+              </a>
+            </div>
+          </div>
+
+          <aside className="rs-hero__scene" aria-hidden="true">
+            <div className="rs-hero__scene-stage" data-gsap-hero-parallax>
+              <div className="rs-hero__scene-glow" />
+              <div className="rs-hero__scene-cube" />
+              <div className="rs-hero__scene-spark rs-hero__scene-spark--one" />
+              <div className="rs-hero__scene-spark rs-hero__scene-spark--two" />
+              <div className="rs-hero__scene-spark rs-hero__scene-spark--three" />
+              <div className="rs-hero__scene-spark rs-hero__scene-spark--four" />
+            </div>
+          </aside>
         </div>
 
         <div className="rs-hero__latest">

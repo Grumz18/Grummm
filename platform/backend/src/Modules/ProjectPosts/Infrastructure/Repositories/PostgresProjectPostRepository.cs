@@ -12,6 +12,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private const string LandingContentId = "main";
+    private const string TestAllBlocksPostId = "post-blocks-showcase";
 
     public async Task<IReadOnlyList<ProjectPostDto>> ListAsync(CancellationToken cancellationToken)
     {
@@ -380,16 +381,407 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             HeroDescription: new LocalizedTextDto(
                 "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
                 "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом"),
-            AboutTitle: new LocalizedTextDto("About the platform", "О платформе"),
-            AboutSubtitle: new LocalizedTextDto("What I build", "Что я делаю"),
+            AboutTitle: new LocalizedTextDto("About Me", "\u041e\u0431\u043e \u043c\u043d\u0435"),
+            AboutSubtitle: new LocalizedTextDto("About", "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435"),
             AboutText: new LocalizedTextDto(
-                "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my approach to architecture, security, and product thinking",
-                "Я создаю прикладные web-проекты: от идеи и интерфейса до backend-логики и деплоя. Здесь виден мой подход к архитектуре, безопасности и развитию продукта"),
+                "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18",
+                "\u0421\u0435\u0440\u0431\u0443\u043b\u044c \u0418\u0433\u043e\u0440\u044c \u0418\u0433\u043e\u0440\u0435\u0432\u0438\u0447\nGitHub: https://github.com/Grumz18"),
             PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
             PortfolioText: new LocalizedTextDto(
                 "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action",
                 "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе"),
-            AboutPhoto: null);
+            AboutPhoto: "/src/images/profile-main.jpeg");
+    }
+
+    private static async Task EnsureSeedPostsAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           insert into project_posts (
+                               id, kind, visibility, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
+                               published_at, content_blocks, tags, public_demo_enabled, hero_image_light, hero_image_dark, screenshots, video_url,
+                               template, frontend_path, backend_path, created_at, updated_at
+                           )
+                           values (
+                               @id, @kind, @visibility, @title_en, @title_ru, @summary_en, @summary_ru, @description_en, @description_ru,
+                               coalesce(@published_at, now()),
+                               @content_blocks::jsonb, @tags, @public_demo_enabled, @hero_image_light, @hero_image_dark, @screenshots::jsonb, @video_url,
+                               @template, @frontend_path, @backend_path, now(), now()
+                           )
+                           on conflict (id) do nothing;
+                           """;
+
+        foreach (var post in SeedPosts())
+        {
+            await using var command = new NpgsqlCommand(sql, connection);
+            BindUpsertParameters(command, post);
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private static async Task EnsureLandingContentSeedAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        var seed = SeedLandingContent();
+
+        const string insertSql = """
+                                 insert into landing_content (
+                                     id,
+                                     hero_eyebrow_en, hero_eyebrow_ru,
+                                     hero_title_en, hero_title_ru,
+                                     hero_description_en, hero_description_ru,
+                                     about_title_en, about_title_ru,
+                                     about_subtitle_en, about_subtitle_ru,
+                                     about_text_en, about_text_ru,
+                                     portfolio_title_en, portfolio_title_ru,
+                                     portfolio_text_en, portfolio_text_ru,
+                                     about_photo,
+                                     created_at, updated_at
+                                 )
+                                 values (
+                                     @id,
+                                     @hero_eyebrow_en, @hero_eyebrow_ru,
+                                     @hero_title_en, @hero_title_ru,
+                                     @hero_description_en, @hero_description_ru,
+                                     @about_title_en, @about_title_ru,
+                                     @about_subtitle_en, @about_subtitle_ru,
+                                     @about_text_en, @about_text_ru,
+                                     @portfolio_title_en, @portfolio_title_ru,
+                                     @portfolio_text_en, @portfolio_text_ru,
+                                     @about_photo,
+                                     now(), now()
+                                 )
+                                 on conflict (id) do nothing;
+                                 """;
+
+        await using (var insertCommand = new NpgsqlCommand(insertSql, connection))
+        {
+            BindLandingParameters(insertCommand, seed);
+            await insertCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        const string fillMissingAboutSql = """
+                                           update landing_content
+                                           set about_title_en = @about_title_en,
+                                               about_title_ru = @about_title_ru,
+                                               about_subtitle_en = @about_subtitle_en,
+                                               about_subtitle_ru = @about_subtitle_ru,
+                                               about_text_en = @about_text_en,
+                                               about_text_ru = @about_text_ru,
+                                               about_photo = @about_photo,
+                                               updated_at = now()
+                                           where id = @id
+                                             and (
+                                                 about_photo is null
+                                                 or btrim(about_photo) = ''
+                                                 or about_photo = '/assets/about/profile-main.jpeg'
+                                             );
+                                           """;
+
+        await using var fillMissingAboutCommand = new NpgsqlCommand(fillMissingAboutSql, connection);
+        BindLandingParameters(fillMissingAboutCommand, seed);
+        await fillMissingAboutCommand.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private static IEnumerable<ProjectPostDto> SeedPosts()
+    {
+        var heroLight = BuildSvgDataUri("All blocks", "#7fb2ff", "#78d9c4", "#ffd987");
+        var heroDark = BuildSvgDataUri("All blocks", "#1f2f4a", "#1c4f5d", "#356fb8");
+
+        yield return new ProjectPostDto(
+            Id: TestAllBlocksPostId,
+            Kind: ProjectEntryKind.Post,
+            Visibility: ProjectVisibility.Public,
+            Title: new LocalizedTextDto("All Content Blocks: Test Post", "Тестовый пост: все виды блоков"),
+            Summary: new LocalizedTextDto(
+                "A permanent local post that demonstrates every content block type supported by the editor.",
+                "Пост для локальной среды, где собраны все типы контент-блоков из редактора."),
+            Description: new LocalizedTextDto(
+                "Use this post to verify rendering and adaptive behavior for every block type.",
+                "Используйте этот пост для проверки отображения и адаптива всех типов блоков."),
+            PublishedAt: new DateTimeOffset(2026, 4, 20, 12, 0, 0, TimeSpan.Zero),
+            ContentBlocks:
+            [
+                new ProjectPostContentBlockDto(
+                    Id: "intro-paragraph",
+                    Type: ProjectPostContentBlockType.Paragraph,
+                    Content: new LocalizedLongTextDto(
+                        "This is a persistent QA post for local environment checks. Scroll through the page to review every block style.",
+                        "Это постоянный QA-пост для локальной проверки. Пролистайте страницу, чтобы увидеть каждый тип блока."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "subheading-demo",
+                    Type: ProjectPostContentBlockType.Subheading,
+                    Content: new LocalizedLongTextDto(
+                        "Visual blocks",
+                        "Визуальные блоки"),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "image-demo",
+                    Type: ProjectPostContentBlockType.Image,
+                    Content: null,
+                    ImageUrl: BuildSvgDataUri("Image block", "#8fc5ff", "#87e4d3", "#ffcfa8"),
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "video-demo",
+                    Type: ProjectPostContentBlockType.Video,
+                    Content: new LocalizedLongTextDto(
+                        "Video block with caption and poster.",
+                        "Видео-блок с подписью и постером."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+                    PosterUrl: BuildSvgDataUri("Video poster", "#7ca8ff", "#8ad6f6", "#f4c06f"),
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "numbered-list-demo",
+                    Type: ProjectPostContentBlockType.NumberedList,
+                    Content: new LocalizedLongTextDto(
+                        "1. Open a post\n2. Inspect block spacing\n3. Verify typography",
+                        "1. Откройте пост\n2. Проверьте отступы блоков\n3. Сверьте типографику"),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "callout-demo",
+                    Type: ProjectPostContentBlockType.Callout,
+                    Content: new LocalizedLongTextDto(
+                        "Consistency of spacing and rhythm matters more than decorative effects.",
+                        "Стабильные отступы и ритм важнее декоративных эффектов."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "collage-demo",
+                    Type: ProjectPostContentBlockType.Collage,
+                    Content: null,
+                    ImageUrl: null,
+                    Images:
+                    [
+                        BuildSvgDataUri("Collage 1", "#89b8ff", "#74dbc7", "#ffd37a"),
+                        BuildSvgDataUri("Collage 2", "#9ed1ff", "#86e5d4", "#ffc89a"),
+                        BuildSvgDataUri("Collage 3", "#78a6e8", "#6ec6b4", "#f4b96f")
+                    ],
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "typewriter-demo",
+                    Type: ProjectPostContentBlockType.Typewriter,
+                    Content: new LocalizedLongTextDto(
+                        "Typewriter block simulates incremental text reveal.",
+                        "Блок typewriter имитирует постепенное появление текста."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: 120,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "code-snippet-demo",
+                    Type: ProjectPostContentBlockType.CodeSnippet,
+                    Content: new LocalizedLongTextDto(
+                        "const blocks = [\"paragraph\", \"image\", \"quiz\"];\nconsole.log(`Total: ${blocks.length}`);",
+                        "const блоки = [\"paragraph\", \"image\", \"quiz\"];\nconsole.log(`Всего: ${блоки.length}`);"),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: "javascript",
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "info-box-demo",
+                    Type: ProjectPostContentBlockType.InfoBox,
+                    Content: new LocalizedLongTextDto(
+                        "Tip: keep this post unchanged and use it as a visual regression checkpoint.",
+                        "Совет: не изменяйте этот пост и используйте его как эталон визуальной регрессии."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: "tip",
+                    Hints: null,
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "exercise-demo",
+                    Type: ProjectPostContentBlockType.Exercise,
+                    Content: new LocalizedLongTextDto(
+                        "Exercise: inspect mobile layout and verify no block overflows horizontally.",
+                        "Упражнение: проверьте мобильный layout и убедитесь, что блоки не выходят за ширину экрана."),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints:
+                    [
+                        new LocalizedLongTextDto("Check 360px and 390px widths.", "Проверьте ширины 360px и 390px."),
+                        new LocalizedLongTextDto("Look at heading wrapping and CTA rows.", "Проверьте перенос заголовков и ряды кнопок.")
+                    ],
+                    QuizOptions: null,
+                    QuizCorrectIndex: null,
+                    QuizExplanation: null),
+
+                new ProjectPostContentBlockDto(
+                    Id: "quiz-demo",
+                    Type: ProjectPostContentBlockType.Quiz,
+                    Content: new LocalizedLongTextDto(
+                        "Which block type is best suited for displaying a short code example?",
+                        "Какой тип блока лучше всего подходит для отображения короткого фрагмента кода?"),
+                    ImageUrl: null,
+                    Images: null,
+                    VideoUrl: null,
+                    PosterUrl: null,
+                    PinEnabled: false,
+                    ScrollSpan: null,
+                    CodeLanguage: null,
+                    InfoBoxVariant: null,
+                    Hints: null,
+                    QuizOptions:
+                    [
+                        new LocalizedLongTextDto("Paragraph", "Paragraph"),
+                        new LocalizedLongTextDto("CodeSnippet", "CodeSnippet"),
+                        new LocalizedLongTextDto("Callout", "Callout")
+                    ],
+                    QuizCorrectIndex: 1,
+                    QuizExplanation: new LocalizedLongTextDto(
+                        "CodeSnippet preserves formatting and syntax highlighting.",
+                        "CodeSnippet сохраняет форматирование и подсветку синтаксиса."))
+            ],
+            Tags: ["test", "blocks", "qa", "editor"],
+            PublicDemoEnabled: false,
+            HeroImage: new ThemedAssetDto(heroLight, heroDark),
+            Screenshots:
+            [
+                new ThemedAssetDto(
+                    BuildSvgDataUri("Screenshot A", "#90b9ff", "#7fe0ce", "#ffce83"),
+                    BuildSvgDataUri("Screenshot A", "#21395b", "#1f5965", "#4b78bb")),
+                new ThemedAssetDto(
+                    BuildSvgDataUri("Screenshot B", "#8ab0ef", "#73d1c0", "#f7bf79"),
+                    BuildSvgDataUri("Screenshot B", "#223751", "#1e4f58", "#456da6"))
+            ],
+            VideoUrl: null,
+            Template: TemplateType.None,
+            FrontendPath: null,
+            BackendPath: null);
+    }
+
+    private static string BuildSvgDataUri(string label, string startColor, string endColor, string accentColor)
+    {
+        var safeLabel = label
+            .Replace("&", "&amp;", StringComparison.Ordinal)
+            .Replace("<", "&lt;", StringComparison.Ordinal)
+            .Replace(">", "&gt;", StringComparison.Ordinal)
+            .Replace("'", "&#39;", StringComparison.Ordinal);
+
+        var svg = $"""
+                   <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1280 720'>
+                     <defs>
+                       <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+                         <stop offset='0%' stop-color='{startColor}' />
+                         <stop offset='100%' stop-color='{endColor}' />
+                       </linearGradient>
+                     </defs>
+                     <rect width='1280' height='720' fill='url(#g)'/>
+                     <circle cx='1120' cy='140' r='160' fill='{accentColor}' fill-opacity='0.22'/>
+                     <circle cx='180' cy='620' r='230' fill='{accentColor}' fill-opacity='0.18'/>
+                     <text x='70' y='120' font-family='Segoe UI, Arial, sans-serif' font-size='64' fill='white'>{safeLabel}</text>
+                   </svg>
+                   """;
+
+        return $"data:image/svg+xml;utf8,{Uri.EscapeDataString(svg)}";
     }
 
     private static async Task EnsureSchemaAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
@@ -518,6 +910,8 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(cancellationToken);
+        await EnsureSeedPostsAsync(connection, cancellationToken);
+        await EnsureLandingContentSeedAsync(connection, cancellationToken);
     }
 
     // ── Topics ──
@@ -781,4 +1175,3 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         return ProjectVisibility.Public;
     }
 }
-
