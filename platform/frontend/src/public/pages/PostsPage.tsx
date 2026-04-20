@@ -1,44 +1,61 @@
-import { useNavigate } from "react-router-dom";
-import { ProjectCardGrid } from "../components/ProjectCardGrid";
-import { ProjectsCatalogHeader } from "../components/ProjectsCatalogHeader";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ContentFeed } from "../components/ContentFeed";
 import { useShowcasePosts } from "../data/project-store";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
 
+function sortByPublishedDesc<T extends { publishedAt?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const left = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+    const right = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+    return right - left;
+  });
+}
+
 export function PostsPage() {
-  const navigate = useNavigate();
-  const { theme, language } = usePreferences();
+  const { language } = usePreferences();
+  const [searchParams, setSearchParams] = useSearchParams();
   const posts = useShowcasePosts();
-  const seoKeywords = language === "ru"
-    ? "grummm, \u043f\u043e\u0441\u0442\u044b, \u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0441\u0442\u0430\u0442\u044c\u0438, \u0440\u0435\u043b\u0438\u0437\u044b, \u043c\u043e\u0434\u0443\u043b\u044c\u043d\u0430\u044f \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430"
-    : "grummm, posts, technical articles, release notes, modular platform, showcase posts";
+  const items = useMemo(() => sortByPublishedDesc(posts), [posts]);
+  const topic = searchParams.get("topic");
+
+  function updateTopic(nextTopic: string | null) {
+    const next = new URLSearchParams(searchParams);
+    if (nextTopic) {
+      next.set("topic", nextTopic);
+    } else {
+      next.delete("topic");
+    }
+    next.delete("kind");
+    setSearchParams(next, { replace: true });
+  }
 
   useDocumentMetadata({
     title: `${t("posts.title", language)} | Grummm`,
     description: t("posts.description", language),
     path: "/posts",
     language,
-    keywords: seoKeywords
+    keywords: language === "ru"
+      ? "grummm, посты, технические статьи, релизы, модульная платформа"
+      : "grummm, posts, technical articles, release notes, modular platform"
   });
 
   return (
-    <section className="projects-page" data-gsap="reveal">
-      <ProjectsCatalogHeader
-        eyebrow={t("posts.eyebrow", language)}
-        title={t("posts.title", language)}
-        description={t("posts.description", language)}
-        count={posts.length}
-        backLabel={t("posts.back", language)}
-        onBack={() => navigate("/")}
-      />
+    <section className="rs-feed-page">
+      <p className="rs-section-label">{t("posts.eyebrow", language)}</p>
+      <h1 className="rs-feed-page__title">{t("posts.title", language)}</h1>
+      <p className="rs-feed-page__description">{t("posts.description", language)}</p>
 
-      <ProjectCardGrid
-        items={posts}
-        theme={theme}
+      <ContentFeed
         language={language}
-        resolveHref={(projectId) => `/posts/${projectId}`}
-        className="portfolio-grid--catalog"
+        items={items}
+        kind="post"
+        topic={topic}
+        showKindFilter={false}
+        onKindChange={() => undefined}
+        onTopicToggle={(nextTopic) => updateTopic(topic === nextTopic ? null : nextTopic)}
       />
     </section>
   );

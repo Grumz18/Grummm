@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { deleteProject, useProjectPosts } from "../../public/data/project-store";
+import { useProjectPosts } from "../../public/data/project-store";
 import { downloadPlatformBackup } from "../auth/auth-api";
 import { useAuthSession } from "../auth/auth-session";
 import { useNotification } from "../components/Notifications";
@@ -237,21 +237,6 @@ export function AdminOverviewPage() {
     void refreshDashboard(auth.accessToken, true);
   }, [auth.accessToken]);
 
-  async function handleDelete(itemId: string, title: string) {
-    if (!window.confirm(`Delete "${title}"?`)) return;
-    if (!window.confirm("This action is irreversible. Entry and runtime files will be removed from server.")) return;
-
-    setError("");
-    try {
-      await deleteProject(itemId, { serverOnly: true });
-      notify.success(`"${title}" deleted`);
-    } catch (deleteError) {
-      const msg = deleteError instanceof Error ? deleteError.message : "Failed to delete item.";
-      setError(msg);
-      notify.error(msg);
-    }
-  }
-
   async function handleCreateBackup() {
     if (!auth.accessToken) {
       setError("No access token. Sign in to admin again.");
@@ -399,58 +384,6 @@ export function AdminOverviewPage() {
         </article>
       </div>
 
-      <article className="admin-card admin-overview-list-card">
-        <div className="admin-panel__header">
-          <div>
-            <p className="admin-home__eyebrow">Runtime</p>
-            <h2>Template projects</h2>
-          </div>
-          <span className="admin-muted">Open viewer and jump to editor</span>
-        </div>
-        <div className="admin-projects__list">
-          {projects.map((project) => (
-            <div key={project.id} className="admin-projects__item admin-projects__item--ops">
-              <div>
-                <strong>{project.title.ru || project.title.en}</strong>
-                <p>{project.id}</p>
-                <p className="admin-muted">Template: {project.template ?? "None"}</p>
-              </div>
-              <div className="admin-chip-nav">
-                <button type="button" onClick={() => navigate(`/app/projects?edit=${encodeURIComponent(project.id)}`)}>Edit</button>
-                <button type="button" onClick={() => void handleDelete(project.id, project.title.ru || project.title.en || project.id)}>Delete</button>
-                <a href={`/app/${project.id}/index.html`} target="_blank" rel="noreferrer">Open viewer</a>
-              </div>
-            </div>
-          ))}
-          {projects.length === 0 ? <p className="admin-muted">No template projects yet.</p> : null}
-        </div>
-      </article>
-
-      <article className="admin-card admin-overview-list-card">
-        <div className="admin-panel__header">
-          <div>
-            <p className="admin-home__eyebrow">Content</p>
-            <h2>Posts and content</h2>
-          </div>
-          <span className="admin-muted">Queue for public showcase</span>
-        </div>
-        <div className="admin-projects__list">
-          {posts.map((post) => (
-            <div key={post.id} className="admin-projects__item admin-projects__item--ops">
-              <div>
-                <strong>{post.title.ru || post.title.en}</strong>
-                <p>{post.id}</p>
-              </div>
-              <div className="admin-chip-nav">
-                <button type="button" onClick={() => navigate(`/app/posts?edit=${encodeURIComponent(post.id)}`)}>Edit</button>
-                <button type="button" onClick={() => void handleDelete(post.id, post.title.ru || post.title.en || post.id)}>Delete</button>
-                <Link to={`/posts/${post.id}`}>Open</Link>
-              </div>
-            </div>
-          ))}
-          {posts.length === 0 ? <p className="admin-muted">No posts yet.</p> : null}
-        </div>
-      </article>
     </section>
   );
 }

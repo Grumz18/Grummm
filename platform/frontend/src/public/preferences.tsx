@@ -1,15 +1,11 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode
 } from "react";
 import type { Language, ThemeMode } from "./types";
-
-const THEME_KEY = "platform.ui.theme";
-const LANGUAGE_KEY = "platform.ui.language";
+import { useTheme } from "../shared/theme/ThemeContext";
 
 interface PreferencesContextValue {
   theme: ThemeMode;
@@ -21,49 +17,8 @@ interface PreferencesContextValue {
 
 const PreferencesContext = createContext<PreferencesContextValue | undefined>(undefined);
 
-function safeTheme(): ThemeMode {
-  const isDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  return isDark ? "dark" : "light";
-}
-
-function readTheme(): ThemeMode {
-  try {
-    const stored = window.localStorage.getItem(THEME_KEY);
-    if (stored === "light" || stored === "dark") {
-      return stored;
-    }
-  } catch {
-    // no-op
-  }
-  return safeTheme();
-}
-
-function readLanguage(): Language {
-  try {
-    const stored = window.localStorage.getItem(LANGUAGE_KEY);
-    if (stored === "en" || stored === "ru") {
-      return stored;
-    }
-  } catch {
-    // no-op
-  }
-  const base = window.navigator.language.toLowerCase();
-  return base.startsWith("ru") ? "ru" : "en";
-}
-
 export function PreferencesProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeMode>(() => readTheme());
-  const [language, setLanguage] = useState<Language>(() => readLanguage());
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
-
-  useEffect(() => {
-    document.documentElement.lang = language;
-    window.localStorage.setItem(LANGUAGE_KEY, language);
-  }, [language]);
+  const { theme, language, setTheme, setLanguage } = useTheme();
 
   const value = useMemo<PreferencesContextValue>(
     () => ({
@@ -71,9 +26,9 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       language,
       setTheme,
       setLanguage,
-      toggleTheme: () => setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+      toggleTheme: () => setTheme(theme === "dark" ? "light" : "dark")
     }),
-    [theme, language]
+    [theme, language, setTheme, setLanguage]
   );
 
   return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>;

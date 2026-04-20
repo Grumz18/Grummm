@@ -532,6 +532,8 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
     return formatPublishedMeta(editingItem.publishedAt, "en");
   }, [editingId, editingItem, isPostsMode]);
 
+  const isFormView = searchParams.has("create") || Boolean(searchParams.get("edit"));
+
   function clearEditQuery() {
     if (!searchParams.has("edit")) {
       return;
@@ -542,14 +544,23 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
   }
 
   function startCreate() {
-    clearEditQuery();
+    const next = new URLSearchParams();
+    next.set("create", "1");
+    setSearchParams(next, { replace: true });
+    setEditingId(null);
+    setDraft(emptyDraft());
+    setServerError("");
+  }
+
+  function backToList() {
+    setSearchParams({}, { replace: true });
     setEditingId(null);
     setDraft(emptyDraft());
     setServerError("");
   }
 
   function startEdit(projectId: string) {
-    const next = new URLSearchParams(searchParams);
+    const next = new URLSearchParams();
     next.set("edit", projectId);
     setSearchParams(next, { replace: true });
   }
@@ -637,7 +648,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
     try {
       await deleteProject(projectId, { serverOnly: true });
       if (editingId === projectId) {
-        startCreate();
+        backToList();
       }
       notify.success(t(isPostsMode ? "admin.workspace.postDeleted" : "admin.workspace.projectDeleted", lang));
     } catch (error) {
@@ -694,22 +705,69 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
   return (
     <section className="admin-projects">
       <article className="admin-projects__workspace">
-        <header className="admin-projects__hero">
-          <p className="private-layout__eyebrow">{labels.eyebrow}</p>
-          <h1>{labels.title}</h1>
-          <p>{labels.description}</p>
-          {serverError ? <p className="admin-error">{serverError}</p> : null}
-        </header>
-
-        <div className="admin-projects__workspace-grid admin-projects__workspace-grid--single">
-          <article className="admin-card admin-projects__editor">
-            <div className="admin-panel__header">
-              <div>
-                <h2>{editingId ? labels.editTitle : labels.createTitle}</h2>
-                <p className="admin-muted">{labels.editorHint}</p>
+        {!isFormView ? (
+          <>
+            <header className="admin-projects__hero">
+              <div className="admin-projects__hero-row">
+                <div>
+                  <p className="private-layout__eyebrow">{labels.eyebrow}</p>
+                  <h1>{labels.title}</h1>
+                </div>
+                <button type="button" onClick={startCreate} disabled={busy}>{labels.createTitle}</button>
               </div>
-              {editingId ? <button type="button" onClick={startCreate} disabled={busy}>{t("admin.workspace.resetForm", lang)}</button> : null}
+            </header>
+
+            <div className="admin-projects__workspace-grid admin-projects__workspace-grid--single">
+              <article className="admin-card admin-projects__editor">
+                <div className="admin-panel__header">
+                  <div>
+                    <h2>{labels.listTitle}</h2>
+                    <p className="admin-muted">{labels.listHint}</p>
+                  </div>
+                </div>
+                <div className="admin-projects__list">
+                  {items.length === 0 ? (
+                    <p className="admin-muted">{isPostsMode ? t("admin.workspace.noPosts", lang) : t("admin.workspace.noProjects", lang)}</p>
+                  ) : items.map((item) => (
+                    <div key={item.id} className="admin-projects__item">
+                      <div>
+                        <strong>{item.title[lang] || item.title.en}</strong>
+                        <p className="admin-muted">{item.id}</p>
+                        {!isPostsMode && <p className="admin-muted">Template: {item.template ?? "None"}</p>}
+                      </div>
+                      <div className="admin-chip-nav">
+                        <button type="button" onClick={() => startEdit(item.id)} disabled={busy}>Edit</button>
+                        <button type="button" onClick={() => void handleDelete(item.id)} disabled={busy}>Delete</button>
+                        {!isPostsMode
+                          ? <a href={`/app/${item.id}/index.html`} target="_blank" rel="noreferrer">Open</a>
+                          : <a href={`/posts/${item.id}`} target="_blank" rel="noreferrer">Open</a>
+                        }
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </article>
             </div>
+          </>
+        ) : (
+          <>
+            <header className="admin-projects__hero">
+              <button type="button" onClick={backToList} className="admin-back-btn" disabled={busy}>
+                ← {t("admin.workspace.backToList", lang)}
+              </button>
+              <h1>{editingId ? labels.editTitle : labels.createTitle}</h1>
+              <p>{labels.description}</p>
+              {serverError ? <p className="admin-error">{serverError}</p> : null}
+            </header>
+
+            <div className="admin-projects__workspace-grid admin-projects__workspace-grid--single">
+              <article className="admin-card admin-projects__editor">
+                <div className="admin-panel__header">
+                  <div>
+                    <h2>{editingId ? labels.editTitle : labels.createTitle}</h2>
+                    <p className="admin-muted">{labels.editorHint}</p>
+                  </div>
+                </div>
 
             <form className="admin-form" onSubmit={handleSubmit}>
               <div className="admin-projects__field-grid">
@@ -941,8 +999,10 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                 <p className="admin-muted">{t("admin.workspace.syncHint", lang)}</p>
               </div>
             </form>
-          </article>
-        </div>
+              </article>
+            </div>
+          </>
+        )}
       </article>
     </section>
   );

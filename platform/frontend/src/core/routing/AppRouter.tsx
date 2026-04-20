@@ -30,6 +30,7 @@ import { moduleRegistry } from "../plugin-registry";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { t } from "../../shared/i18n";
 import type { Language } from "../../public/types";
+import { ThemeProvider, readStoredLanguage } from "../../shared/theme/ThemeContext";
 
 function normalizePublicChildPath(path: string): string {
   return path.replace(/^\/+/, "");
@@ -155,14 +156,7 @@ function AppRoutes() {
 }
 
 export function AppRouter({ session = { isAuthenticated: false } }: AppRouterProps) {
-  const language: Language = (() => {
-    try {
-      const stored = window.localStorage.getItem("platform.ui.language");
-      return stored === "ru" || stored === "en" ? stored : "en";
-    } catch {
-      return "en";
-    }
-  })();
+  const language: Language = typeof window === "undefined" ? "en" : readStoredLanguage();
   const [authSession, setAuthSession] = useState<AuthSession>(session);
   const [authBootstrapping, setAuthBootstrapping] = useState<boolean>(session.isAuthenticated && !session.accessToken);
   const [reauthOpen, setReauthOpen] = useState(false);
@@ -363,57 +357,59 @@ export function AppRouter({ session = { isAuthenticated: false } }: AppRouterPro
 
   return (
     <AuthSessionProvider value={sessionValue}>
-      <PreferencesProvider>
-        <NotificationProvider>
-        <BrowserRouter>
-          <PublicAnalyticsTracker />
-          <AppRoutes />
-          {reauthOpen && authSession.isAuthenticated ? (
-            <div className="auth-reauth-overlay" role="dialog" aria-modal="true" aria-label={t("reauth.dialogAria", language)}>
-              <section className="auth-reauth-modal">
-                <h2>{t("reauth.title", language)}</h2>
-                <p className="admin-muted">{t("reauth.description", language)}</p>
-                <form className="admin-form" onSubmit={handleReauthSubmit}>
-                  <label>
-                    {t("reauth.emailLabel", language)}
-                    <input
-                      type="email"
-                      value={reauthEmail}
-                      onChange={(event) => setReauthEmail(event.target.value)}
-                      required
-                    />
-                  </label>
-                  <div className="auth-email-code-row">
+      <ThemeProvider>
+        <PreferencesProvider>
+          <NotificationProvider>
+          <BrowserRouter>
+            <PublicAnalyticsTracker />
+            <AppRoutes />
+            {reauthOpen && authSession.isAuthenticated ? (
+              <div className="auth-reauth-overlay" role="dialog" aria-modal="true" aria-label={t("reauth.dialogAria", language)}>
+                <section className="auth-reauth-modal">
+                  <h2>{t("reauth.title", language)}</h2>
+                  <p className="admin-muted">{t("reauth.description", language)}</p>
+                  <form className="admin-form" onSubmit={handleReauthSubmit}>
                     <label>
-                      {t("reauth.codeLabel", language)}
+                      {t("reauth.emailLabel", language)}
                       <input
-                        value={reauthCode}
-                        onChange={(event) => setReauthCode(event.target.value)}
-                        placeholder="123456"
+                        type="email"
+                        value={reauthEmail}
+                        onChange={(event) => setReauthEmail(event.target.value)}
                         required
                       />
                     </label>
-                    <button type="button" onClick={() => void handleReauthRequestCode()} disabled={reauthSendingCode}>
-                      {reauthSendingCode ? t("reauth.sendingCode", language) : t("reauth.sendCode", language)}
-                    </button>
-                  </div>
-                  <div className="auth-reauth-actions">
-                    <button type="submit" disabled={reauthBusy}>
-                      {reauthBusy ? t("reauth.checking", language) : t("reauth.submit", language)}
-                    </button>
-                    <button type="button" onClick={signOutWithCleanup}>
-                      {t("reauth.cancel", language)}
-                    </button>
-                  </div>
-                </form>
-                {reauthHint ? <p className="admin-muted">{reauthHint}</p> : null}
-                {reauthError ? <p className="admin-error">{reauthError}</p> : null}
-              </section>
-            </div>
-          ) : null}
-        </BrowserRouter>
-        </NotificationProvider>
-      </PreferencesProvider>
+                    <div className="auth-email-code-row">
+                      <label>
+                        {t("reauth.codeLabel", language)}
+                        <input
+                          value={reauthCode}
+                          onChange={(event) => setReauthCode(event.target.value)}
+                          placeholder="123456"
+                          required
+                        />
+                      </label>
+                      <button type="button" onClick={() => void handleReauthRequestCode()} disabled={reauthSendingCode}>
+                        {reauthSendingCode ? t("reauth.sendingCode", language) : t("reauth.sendCode", language)}
+                      </button>
+                    </div>
+                    <div className="auth-reauth-actions">
+                      <button type="submit" disabled={reauthBusy}>
+                        {reauthBusy ? t("reauth.checking", language) : t("reauth.submit", language)}
+                      </button>
+                      <button type="button" onClick={signOutWithCleanup}>
+                        {t("reauth.cancel", language)}
+                      </button>
+                    </div>
+                  </form>
+                  {reauthHint ? <p className="admin-muted">{reauthHint}</p> : null}
+                  {reauthError ? <p className="admin-error">{reauthError}</p> : null}
+                </section>
+              </div>
+            ) : null}
+          </BrowserRouter>
+          </NotificationProvider>
+        </PreferencesProvider>
+      </ThemeProvider>
     </AuthSessionProvider>
   );
 }

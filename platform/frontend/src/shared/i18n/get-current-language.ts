@@ -2,7 +2,7 @@
 
 export function getCurrentLanguage(): Language {
   try {
-    const stored = window.localStorage.getItem("platform.ui.language");
+    const stored = window.localStorage.getItem("grummm-lang") ?? window.localStorage.getItem("platform.ui.language");
     if (stored === "ru" || stored === "en") {
       return stored;
     }

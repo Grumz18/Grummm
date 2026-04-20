@@ -1,44 +1,61 @@
-import { useNavigate } from "react-router-dom";
-import { ProjectCardGrid } from "../components/ProjectCardGrid";
-import { ProjectsCatalogHeader } from "../components/ProjectsCatalogHeader";
+import { useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
+import { ContentFeed } from "../components/ContentFeed";
 import { useRuntimeProjects } from "../data/project-store";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
 
+function sortByPublishedDesc<T extends { publishedAt?: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const left = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+    const right = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+    return right - left;
+  });
+}
+
 export function ProjectsPage() {
-  const navigate = useNavigate();
-  const { theme, language } = usePreferences();
+  const { language } = usePreferences();
+  const [searchParams, setSearchParams] = useSearchParams();
   const projects = useRuntimeProjects();
-  const seoKeywords = language === "ru"
-    ? "grummm, \u043f\u0440\u043e\u0435\u043a\u0442\u044b, runtime \u0434\u0435\u043c\u043e, \u043c\u043e\u0434\u0443\u043b\u0438, \u0448\u0430\u0431\u043b\u043e\u043d\u044b, \u0432\u0438\u0442\u0440\u0438\u043d\u0430 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432"
-    : "grummm, projects, runtime demos, modules, templates, showcase projects";
+  const items = useMemo(() => sortByPublishedDesc(projects), [projects]);
+  const topic = searchParams.get("topic");
+
+  function updateTopic(nextTopic: string | null) {
+    const next = new URLSearchParams(searchParams);
+    if (nextTopic) {
+      next.set("topic", nextTopic);
+    } else {
+      next.delete("topic");
+    }
+    next.delete("kind");
+    setSearchParams(next, { replace: true });
+  }
 
   useDocumentMetadata({
     title: `${t("projects.title", language)} | Grummm`,
     description: t("projects.description", language),
     path: "/projects",
     language,
-    keywords: seoKeywords
+    keywords: language === "ru"
+      ? "grummm, проекты, runtime демо, модули, шаблоны, витрина проектов"
+      : "grummm, projects, runtime demos, modules, templates, showcase projects"
   });
 
   return (
-    <section className="projects-page" data-gsap="reveal">
-      <ProjectsCatalogHeader
-        eyebrow={t("projects.eyebrow", language)}
-        title={t("projects.title", language)}
-        description={t("projects.description", language)}
-        count={projects.length}
-        backLabel={t("projects.back", language)}
-        onBack={() => navigate("/")}
-      />
+    <section className="rs-feed-page">
+      <p className="rs-section-label">{t("projects.eyebrow", language)}</p>
+      <h1 className="rs-feed-page__title">{t("projects.title", language)}</h1>
+      <p className="rs-feed-page__description">{t("projects.description", language)}</p>
 
-      <ProjectCardGrid
-        items={projects}
-        theme={theme}
+      <ContentFeed
         language={language}
-        resolveHref={(projectId) => `/projects/${projectId}`}
-        className="portfolio-grid--catalog"
+        items={items}
+        kind="project"
+        topic={topic}
+        showKindFilter={false}
+        onKindChange={() => undefined}
+        onTopicToggle={(nextTopic) => updateTopic(topic === nextTopic ? null : nextTopic)}
       />
     </section>
   );

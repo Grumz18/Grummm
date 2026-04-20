@@ -18,37 +18,31 @@ export function NotFoundPage() {
   });
 
   return (
-    <section className="not-found-page" data-gsap="reveal">
-      <div className="not-found-page__hero liquid-glass">
-        <div className="liquid-glass__sheen" aria-hidden="true" />
-        <div className="liquid-glass__grain" aria-hidden="true" />
-        <div className="liquid-glass__content not-found-page__hero-shell">
-          <div className="not-found-page__copy">
-            <p className="not-found-page__badge">{t("notFound.eyebrow", language)}</p>
-            <h1 className="not-found-page__title">{t("notFound.title", language)}</h1>
-            <p className="not-found-page__description">{t("notFound.description", language)}</p>
-            <div className="not-found-page__actions">
-              <Link to="/" className="glass-button">
-                {t("notFound.backHome", language)}
-              </Link>
-              <Link to="/projects" className="glass-button glass-button--ghost">
-                {t("notFound.openProjects", language)}
-              </Link>
-            </div>
+    <section className="not-found-page rs-not-found-page" data-gsap="reveal">
+      <div className="rs-not-found">
+        <div className="rs-not-found__copy">
+          <p className="rs-section-label">{t("notFound.eyebrow", language)}</p>
+          <h1 className="rs-not-found__title">{t("notFound.title", language)}</h1>
+          <p className="rs-not-found__description">{t("notFound.description", language)}</p>
+          <div className="rs-not-found__actions">
+            <Link to="/" className="rs-btn rs-btn--accent">
+              {t("notFound.backHome", language)}
+            </Link>
+            <Link to="/projects" className="rs-btn rs-btn--border">
+              {t("notFound.openProjects", language)}
+            </Link>
           </div>
+        </div>
 
-          <div className="not-found-page__art">
-            <div className="not-found-page__art-panel">
-              <ProgressiveImage
-                src={notFoundCat}
-                alt={t("notFound.title", language)}
-                loading="eager"
-                fetchPriority="high"
-                wrapperClassName="not-found-page__art-frame"
-                className="not-found-page__art-image"
-              />
-            </div>
-          </div>
+        <div className="rs-not-found__art">
+          <ProgressiveImage
+            src={notFoundCat}
+            alt={t("notFound.title", language)}
+            loading="eager"
+            fetchPriority="high"
+            wrapperClassName="rs-not-found__art-frame"
+            className="rs-not-found__art-image"
+          />
         </div>
       </div>
     </section>
