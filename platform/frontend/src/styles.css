@@ -7121,6 +7121,12 @@ h6 {
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
+.rs-btn__icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
 .rs-btn:hover,
 .rs-btn:focus,
 .rs-btn:focus-visible {
@@ -7138,6 +7144,18 @@ h6 {
 .rs-btn--border {
   background: transparent;
   color: var(--gr-text, var(--text));
+}
+
+.rs-btn--whatsapp {
+  background: #25d366;
+  border-color: #25d366;
+  color: #fff;
+  font-weight: 600;
+}
+
+.rs-btn--gmail {
+  border-color: color-mix(in srgb, var(--gr-accent, var(--accent)) 38%, var(--gr-border, var(--line)));
+  color: color-mix(in srgb, var(--gr-accent, var(--accent)) 80%, var(--gr-text, var(--text)));
 }
 
 .rs-hero__latest {
@@ -7423,11 +7441,7 @@ h6 {
 .rs-discipline-icon svg {
   width: 22px;
   height: 22px;
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 2.1;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  display: block;
 }
 
 .rs-discipline-icon--0 {

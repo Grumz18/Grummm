@@ -57,6 +57,13 @@ export function LandingPage() {
   const telegramUrl = typeof import.meta.env.VITE_PUBLIC_TELEGRAM_URL === "string"
     ? import.meta.env.VITE_PUBLIC_TELEGRAM_URL.trim()
     : undefined;
+  const whatsappUrl = typeof import.meta.env.VITE_PUBLIC_WHATSAPP_URL === "string" && import.meta.env.VITE_PUBLIC_WHATSAPP_URL.trim().length > 0
+    ? import.meta.env.VITE_PUBLIC_WHATSAPP_URL.trim()
+    : `https://wa.me/?text=${encodeURIComponent(language === "ru" ? "Здравствуйте! Хочу обсудить сотрудничество по проекту Grummm." : "Hello! I want to discuss collaboration on the Grummm project.")}`;
+  const contactEmail = typeof import.meta.env.VITE_PUBLIC_CONTACT_EMAIL === "string" && import.meta.env.VITE_PUBLIC_CONTACT_EMAIL.trim().length > 0
+    ? import.meta.env.VITE_PUBLIC_CONTACT_EMAIL.trim()
+    : "serbul11@mail.ru";
+  const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(contactEmail)}`;
 
   const heroEyebrow = fallback(landingContent.heroEyebrow[language], t("landing.hero.fallbackEyebrow", language));
   const heroTitle = fallback(landingContent.heroTitle[language], t("landing.hero.fallbackTitle", language));
@@ -155,8 +162,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      <DisciplinesSection language={language} />
-
       <section className="rs-section">
         <p className="rs-section-label">{language === "ru" ? "Контент" : "Content"}</p>
         <h2 className="rs-section-title">
@@ -185,8 +190,15 @@ export function LandingPage() {
         telegramUrl={telegramUrl}
         githubUrl={GITHUB_URL}
       />
+      <DisciplinesSection language={language} showHeading={false} />
 
-      <ContactSection language={language} telegramUrl={telegramUrl} githubUrl={GITHUB_URL} />
+      <ContactSection
+        language={language}
+        telegramUrl={telegramUrl}
+        whatsappUrl={whatsappUrl}
+        gmailUrl={gmailUrl}
+        githubUrl={GITHUB_URL}
+      />
     </section>
   );
 }
