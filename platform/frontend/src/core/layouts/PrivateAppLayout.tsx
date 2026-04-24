@@ -49,7 +49,6 @@ export function PrivateAppLayout() {
     { to: "/app", label: t("private.nav.overview", language), end: true },
     { to: "/app/projects", label: t("private.nav.projects", language) },
     { to: "/app/posts", label: t("private.nav.posts", language) },
-    { to: "/app/content", label: t("private.nav.content", language) },
     { to: "/app/security", label: t("private.nav.security", language) },
     { to: "/app/tasks", label: "TaskTracker" }
   ];

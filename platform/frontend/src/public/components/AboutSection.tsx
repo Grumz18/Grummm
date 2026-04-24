@@ -1,4 +1,5 @@
 import { ProgressiveImage } from "./ProgressiveImage";
+import { DisciplinesSection } from "./DisciplinesSection";
 import type { Language } from "../types";
 
 interface AboutSectionProps {
@@ -14,24 +15,51 @@ interface AboutSectionProps {
   githubUrl: string;
 }
 
-const SKILLS = {
-  ru: ["Frontend и UI", "Backend и API", "Проектирование архитектуры", "Запуск и сопровождение"],
-  en: ["Frontend and UI", "Backend and API", "Architecture design", "Delivery and support"]
+const STACK_TAGS = {
+  ru: [
+    "React",
+    "PostgreSQL",
+    "Docker",
+    "CI/CD",
+    "LLM workflow",
+    "GitHub Org",
+    "Linux"
+  ],
+  en: [
+    "React",
+    "PostgreSQL",
+    "Docker",
+    "CI/CD",
+    "LLM workflow",
+    "GitHub Org",
+    "Linux"
+  ]
 } as const;
 
 const FACTS = {
   ru: [
-    { value: "2018", label: "Старт преподавания" },
-    { value: "6+", label: "Дисциплин" },
-    { value: "1", label: "Академия" },
-    { value: "Online", label: "Формат" }
+    { value: "\u041c\u043e\u0441\u043a\u0432\u0430", label: "\u0413\u043e\u0440\u043e\u0434" },
+    { value: "2023", label: "\u041f\u0440\u0435\u043f\u043e\u0434\u0430\u044e \u0441" },
+    { value: "\u041a\u0410 \u0422\u041e\u041f", label: "\u041c\u0435\u0441\u0442\u043e \u0440\u0430\u0431\u043e\u0442\u044b" },
+    { value: "14", label: "\u041f\u0440\u0435\u0434\u043c\u0435\u0442\u043e\u0432" }
   ],
   en: [
-    { value: "2018", label: "Teaching since" },
-    { value: "6+", label: "Disciplines" },
-    { value: "1", label: "Academy" },
-    { value: "Online", label: "Format" }
+    { value: "Moscow", label: "City" },
+    { value: "2023", label: "Teaching since" },
+    { value: "KA TOP", label: "Workplace" },
+    { value: "14", label: "Subjects" }
   ]
+} as const;
+
+const PROFILE = {
+  ru: {
+    title: ["\u0418\u0433\u043e\u0440\u044c", "\u0421\u0435\u0440\u0431\u0443\u043b\u044c"],
+    subtitle: "Fullstack-\u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a \u00b7 \u041f\u0440\u0435\u043f\u043e\u0434\u0430\u0432\u0430\u0442\u0435\u043b\u044c \u00b7 \u041c\u043e\u0441\u043a\u0432\u0430"
+  },
+  en: {
+    title: ["Igor", "Serbul"],
+    subtitle: "Fullstack developer \u00b7 Teacher \u00b7 Moscow"
+  }
 } as const;
 
 export function AboutSection({
@@ -46,56 +74,55 @@ export function AboutSection({
   telegramUrl,
   githubUrl
 }: AboutSectionProps) {
+  const profile = PROFILE[language];
+
   return (
     <section className="rs-section rs-about">
-      <p className="rs-section-label">{language === "ru" ? "Обо мне" : "About"}</p>
-      <div className="rs-about-grid">
-        <div className="rs-about-main">
-          <h2 className="rs-section-title">{title}</h2>
-          <p>{subtitle}</p>
-          <p>{text}</p>
-          <p><strong>{portfolioTitle}:</strong> {portfolioText}</p>
+      <article className="rs-about-card">
+        <div className="rs-about-top">
+          <div className="rs-about-media">
+            {photo ? (
+              <ProgressiveImage
+                src={photo}
+                alt={title}
+                loading="lazy"
+                wrapperClassName="rs-about-photo-frame"
+              />
+            ) : (
+              <div className="rs-about-photo-fallback">{photoPlaceholder}</div>
+            )}
+          </div>
 
-          <ul className="rs-about-skills">
-            {SKILLS[language].map((item) => (
-              <li key={item}><span>▸</span>{item}</li>
-            ))}
-          </ul>
+          <div className="rs-about-main">
+            <p className="rs-about-eyebrow">{language === "ru" ? "\u041e\u0411\u041e \u041c\u041d\u0415 \u00b7 \u041f\u0420\u041e\u0424\u0418\u041b\u042c" : "ABOUT \u00b7 PROFILE"}</p>
+            <h2 className="rs-about-title" aria-label={profile.title.join(" ")}>
+              {profile.title.map((line) => (
+                <span key={line}>{line}</span>
+              ))}
+            </h2>
+            <p className="rs-about-subtitle">{profile.subtitle}</p>
+            <span className="rs-about-divider" aria-hidden="true" />
+            <p className="rs-about-text">{text}</p>
 
-          <div className="rs-about-actions">
-            {telegramUrl ? (
-              <a className="rs-btn rs-btn--accent" href={telegramUrl} target="_blank" rel="noreferrer">
-                Telegram
-              </a>
-            ) : null}
-            <a className="rs-btn rs-btn--border" href={githubUrl} target="_blank" rel="noreferrer">
-              GitHub
-            </a>
+            <ul className="rs-about-skills">
+              {STACK_TAGS[language].map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        <aside className="rs-about-side">
-          {photo ? (
-            <ProgressiveImage
-              src={photo}
-              alt={title}
-              loading="lazy"
-              wrapperClassName="rs-about-photo-placeholder"
-            />
-          ) : (
-            <div className="rs-about-photo-placeholder">{photoPlaceholder}</div>
-          )}
+        <div className="rs-about-facts">
+          {FACTS[language].map((item) => (
+            <div key={item.label} className="rs-about-fact">
+              <strong>{item.value}</strong>
+              <span>{item.label}</span>
+            </div>
+          ))}
+        </div>
 
-          <div className="rs-about-facts">
-            {FACTS[language].map((item) => (
-              <div key={item.label} className="rs-about-fact">
-                <strong>{item.value}</strong>
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
+        <DisciplinesSection language={language} showHeading={false} embedded />
+      </article>
     </section>
   );
 }

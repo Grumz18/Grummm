@@ -1,12 +1,4 @@
-import { useEffect, useState } from "react";
-import { getCurrentLanguage, t } from "../../shared/i18n";
-import { getCurrentAccessToken } from "../../core/auth/auth-session";
 import type { LocalizedText } from "../types";
-
-const STORAGE_KEY = "platform.landing.content.v2";
-const UPDATE_EVENT = "platform:landing:updated";
-const PUBLIC_API = "/api/public/content/landing";
-const PRIVATE_API = "/api/app/content/landing";
 
 export interface LandingContent {
   heroEyebrow: LocalizedText;
@@ -20,122 +12,62 @@ export interface LandingContent {
   aboutPhoto?: string;
 }
 
-const seedLandingContent: LandingContent = {
+const STATIC_LANDING_CONTENT: LandingContent = {
   heroEyebrow: {
-    ru: "GRUMMM PLATFORM",
-    en: "GRUMMM PLATFORM"
+    ru: "\u0414\u041b\u042f \u0417\u0410\u041a\u0410\u0417\u0427\u0418\u041a\u041e\u0412 \u0418 \u041a\u041e\u041c\u0410\u041d\u0414",
+    en: "FOR CLIENTS AND TEAMS"
   },
   heroTitle: {
-    ru: "Платформа, где проекты превращаются в живые демонстрации",
-    en: "A platform where projects become live demonstrations"
+    ru: "\u0411\u044b\u0441\u0442\u0440\u043e \u043f\u043e\u0439\u043c\u0438\u0442\u0435, \u043f\u043e\u0434\u0445\u043e\u0436\u0443 \u043b\u0438 \u044f \u0432\u0430\u0448\u0435\u043c\u0443 \u043f\u0440\u043e\u0435\u043a\u0442\u0443",
+    en: "Quickly see if I am the right fit for your project"
   },
   heroDescription: {
-    ru: "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом",
-    en: "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content"
+    ru: "\u041d\u0430 \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435 \u0441\u043e\u0431\u0440\u0430\u043d\u044b \u0440\u0435\u0430\u043b\u044c\u043d\u044b\u0435 \u043a\u0435\u0439\u0441\u044b, \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442\u044b \u0438 \u0440\u0430\u0431\u043e\u0447\u0438\u0439 \u043f\u043e\u0434\u0445\u043e\u0434, \u0447\u0442\u043e\u0431\u044b \u0432\u044b \u0437\u0430 \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u043e \u043c\u0438\u043d\u0443\u0442 \u043e\u0446\u0435\u043d\u0438\u043b\u0438 \u043c\u043e\u0439 \u043e\u043f\u044b\u0442 \u0438 \u0432\u044b\u0431\u0440\u0430\u043b\u0438 \u0443\u0434\u043e\u0431\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u0447\u0435\u0441\u0442\u0432\u0430.",
+    en: "This platform brings together real cases, outcomes, and my working approach so you can evaluate my experience in minutes and choose a collaboration format that fits your goals."
   },
   aboutTitle: {
     ru: "\u041e\u0431\u043e \u043c\u043d\u0435",
     en: "About Me"
   },
   aboutSubtitle: {
-    ru: "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435",
-    en: "About"
+    ru: "\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u0438 \u044d\u043a\u0441\u043f\u0435\u0440\u0442\u0438\u0437\u0430",
+    en: "Profile and expertise"
   },
   aboutText: {
-    ru: "\u0421\u0435\u0440\u0431\u0443\u043b\u044c \u0418\u0433\u043e\u0440\u044c \u0418\u0433\u043e\u0440\u0435\u0432\u0438\u0447\nGitHub: https://github.com/Grumz18",
-    en: "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18"
+    ru: "Fullstack-\u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a \u0441 \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u043e\u0439 \u0441\u0430\u043c\u043e\u0441\u0442\u043e\u044f\u0442\u0435\u043b\u044c\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432, \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 CI/CD \u0438 \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438. \u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u044e LLM \u043a\u0430\u043a \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u043d\u044b\u0439 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442 \u0434\u043b\u044f \u0434\u0435\u043a\u043e\u043c\u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0437\u0430\u0434\u0430\u0447, \u043f\u0440\u043e\u0435\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f, \u0432\u0435\u0434\u0435\u043d\u0438\u044f \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0438 \u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0438.",
+    en: "Fullstack developer with hands-on experience in independent product delivery, CI/CD setup, and team-oriented development workflows. I use LLMs as an engineering tool for task decomposition, solution design, project state management, and technical documentation."
   },
   portfolioTitle: {
-    ru: "Портфолио",
-    en: "Portfolio"
+    ru: "\u041f\u0440\u043e\u0435\u043a\u0442\u044b",
+    en: "Projects"
   },
   portfolioText: {
-    ru: "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе",
-    en: "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action"
+    ru: "GRUMMM / grummm.ru \u2014 \u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u0430\u044f \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430 \u0438 \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u043d\u0430\u044f \u0441\u0440\u0435\u0434\u0430 \u0434\u043b\u044f \u043f\u0443\u0431\u043b\u0438\u043a\u0430\u0446\u0438\u0438 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u043e\u0432 \u0438 \u0440\u0430\u0437\u0432\u0438\u0442\u0438\u044f \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432. mobile-network-policy-lab \u2014 end-to-end \u043f\u0440\u043e\u0435\u043a\u0442 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0435 \u0441 AI-assisted workflow \u0438 checkpoint-\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0435\u0439.",
+    en: "GRUMMM / grummm.ru is my own platform and engineering environment for publishing materials and evolving products. mobile-network-policy-lab is an active end-to-end project where I use an AI-assisted workflow with checkpoint documentation and controlled delivery."
   },
   aboutPhoto: "/src/images/profile-main.jpeg"
 };
 
-function cloneSeed(): LandingContent {
+function cloneStaticContent(): LandingContent {
   return {
-    heroEyebrow: { ...seedLandingContent.heroEyebrow },
-    heroTitle: { ...seedLandingContent.heroTitle },
-    heroDescription: { ...seedLandingContent.heroDescription },
-    aboutTitle: { ...seedLandingContent.aboutTitle },
-    aboutSubtitle: { ...seedLandingContent.aboutSubtitle },
-    aboutText: { ...seedLandingContent.aboutText },
-    portfolioTitle: { ...seedLandingContent.portfolioTitle },
-    portfolioText: { ...seedLandingContent.portfolioText },
-    aboutPhoto: seedLandingContent.aboutPhoto
+    heroEyebrow: { ...STATIC_LANDING_CONTENT.heroEyebrow },
+    heroTitle: { ...STATIC_LANDING_CONTENT.heroTitle },
+    heroDescription: { ...STATIC_LANDING_CONTENT.heroDescription },
+    aboutTitle: { ...STATIC_LANDING_CONTENT.aboutTitle },
+    aboutSubtitle: { ...STATIC_LANDING_CONTENT.aboutSubtitle },
+    aboutText: { ...STATIC_LANDING_CONTENT.aboutText },
+    portfolioTitle: { ...STATIC_LANDING_CONTENT.portfolioTitle },
+    portfolioText: { ...STATIC_LANDING_CONTENT.portfolioText },
+    aboutPhoto: STATIC_LANDING_CONTENT.aboutPhoto
   };
-}
-
-function normalizeLandingContent(source?: Partial<LandingContent> | null): LandingContent {
-  const base = cloneSeed();
-  return {
-    ...base,
-    ...source,
-    heroEyebrow: source?.heroEyebrow ?? base.heroEyebrow,
-    heroTitle: source?.heroTitle ?? base.heroTitle,
-    heroDescription: source?.heroDescription ?? base.heroDescription,
-    aboutTitle: source?.aboutTitle ?? base.aboutTitle,
-    aboutSubtitle: source?.aboutSubtitle ?? base.aboutSubtitle,
-    aboutText: source?.aboutText ?? base.aboutText,
-    portfolioTitle: source?.portfolioTitle ?? base.portfolioTitle,
-    portfolioText: source?.portfolioText ?? base.portfolioText
-  };
-}
-
-function writeLandingContent(next: LandingContent) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  window.dispatchEvent(new Event(UPDATE_EVENT));
-}
-
-function getAccessToken(): string | null {
-  try {
-    const token = getCurrentAccessToken();
-    return token && token.trim().length > 0 ? token : null;
-  } catch {
-    return null;
-  }
-}
-
-function ensureAccessToken(serverOnly: boolean): string | null {
-  const token = getAccessToken();
-  if (serverOnly && !token) {
-    throw new Error(t("projectsStore.error.noAccessToken", getCurrentLanguage()));
-  }
-  return token;
 }
 
 export function readLandingContent(): LandingContent {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      const initial = cloneSeed();
-      writeLandingContent(initial);
-      return initial;
-    }
-
-    const parsed = JSON.parse(raw) as LandingContent;
-    if (!parsed || typeof parsed !== "object") {
-      const initial = cloneSeed();
-      writeLandingContent(initial);
-      return initial;
-    }
-
-    return normalizeLandingContent(parsed);
-  } catch {
-    const initial = cloneSeed();
-    writeLandingContent(initial);
-    return initial;
-  }
+  return cloneStaticContent();
 }
 
-export function saveLandingContent(content: LandingContent): LandingContent {
-  const normalized = normalizeLandingContent(content);
-  writeLandingContent(normalized);
-  return normalized;
+export function saveLandingContent(_content: LandingContent): LandingContent {
+  return cloneStaticContent();
 }
 
 export interface LandingMutationOptions {
@@ -143,91 +75,16 @@ export interface LandingMutationOptions {
 }
 
 export async function fetchLandingContentFromApi(): Promise<LandingContent | null> {
-  try {
-    const response = await fetch(PUBLIC_API, {
-      headers: { Accept: "application/json" }
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const payload = (await response.json()) as Partial<LandingContent>;
-    const normalized = normalizeLandingContent(payload);
-    writeLandingContent(normalized);
-    return normalized;
-  } catch {
-    return null;
-  }
+  return cloneStaticContent();
 }
 
-// Landing content follows the same sync pattern as project posts: prefer server persistence, fall back to local cache when allowed.
 export async function saveLandingContentToServer(
-  content: LandingContent,
-  options: LandingMutationOptions = {}
+  _content: LandingContent,
+  _options: LandingMutationOptions = {}
 ): Promise<LandingContent> {
-  const normalized = normalizeLandingContent(content);
-
-  const token = ensureAccessToken(Boolean(options.serverOnly));
-
-  if (!token) {
-    if (options.serverOnly) {
-      throw new Error(t("projectsStore.error.noServerUpdate", getCurrentLanguage()));
-    }
-    writeLandingContent(normalized);
-    return normalized;
-  }
-
-  try {
-    const response = await fetch(PRIVATE_API, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(normalized)
-    });
-
-    if (!response.ok) {
-      if (options.serverOnly) {
-        throw new Error(t("landingAdmin.error.sync", getCurrentLanguage()));
-      }
-      writeLandingContent(normalized);
-      return normalized;
-    }
-
-    const payload = (await response.json()) as Partial<LandingContent>;
-    const synced = normalizeLandingContent(payload);
-    writeLandingContent(synced);
-    return synced;
-  } catch {
-    if (options.serverOnly) {
-      throw new Error(t("landingAdmin.error.sync", getCurrentLanguage()));
-    }
-    writeLandingContent(normalized);
-    return normalized;
-  }
+  throw new Error("Landing content editing is disabled.");
 }
 
 export function useLandingContent(): LandingContent {
-  const [content, setContent] = useState<LandingContent>(() =>
-    typeof window === "undefined" ? cloneSeed() : readLandingContent()
-  );
-
-  useEffect(() => {
-    const sync = () => setContent(readLandingContent());
-    void fetchLandingContentFromApi().then((next) => {
-      if (next) {
-        setContent(next);
-      }
-    });
-    window.addEventListener(UPDATE_EVENT, sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener(UPDATE_EVENT, sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  return content;
+  return cloneStaticContent();
 }

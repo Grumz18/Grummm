@@ -18,7 +18,6 @@ import {
   type SignInPayload
 } from "../auth/auth-session";
 import { AdminProjectsWorkspace } from "../pages/AdminProjectsWorkspace";
-import { AdminLandingContentPage } from "../pages/AdminLandingContentPage";
 import { AdminLoginPage } from "../pages/AdminLoginPage";
 import { AdminOverviewPage } from "../pages/AdminOverviewPage";
 import { AdminSecurityPage } from "../pages/AdminSecurityPage";
@@ -135,7 +134,6 @@ function AppRoutes() {
         <Route index element={<AdminOverviewPage />} />
         <Route path="projects" element={<AdminProjectsWorkspace />} />
         <Route path="posts" element={<AdminProjectsWorkspace mode="posts" />} />
-        <Route path="content" element={<AdminLandingContentPage />} />
         <Route path="security" element={<AdminSecurityPage />} />
         <Route path=":slug" element={<DynamicProjectViewer />} />
 

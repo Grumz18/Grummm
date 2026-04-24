@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { AboutSection } from "../components/AboutSection";
 import { ContactSection } from "../components/ContactSection";
 import { ContentFeed, type KindFilterValue } from "../components/ContentFeed";
-import { DisciplinesSection } from "../components/DisciplinesSection";
 import { useLandingContent } from "../data/landing-content-store";
 import { formatPublishedDate } from "../formatPublishedDate";
 import {
@@ -17,7 +16,7 @@ import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
 
-const GITHUB_URL = "https://github.com/Grumz18/Grummm";
+const GITHUB_URL = "https://github.com/Grumz18";
 
 function sortByPublishedDesc<T extends { publishedAt?: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
@@ -190,7 +189,6 @@ export function LandingPage() {
         telegramUrl={telegramUrl}
         githubUrl={GITHUB_URL}
       />
-      <DisciplinesSection language={language} showHeading={false} />
 
       <ContactSection
         language={language}

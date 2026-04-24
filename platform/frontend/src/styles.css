@@ -7404,18 +7404,26 @@ h6 {
 
 .rs-disciplines-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  border: 1px solid var(--gr-border, var(--line));
-  border-radius: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--gr-border, var(--line));
   overflow: hidden;
 }
 
 .rs-discipline-cell {
-  padding: 24px 22px;
+  min-height: 76px;
+  padding: 18px 20px 14px;
   border-right: 1px solid var(--gr-border, var(--line));
   border-bottom: 1px solid var(--gr-border, var(--line));
-  background: var(--gr-bg-surface, var(--bg-elevated));
+  background: color-mix(in srgb, var(--gr-bg-card, var(--surface)) 94%, #ffffff 6%);
   transition: background 0.15s ease;
+}
+
+.rs-discipline-cell:nth-child(3n) {
+  border-right: 0;
+}
+
+.rs-discipline-cell:nth-last-child(-n + 3) {
+  border-bottom: 0;
 }
 
 .rs-discipline-cell:hover {
@@ -7423,52 +7431,63 @@ h6 {
 }
 
 .rs-discipline-cell h3 {
-  margin: 0 0 10px;
-  font-size: 15px;
-  font-weight: 600;
+  display: inline;
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--gr-text, var(--text));
 }
 
-.rs-discipline-icon {
+.rs-discipline-bullet {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-bottom: 12px;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 999px;
+  vertical-align: 1px;
 }
 
-.rs-discipline-icon svg {
-  width: 22px;
-  height: 22px;
-  display: block;
+.rs-discipline-bullet--0 {
+  background: #506eff;
 }
 
-.rs-discipline-icon--0 {
-  color: oklch(0.52 0.14 250);
+.rs-discipline-bullet--1 {
+  background: #f2a20b;
 }
 
-.rs-discipline-icon--1 {
-  color: oklch(0.52 0.14 165);
+.rs-discipline-bullet--2 {
+  background: #ef4444;
 }
 
-.rs-discipline-icon--2 {
-  color: oklch(0.52 0.14 35);
+.rs-discipline-bullet--3 {
+  background: #22c55e;
+}
+
+.rs-discipline-bullet--4 {
+  background: #a855f7;
+}
+
+.rs-discipline-bullet--5 {
+  background: #f97316;
 }
 
 .rs-discipline-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+  margin-top: 8px;
 }
 
 .rs-discipline-tag {
-  padding: 3px 8px;
+  padding: 3px 7px;
   border-radius: 4px;
   background: var(--gr-tag, #ededea);
   color: var(--gr-tag-text, #52525e);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 9px;
+  line-height: 1.15;
 }
 
 .rs-feed {
@@ -7553,57 +7572,50 @@ h6 {
   font-size: 15px;
 }
 
-.rs-about-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: 64px;
-  align-items: start;
-}
-
-.rs-about-main {
-  display: grid;
-  gap: 12px;
-}
-
-.rs-about-main p {
-  margin: 0;
-  color: var(--gr-muted, var(--text-muted));
-  font-size: 15px;
-  line-height: 1.65;
-}
-
-.rs-about-skills {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 7px;
-}
-
-.rs-about-skills li {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--gr-muted, var(--text-muted));
-  font-size: 14px;
-}
-
-.rs-about-skills li span {
-  color: var(--gr-accent, var(--accent));
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.rs-about-side {
-  display: grid;
-  gap: 16px;
-}
-
-.rs-about-photo-placeholder {
+.rs-about {
+  gap: 0;
   width: 100%;
-  aspect-ratio: 3 / 4;
-  border: 1px dashed var(--gr-border, var(--line));
-  border-radius: 10px;
+  justify-self: stretch;
+}
+
+.rs-about-card {
+  display: grid;
+  border: 1px solid var(--gr-border, var(--line));
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--gr-bg-card, var(--surface)) 94%, #ffffff 6%);
+  overflow: hidden;
+}
+
+.rs-about-top {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: stretch;
+  min-height: 400px;
+}
+
+.rs-about-media {
+  border-right: 1px solid var(--gr-border, var(--line));
+  background: color-mix(in srgb, var(--gr-bg-surface, var(--bg-elevated)) 95%, #fff 5%);
+}
+
+.rs-about-photo-frame,
+.rs-about-photo-fallback {
+  width: 100%;
+  min-height: 400px;
+  height: 100%;
+}
+
+.rs-about-photo-frame {
+  border-radius: 0;
+}
+
+.rs-about-photo-frame .media-frame__asset {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rs-about-photo-fallback {
   display: grid;
   place-items: center;
   color: var(--gr-faint, var(--text-soft));
@@ -7613,33 +7625,161 @@ h6 {
   letter-spacing: 0.08em;
 }
 
+.rs-about-main {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 31px 32px 27px;
+}
+
+.rs-about-eyebrow {
+  margin: 0;
+  color: var(--gr-accent, var(--accent));
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rs-about-title {
+  margin: 0;
+  font-size: 43px;
+  line-height: 0.88;
+  letter-spacing: -0.045em;
+  color: var(--gr-text, var(--text));
+}
+
+.rs-about-title span {
+  display: block;
+}
+
+.rs-about-subtitle,
+.rs-about-text {
+  margin: 0;
+  color: var(--gr-muted, var(--text-muted));
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.rs-about-text {
+  max-width: 54ch;
+  font-size: 13px;
+  line-height: 1.78;
+}
+
+.rs-about-divider {
+  width: 32px;
+  height: 1px;
+  margin: 14px 0 8px;
+  background: var(--gr-border, var(--line));
+}
+
+.rs-about-skills {
+  margin: 0;
+  margin-top: 16px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.rs-about-skills li {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 22px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--gr-accent, var(--accent)) 12%, transparent);
+  background: #eef0ff;
+  color: #4a63ff;
+  font-size: 11px;
+  font-weight: 500;
+}
+
 .rs-about-facts {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: 1px solid var(--gr-border, var(--line));
-  border-radius: 10px;
-  overflow: hidden;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--gr-border, var(--line));
+  border-bottom: 1px solid var(--gr-border, var(--line));
 }
 
 .rs-about-fact {
-  padding: 16px 18px;
+  min-height: 80px;
+  padding: 20px 22px 16px;
   border-right: 1px solid var(--gr-border, var(--line));
-  border-bottom: 1px solid var(--gr-border, var(--line));
+}
+
+.rs-about-fact:last-child {
+  border-right: 0;
 }
 
 .rs-about-fact strong {
   display: block;
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 700;
+  line-height: 1.05;
   letter-spacing: -0.02em;
+  color: var(--gr-text, var(--text));
 }
 
 .rs-about-fact span {
-  margin-top: 3px;
+  margin-top: 5px;
   display: block;
   color: var(--gr-muted, var(--text-muted));
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rs-about-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 64px;
+  padding: 14px 22px;
+}
+
+.rs-about-links {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--gr-muted, var(--text-muted));
+  font-size: 12px;
+}
+
+.rs-about-links a {
+  color: var(--gr-text, var(--text));
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rs-about-links a:hover,
+.rs-about-links a:focus-visible {
+  text-decoration: underline;
+}
+
+.rs-about-btn--github {
+  border-radius: 999px;
+  border-color: #111216;
+  background: #111216;
+  color: #fff;
+  font-weight: 600;
+  min-height: 34px;
+  gap: 7px;
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+.rs-about-btn--github svg {
+  width: 14px;
+  height: 14px;
 }
 
 .rs-contact {
@@ -7927,9 +8067,50 @@ h6 {
     text-align: left;
   }
 
-  .rs-about-grid {
+  .rs-about-top {
     grid-template-columns: 1fr;
-    gap: 18px;
+  }
+
+  .rs-about-media {
+    border-right: 0;
+    border-bottom: 1px solid var(--gr-border, var(--line));
+  }
+
+  .rs-about-photo-frame,
+  .rs-about-photo-fallback {
+    min-height: 300px;
+  }
+
+  .rs-about-main {
+    padding: 20px 16px;
+  }
+
+  .rs-about-subtitle,
+  .rs-about-text {
+    font-size: 15px;
+  }
+
+  .rs-about-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .rs-about-fact {
+    border-right: 1px solid var(--gr-border, var(--line));
+    border-bottom: 1px solid var(--gr-border, var(--line));
+  }
+
+  .rs-about-fact:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .rs-about-fact:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .rs-about-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
   }
 
   .rs-not-found {
@@ -7965,6 +8146,95 @@ h6 {
     overflow-x: auto;
     padding-bottom: 0.25rem;
     scrollbar-width: thin;
+  }
+}
+
+@media (min-width: 720px) and (max-width: 959.98px) {
+  .rs-about-top {
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 400px;
+  }
+
+  .rs-about-media {
+    border-right: 1px solid var(--gr-border, var(--line));
+    border-bottom: 0;
+  }
+
+  .rs-about-photo-frame,
+  .rs-about-photo-fallback {
+    min-height: 400px;
+  }
+
+  .rs-about-main {
+    padding: 31px 32px 27px;
+  }
+
+  .rs-about-subtitle {
+    font-size: 12px;
+  }
+
+  .rs-about-text {
+    font-size: 13px;
+  }
+
+  .rs-about-facts {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .rs-about-fact {
+    border-right: 1px solid var(--gr-border, var(--line));
+    border-bottom: 0;
+  }
+
+  .rs-about-fact:nth-child(2n) {
+    border-right: 1px solid var(--gr-border, var(--line));
+  }
+
+  .rs-about-fact:last-child {
+    border-right: 0;
+  }
+
+  .rs-about-footer {
+    flex-direction: row;
+    align-items: center;
+    padding: 14px 22px;
+  }
+}
+
+@media (max-width: 719.98px) {
+  .rs-about {
+    width: 100%;
+  }
+
+  .rs-about-card {
+    border-radius: 16px;
+  }
+
+  .rs-about-title {
+    font-size: 38px;
+  }
+
+  .rs-about-subtitle {
+    font-size: 12px;
+  }
+
+  .rs-about-text {
+    font-size: 13px;
+  }
+
+  .rs-disciplines-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rs-discipline-cell,
+  .rs-discipline-cell:nth-child(3n),
+  .rs-discipline-cell:nth-last-child(-n + 3) {
+    border-right: 0;
+    border-bottom: 1px solid var(--gr-border, var(--line));
+  }
+
+  .rs-discipline-cell:last-child {
+    border-bottom: 0;
   }
 }
 
