@@ -374,22 +374,22 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
     private static LandingContentDto SeedLandingContent()
     {
         return new LandingContentDto(
-            HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
+            HeroEyebrow: new LocalizedTextDto("FOR CLIENTS AND TEAMS", "ДЛЯ ЗАКАЗЧИКОВ И КОМАНД"),
             HeroTitle: new LocalizedTextDto(
-                "A platform where projects become live demonstrations.",
-                "Платформа, где проекты превращаются в живые демонстрации"),
+                "Quickly see if I am the right fit for your project",
+                "Быстро поймите, подхожу ли я вашему проекту"),
             HeroDescription: new LocalizedTextDto(
-                "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
-                "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом"),
+                "This platform brings together real cases, outcomes, and my working approach so you can evaluate my experience in minutes and choose a collaboration format that fits your goals.",
+                "На платформе собраны реальные кейсы, результаты и рабочий подход, чтобы вы за несколько минут оценили мой опыт и выбрали удобный формат сотрудничества."),
             AboutTitle: new LocalizedTextDto("About Me", "\u041e\u0431\u043e \u043c\u043d\u0435"),
-            AboutSubtitle: new LocalizedTextDto("About", "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435"),
+            AboutSubtitle: new LocalizedTextDto("Profile and expertise", "\u041f\u0440\u043e\u0444\u0438\u043b\u044c \u0438 \u044d\u043a\u0441\u043f\u0435\u0440\u0442\u0438\u0437\u0430"),
             AboutText: new LocalizedTextDto(
-                "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18",
-                "\u0421\u0435\u0440\u0431\u0443\u043b\u044c \u0418\u0433\u043e\u0440\u044c \u0418\u0433\u043e\u0440\u0435\u0432\u0438\u0447\nGitHub: https://github.com/Grumz18"),
-            PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
+                "Fullstack developer with hands-on experience in independent product delivery, CI/CD setup, and team-oriented development workflows. I use LLMs as an engineering tool for task decomposition, solution design, project state management, and technical documentation.",
+                "Fullstack-\u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u0447\u0438\u043a \u0441 \u043f\u0440\u0430\u043a\u0442\u0438\u043a\u043e\u0439 \u0441\u0430\u043c\u043e\u0441\u0442\u043e\u044f\u0442\u0435\u043b\u044c\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432, \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 CI/CD \u0438 \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u0438 \u043a\u043e\u043c\u0430\u043d\u0434\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0438. \u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u044e LLM \u043a\u0430\u043a \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u043d\u044b\u0439 \u0438\u043d\u0441\u0442\u0440\u0443\u043c\u0435\u043d\u0442 \u0434\u043b\u044f \u0434\u0435\u043a\u043e\u043c\u043f\u043e\u0437\u0438\u0446\u0438\u0438 \u0437\u0430\u0434\u0430\u0447, \u043f\u0440\u043e\u0435\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f, \u0432\u0435\u0434\u0435\u043d\u0438\u044f \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u044f \u043f\u0440\u043e\u0435\u043a\u0442\u0430 \u0438 \u043f\u043e\u0434\u0433\u043e\u0442\u043e\u0432\u043a\u0438 \u0442\u0435\u0445\u043d\u0438\u0447\u0435\u0441\u043a\u043e\u0439 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0438."),
+            PortfolioTitle: new LocalizedTextDto("Projects", "\u041f\u0440\u043e\u0435\u043a\u0442\u044b"),
             PortfolioText: new LocalizedTextDto(
-                "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action",
-                "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе"),
+                "GRUMMM / grummm.ru is my own platform and engineering environment for publishing materials and evolving products. mobile-network-policy-lab is an active end-to-end project where I use an AI-assisted workflow with checkpoint documentation and controlled delivery.",
+                "GRUMMM / grummm.ru \u2014 \u0441\u043e\u0431\u0441\u0442\u0432\u0435\u043d\u043d\u0430\u044f \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0430 \u0438 \u0438\u043d\u0436\u0435\u043d\u0435\u0440\u043d\u0430\u044f \u0441\u0440\u0435\u0434\u0430 \u0434\u043b\u044f \u043f\u0443\u0431\u043b\u0438\u043a\u0430\u0446\u0438\u0438 \u043c\u0430\u0442\u0435\u0440\u0438\u0430\u043b\u043e\u0432 \u0438 \u0440\u0430\u0437\u0432\u0438\u0442\u0438\u044f \u043f\u0440\u043e\u0435\u043a\u0442\u043e\u0432. mobile-network-policy-lab \u2014 end-to-end \u043f\u0440\u043e\u0435\u043a\u0442 \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0439 \u0440\u0430\u0437\u0440\u0430\u0431\u043e\u0442\u043a\u0435 \u0441 AI-assisted workflow \u0438 checkpoint-\u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430\u0446\u0438\u0435\u0439."),
             AboutPhoto: "/src/images/profile-main.jpeg");
     }
 
@@ -460,12 +460,22 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         const string fillMissingAboutSql = """
                                            update landing_content
-                                           set about_title_en = @about_title_en,
+                                           set hero_eyebrow_en = @hero_eyebrow_en,
+                                               hero_eyebrow_ru = @hero_eyebrow_ru,
+                                               hero_title_en = @hero_title_en,
+                                               hero_title_ru = @hero_title_ru,
+                                               hero_description_en = @hero_description_en,
+                                               hero_description_ru = @hero_description_ru,
+                                               about_title_en = @about_title_en,
                                                about_title_ru = @about_title_ru,
                                                about_subtitle_en = @about_subtitle_en,
                                                about_subtitle_ru = @about_subtitle_ru,
                                                about_text_en = @about_text_en,
                                                about_text_ru = @about_text_ru,
+                                               portfolio_title_en = @portfolio_title_en,
+                                               portfolio_title_ru = @portfolio_title_ru,
+                                               portfolio_text_en = @portfolio_text_en,
+                                               portfolio_text_ru = @portfolio_text_ru,
                                                about_photo = @about_photo,
                                                updated_at = now()
                                            where id = @id
@@ -473,11 +483,47 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
                                                  about_photo is null
                                                  or btrim(about_photo) = ''
                                                  or about_photo = '/assets/about/profile-main.jpeg'
-                                             );
+                                                 or about_text_en = @legacy_about_text_en
+                                                 or about_text_ru = @legacy_about_text_ru
+                                                 or portfolio_text_en = @legacy_portfolio_text_en
+                                                 or portfolio_text_ru = @legacy_portfolio_text_ru
+                                                 or about_text_en = @previous_default_about_text_en
+                                                 or about_text_ru = @previous_default_about_text_ru
+                                                 or portfolio_text_en = @previous_default_portfolio_text_en
+                                                 or portfolio_text_ru = @previous_default_portfolio_text_ru
+                                                 or hero_eyebrow_en = @legacy_hero_eyebrow_en
+                                                 or hero_eyebrow_ru = @legacy_hero_eyebrow_ru
+                                                 or hero_eyebrow_en = @previous_default_hero_eyebrow_en
+                                                 or hero_eyebrow_ru = @previous_default_hero_eyebrow_ru
+                                                 or hero_title_en = @previous_default_hero_title_en
+                                                 or hero_title_ru = @previous_default_hero_title_ru
+                                                 or hero_description_en = @previous_default_hero_description_en
+                                                 or hero_description_ru = @previous_default_hero_description_ru
+                                                 or hero_title_en ilike 'a platform where projects become live demonstrations%'
+                                                 or hero_title_ru ilike 'Платформа, где проекты превращаются в живые демонстрации%'
+                                                 or hero_description_en ilike 'Grummm.ru is a personal showcase%'
+                                                 or hero_description_ru ilike 'Grummm.ru — это персональная витрина%'
+                                              );
                                            """;
 
         await using var fillMissingAboutCommand = new NpgsqlCommand(fillMissingAboutSql, connection);
         BindLandingParameters(fillMissingAboutCommand, seed);
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_about_text_en", "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18");
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_about_text_ru", "Сербуль Игорь Игоревич\nGitHub: https://github.com/Grumz18");
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_portfolio_text_en", "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action");
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_portfolio_text_ru", "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе");
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_hero_eyebrow_en", "GRUMMM PLATFORM");
+        fillMissingAboutCommand.Parameters.AddWithValue("legacy_hero_eyebrow_ru", "GRUMMM PLATFORM");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_about_text_en", "Igor (Grumz18) is a developer, instructor, and network engineer based in Latvia. Since 2023, I have been teaching at Computer Academy \"TOP\" in both in-person and remote formats, covering 27 subjects across web development, Python, C++, game development, robotics, and related practical tracks.");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_about_text_ru", "Игорь (Grumz18) — разработчик, преподаватель и network engineer из Латвии. С 2023 года преподаю в Computer Academy «TOP» очно и онлайн, где веду 27 учебных направлений: web, Python, C++, game dev, robotics и другие практические дисциплины.");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_portfolio_text_en", "My GitHub focus is on Grummm Platform (a modular monolith built with React + ASP.NET Core 9 + Docker) and mobile-network-policy-lab (adaptive mobile network policy research with Kotlin, Go, and PowerShell). I also automate workflows with n8n and handle manual deployments with SSL on remote servers.");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_portfolio_text_ru", "В GitHub развиваю Grummm Platform (модульный монолит на React + ASP.NET Core 9 + Docker) и mobile-network-policy-lab (исследование адаптивных мобильных сетевых политик на Kotlin, Go и PowerShell). Также автоматизирую процессы через n8n и веду manual deploy с SSL на удалённые серверы.");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_eyebrow_en", "WHY THIS PLATFORM");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_eyebrow_ru", "ЗАЧЕМ ЭТА ПЛАТФОРМА");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_title_en", "See quickly how I can help your project move forward");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_title_ru", "Здесь вы быстро понимаете, чем я могу быть полезен вашему проекту");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_description_en", "Grummm helps you quickly evaluate real experience, see my approach to problem-solving, and choose a collaboration format that fits your goals.");
+        fillMissingAboutCommand.Parameters.AddWithValue("previous_default_hero_description_ru", "Grummm нужен, чтобы за пару минут оценить мой реальный опыт, увидеть подход к задачам и понять, какой формат сотрудничества вам подойдет.");
         await fillMissingAboutCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 
