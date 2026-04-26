@@ -141,42 +141,5 @@ export const seedProjects: PortfolioProject[] = [
     template: "Static",
     frontendPath: "/templates/static",
     backendPath: "/services/static"
-  },
-  {
-    id: "chat-module",
-    kind: "project",
-    visibility: "public",
-    title: {
-      en: "Chat Module",
-      ru: "Чат-модуль"
-    },
-    summary: {
-      en: "Fast internal messaging with moderation controls.",
-      ru: "Быстрые внутренние сообщения с модерацией."
-    },
-    description: {
-      en: "Chat Module provides low-friction team communication with role-based moderation and a lightweight event stream.",
-      ru: "Chat Module даёт role-based модерацию и быстрый событийный поток."
-    },
-    publishedAt: "2026-03-17T13:45:00.000Z",
-    contentBlocks: [],
-    tags: ["Realtime", "Moderation", "UX"],
-    heroImage: {
-      light: svgCard("Chat Module", "#4d92f2", "#57c8e8", "#ffd283"),
-      dark: svgCard("Chat Module", "#1e375f", "#18586a", "#f59e0b")
-    },
-    screenshots: [
-      {
-        light: svgCard("Rooms", "#519cf2", "#63cbe9", "#ffd283"),
-        dark: svgCard("Rooms", "#213b65", "#1b5f71", "#f59e0b")
-      },
-      {
-        light: svgCard("Moderation", "#57a7f4", "#73d1ed", "#ffd89b"),
-        dark: svgCard("Moderation", "#24416b", "#21697a", "#f7ac35")
-      }
-    ],
-    template: "JavaScript",
-    frontendPath: "/templates/js",
-    backendPath: "/services/js"
   }
 ];
