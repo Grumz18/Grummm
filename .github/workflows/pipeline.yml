@@ -164,7 +164,7 @@ jobs:
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             DEPLOY_PATH="${{ vars.STAGING_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt"; fi
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
             cd "$DEPLOY_PATH"
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
@@ -204,7 +204,7 @@ jobs:
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             DEPLOY_PATH="${{ vars.PRODUCTION_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt"; fi
+            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
             cd "$DEPLOY_PATH"
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
@@ -272,4 +272,3 @@ jobs:
           { [ "$csrf" = "200" ] || [ "$csrf" = "204" ]; } && ok "CSRF endpoint" || fail "CSRF → $csrf"
           echo "Smoke summary: PASS=$PASS FAIL=$FAIL"
           [ "$FAIL" -eq 0 ]
-
