@@ -40,28 +40,26 @@ export function PublicFooter() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="public-footer liquid-glass">
-      <div className="liquid-glass__sheen" aria-hidden="true" />
-      <div className="liquid-glass__grain" aria-hidden="true" />
-      <div className="liquid-glass__content public-footer__shell">
-        <div className="public-footer__copy">
+    <footer className="public-footer rs-public-footer">
+      <div className="rs-public-footer__inner">
+        <div className="rs-public-footer__copy">
           <span>{t("notFound.footerRights", language, { year: String(currentYear) })}</span>
           <span>{t("notFound.footerOffer", language)}</span>
           <span>{t("notFound.footerPrivacy", language)}</span>
         </div>
 
-        <div className="public-footer__actions">
-          <Link to="/" className="public-footer__icon-link" aria-label={t("notFound.footerHomeAria", language)}>
+        <div className="rs-public-footer__actions">
+          <Link to="/" className="rs-public-footer__icon-link" aria-label={t("notFound.footerHomeAria", language)}>
             <HomeGlyph />
           </Link>
-          <Link to="/projects" className="public-footer__icon-link" aria-label={t("notFound.footerProjectsAria", language)}>
+          <Link to="/projects" className="rs-public-footer__icon-link" aria-label={t("notFound.footerProjectsAria", language)}>
             <ProjectsGlyph />
           </Link>
           <a
             href="https://github.com/Grumz18/Grummm"
             target="_blank"
             rel="noreferrer"
-            className="public-footer__icon-link"
+            className="rs-public-footer__icon-link"
             aria-label={t("notFound.footerGithubAria", language)}
           >
             <GitHubGlyph />

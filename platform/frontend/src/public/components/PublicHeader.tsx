@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { NavLink, useLocation } from "react-router-dom";
 import { usePreferences } from "../preferences";
@@ -7,168 +7,139 @@ import grummmLogo from "../../images/grummmLogo.svg";
 
 const NAV_ITEMS = [
   { to: "/", key: "public.nav.home", end: true },
-  { to: "/projects", key: "public.nav.projects" },
-  { to: "/posts", key: "public.nav.posts" }
+  { to: "/projects", key: "public.nav.projects", end: false },
+  { to: "/posts", key: "public.nav.posts", end: false }
 ] as const;
 
-function ThemeGlyph({ theme }: { theme: "light" | "dark" }) {
-  if (theme === "dark") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M14.8 3.5A8.8 8.8 0 1 0 20.5 15a7.2 7.2 0 1 1-5.7-11.5Z" fill="currentColor" />
-      </svg>
-    );
-  }
+const GITHUB_URL = "https://github.com/Grumz18/Grummm";
 
+function GitHubGlyph() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="4.6" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-        <path d="M12 2.5v2.4" />
-        <path d="M12 19.1v2.4" />
-        <path d="M2.5 12h2.4" />
-        <path d="M19.1 12h2.4" />
-        <path d="m5.3 5.3 1.7 1.7" />
-        <path d="m17 17 1.7 1.7" />
-        <path d="m18.7 5.3-1.7 1.7" />
-        <path d="M7 17 5.3 18.7" />
-      </g>
-    </svg>
-  );
-}
-
-function LanguageGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M3.9 12h16.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M12 3.6c2.4 2.2 3.8 5.2 3.8 8.4s-1.4 6.2-3.8 8.4c-2.4-2.2-3.8-5.2-3.8-8.4S9.6 5.8 12 3.6Z" fill="none" stroke="currentColor" strokeWidth="1.8" />
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z" fill="currentColor" />
     </svg>
   );
 }
 
 export function PublicHeader() {
-  const { theme, language, setTheme, setLanguage } = usePreferences();
   const location = useLocation();
+  const { theme, language, setTheme, setLanguage } = usePreferences();
+  const nextLanguage = language === "ru" ? "en" : "ru";
+  const nextTheme = theme === "dark" ? "light" : "dark";
   const navRef = useRef<HTMLElement | null>(null);
-  const navIndicatorRef = useRef<HTMLDivElement | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [location.pathname]);
+  const navIndicatorRef = useRef<HTMLSpanElement | null>(null);
 
   useLayoutEffect(() => {
-    const nav = navRef.current;
-    const indicator = navIndicatorRef.current;
-    if (!nav || !indicator) {
+    const navElement = navRef.current;
+    const indicatorElement = navIndicatorRef.current;
+    if (!navElement || !indicatorElement) {
       return;
     }
 
-    function syncIndicator() {
-      const activeLink = nav.querySelector<HTMLAnchorElement>('a[aria-current="page"]');
-      if (!activeLink) {
-        indicator.style.opacity = "0";
+    const syncIndicator = () => {
+      const activeElement = navElement.querySelector<HTMLAnchorElement>(".rs-nav-pill__link[aria-current='page']");
+      if (!activeElement) {
+        indicatorElement.style.opacity = "0";
         return;
       }
 
-      indicator.style.opacity = "1";
-      gsap.killTweensOf(indicator);
-      gsap.to(indicator, {
-        x: activeLink.offsetLeft,
-        y: activeLink.offsetTop,
-        width: activeLink.offsetWidth,
-        height: activeLink.offsetHeight,
+      indicatorElement.style.opacity = "1";
+      gsap.killTweensOf(indicatorElement);
+      gsap.to(indicatorElement, {
+        x: activeElement.offsetLeft,
+        y: activeElement.offsetTop,
+        width: activeElement.offsetWidth,
+        height: activeElement.offsetHeight,
         duration: 0.46,
         ease: "expo.out",
         overwrite: true,
         force3D: true
       });
-    }
+    };
 
     syncIndicator();
     window.addEventListener("resize", syncIndicator);
-    return () => window.removeEventListener("resize", syncIndicator);
-  }, [location.pathname, language, menuOpen]);
 
-  const nextTheme = theme === "dark" ? "light" : "dark";
-  const nextLanguage = language === "ru" ? "en" : "ru";
-  const languageCodes = language === "ru" ? ["RU", "EN"] : ["EN", "RU"];
+    const ready = (document as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready;
+    if (ready) {
+      void ready.then(() => syncIndicator());
+    }
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => syncIndicator());
+      observer.observe(navElement);
+      const links = navElement.querySelectorAll<HTMLAnchorElement>(".rs-nav-pill__link");
+      for (const link of links) {
+        observer.observe(link);
+      }
+    }
+
+    return () => {
+      window.removeEventListener("resize", syncIndicator);
+      observer?.disconnect();
+      gsap.killTweensOf(indicatorElement);
+    };
+  }, [location.pathname, language]);
 
   return (
-    <header className="public-header">
-      <div className="public-header__shell liquid-glass">
-        <div className="liquid-glass__sheen" aria-hidden="true" />
-        <div className="liquid-glass__grain" aria-hidden="true" />
-        <div className="liquid-glass__content public-header__content">
-          <NavLink to="/" className="public-brand">
-            <span className="public-brand__mark">
-              <img src={grummmLogo} alt="" className="public-brand__mark-image" />
-            </span>
-            <span className="public-brand__copy">
-              <strong>Grummm</strong>
-              <small>{t("public.brand.subtitle", language)}</small>
-            </span>
-          </NavLink>
+    <header className="public-header rs-public-header">
+      <div className="rs-public-header__inner">
+        <NavLink to="/" className="rs-brand" aria-label="Grummm">
+          <span className="rs-brand__mark" aria-hidden="true">
+            <img src={grummmLogo} alt="" className="rs-brand__image" />
+          </span>
+          <span className="rs-brand__copy">
+            <strong>Grummm</strong>
+            <small>{t("public.brand.subtitle", language)}</small>
+          </span>
+        </NavLink>
+
+        <nav className="rs-nav-pill" aria-label={t("public.nav.primary", language)} ref={navRef}>
+          <span aria-hidden="true" className="rs-nav-pill__indicator" ref={navIndicatorRef} />
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => isActive ? "rs-nav-pill__link is-active" : "rs-nav-pill__link"}
+            >
+              {t(item.key, language)}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="rs-public-actions">
+          <button
+            type="button"
+            className="rs-action-btn rs-action-btn--lang"
+            onClick={() => setLanguage(nextLanguage)}
+            aria-label={language === "ru" ? "Switch language to English" : "Switch language to Russian"}
+            title={nextLanguage.toUpperCase()}
+          >
+            {language === "ru" ? "RU/EN" : "EN/RU"}
+          </button>
 
           <button
             type="button"
-            data-gsap-button
-            className={`public-menu-toggle ${menuOpen ? "is-open" : ""}`}
-            aria-expanded={menuOpen}
-            aria-controls="public-navigation"
-            aria-label={menuOpen ? t("public.menu.close", language) : t("public.menu.open", language)}
-            onClick={() => setMenuOpen((current) => !current)}
+            className="rs-action-btn"
+            onClick={() => setTheme(nextTheme)}
+            aria-label={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
+            title={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
           >
-            <span />
-            <span />
-            <span />
+            {theme === "dark" ? "◑" : "○"}
           </button>
 
-          <div className={`public-header__panel ${menuOpen ? "is-open" : ""}`}>
-            <nav
-              ref={navRef}
-              id="public-navigation"
-              className="public-nav liquid-glass"
-              aria-label={t("public.nav.primary", language)}
-            >
-              <div ref={navIndicatorRef} className="public-nav__indicator" aria-hidden="true" />
-              {NAV_ITEMS.map((item) => (
-                <NavLink key={item.to} to={item.to} end={item.end} onClick={() => setMenuOpen(false)} data-gsap-button>
-                  <span className="public-nav__label">{t(item.key, language)}</span>
-                </NavLink>
-              ))}
-            </nav>
-
-            <div className="public-header__actions" aria-label={t("public.nav.primary", language)}>
-              <button
-                type="button"
-                className="public-header__action-button public-header__action-button--language"
-                data-gsap-button
-                aria-label={language === "ru" ? "Switch language to English" : "Switch language to Russian"}
-                title={nextLanguage.toUpperCase()}
-                onClick={() => setLanguage(nextLanguage)}
-              >
-                <span className="public-header__action-glyph"><LanguageGlyph /></span>
-                <span className="public-header__action-code">
-                  <span className="public-header__action-code-primary">{languageCodes[0]}</span>
-                  <span className="public-header__action-code-separator">/</span>
-                  <span className="public-header__action-code-secondary">{languageCodes[1]}</span>
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="public-header__action-button"
-                data-gsap-button
-                aria-label={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
-                title={theme === "dark" ? t("public.theme.light", language) : t("public.theme.dark", language)}
-                onClick={() => setTheme(nextTheme)}
-              >
-                <span className="public-header__action-glyph"><ThemeGlyph theme={theme} /></span>
-              </button>
-            </div>
-          </div>
+          <a
+            className="rs-action-btn rs-action-btn--icon"
+            href={GITHUB_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={t("notFound.footerGithubAria", language)}
+            title="GitHub"
+          >
+            <GitHubGlyph />
+          </a>
         </div>
       </div>
     </header>

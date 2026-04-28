@@ -289,22 +289,22 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
     private static LandingContentDto SeedLandingContent()
     {
         return new LandingContentDto(
-            HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
+            HeroEyebrow: new LocalizedTextDto("IT, AI, projects and guides", "IT, AI, проекты и гайды"),
             HeroTitle: new LocalizedTextDto(
-                "A platform where projects become live demonstrations.",
-                "Платформа, где проекты превращаются в живые демонстрации"),
+                "Grummm - IT, AI and projects",
+                "Grummm - IT, AI и проекты"),
             HeroDescription: new LocalizedTextDto(
-                "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
-                "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом"),
-            AboutTitle: new LocalizedTextDto("About the platform", "О платформе"),
-            AboutSubtitle: new LocalizedTextDto("What I build", "Что я делаю"),
+                "A development site with engineering notes, learning posts, practical guides, AI trend breakdowns, and live projects.",
+                "Площадка о разработке: мысли инженера, обучающие посты, практические гайды, разборы AI-трендов и живые проекты."),
+            AboutTitle: new LocalizedTextDto("Engineering focus", "Инженерный фокус"),
+            AboutSubtitle: new LocalizedTextDto("Fullstack, LLM workflows, and product thinking", "Fullstack, LLM-workflow и продуктовый подход"),
             AboutText: new LocalizedTextDto(
-                "I build practical web products end-to-end: from idea and interface to backend logic and deployment. This page shows my approach to architecture, security, and product thinking",
-                "Я создаю прикладные web-проекты: от идеи и интерфейса до backend-логики и деплоя. Здесь виден мой подход к архитектуре, безопасности и развитию продукта"),
-            PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
+                "I write here as a fullstack developer and AI specialist: about design, LLM workflows, documentation, automation, and turning ideas into working demos.",
+                "Я пишу как fullstack-разработчик и AI-специалист: о проектировании, LLM-workflow, документации, автоматизации и доведении идей до рабочих демо."),
+            PortfolioTitle: new LocalizedTextDto("Projects as proof", "Проекты как доказательство"),
             PortfolioText: new LocalizedTextDto(
-                "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action",
-                "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе"),
-            AboutPhoto: null);
+                "The focus is on artifacts: posts, guides, demos, architecture notes, and projects that show how AI tools help engineering work move faster and with better control.",
+                "Акцент на артефактах: постах, гайдах, демо, архитектурных разборах и проектах, где видно, как AI-инструменты помогают работать быстрее и точнее."),
+            AboutPhoto: "/src/images/profile-main.jpeg");
     }
 }

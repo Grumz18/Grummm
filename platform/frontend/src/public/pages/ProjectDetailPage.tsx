@@ -4,8 +4,6 @@ import { LiquidGlass } from "../components/LiquidGlass";
 import { MediaLoadingIndicator } from "../components/MediaLoadingIndicator";
 import { PostActions } from "../components/PostActions";
 import { PostContentRenderer } from "../components/PostContentRenderer";
-import { ProjectDetailHeader } from "../components/ProjectDetailHeader";
-import { ProjectDetailSummary } from "../components/ProjectDetailSummary";
 import { ProjectLightbox } from "../components/ProjectLightbox";
 import { ProjectNotFoundCard } from "../components/ProjectNotFoundCard";
 import { ProjectScreensGallery } from "../components/ProjectScreensGallery";
@@ -108,7 +106,7 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     return allEntries.filter((entry) => entry.id !== id && isPortfolioProject(entry) && isPortfolioPubliclyVisible(entry)).slice(0, 3);
   }, [serverRelated, allEntries, id]);
   const publishedMeta = project ? formatPublishedMeta(project.publishedAt, language) ?? undefined : undefined;
-  const demoActionLabel = language === "ru" ? "\u041F\u043E\u043A\u0430\u0437\u0430\u0442\u044C demo \u043F\u0440\u043E\u0435\u043A\u0442\u0430" : "Show project demo";
+  const openDemoLabel = language === "ru" ? "▶ Открыть демо" : "▶ Open demo";
   const publicDemoUrl = project ? buildPublicDemoUrl(project.id) : undefined;
   const canShowPublicDemo = Boolean(
     project
@@ -140,6 +138,10 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
 
     const headline = project.title[language] || project.title.en || project.id;
     const description = project.summary[language] || project.summary.en || project.description[language] || project.description.en || headline;
+    const listName = language === "ru"
+      ? (mode === "post" ? "Посты" : "Проекты")
+      : (mode === "post" ? "Posts" : "Projects");
+    const listUrl = mode === "post" ? "https://grummm.ru/posts" : "https://grummm.ru/projects";
 
     return {
       "@context": "https://schema.org",
@@ -176,8 +178,8 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
             {
               "@type": "ListItem",
               position: 2,
-              name: language === "ru" ? "Посты" : "Posts",
-              item: "https://grummm.ru/posts"
+              name: listName,
+              item: listUrl
             },
             {
               "@type": "ListItem",
@@ -306,43 +308,75 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
   }
 
   return (
-    <article className="project-detail-page">
-      {mode === "post" ? (
-        <nav className="post-breadcrumbs" aria-label={language === "ru" ? "Хлебные крошки" : "Breadcrumb"}>
-          <ol className="post-breadcrumbs__list">
-            <li className="post-breadcrumbs__item">
-              <Link to="/">Grummm</Link>
-            </li>
-            <li className="post-breadcrumbs__item">
-              <Link to="/posts">{language === "ru" ? "Посты" : "Posts"}</Link>
-            </li>
-            <li className="post-breadcrumbs__item" aria-current="page">
-              <span>{project.title[language] || project.title.en || project.id}</span>
-            </li>
-          </ol>
-        </nav>
-      ) : null}
+    <article className="project-detail-page rs-detail-page">
+      <nav className="post-breadcrumbs rs-detail-breadcrumbs" aria-label={language === "ru" ? "Хлебные крошки" : "Breadcrumb"}>
+        <ol className="post-breadcrumbs__list">
+          <li className="post-breadcrumbs__item">
+            <Link to="/">Grummm</Link>
+          </li>
+          <li className="post-breadcrumbs__item">
+            <Link to={mode === "post" ? "/posts" : "/projects"}>
+              {mode === "post" ? t("public.nav.posts", language) : t("public.nav.projects", language)}
+            </Link>
+          </li>
+          <li className="post-breadcrumbs__item" aria-current="page">
+            <span>{project.title[language] || project.title.en || project.id}</span>
+          </li>
+        </ol>
+      </nav>
 
-      <ProjectDetailHeader
-        eyebrow={mode === "post" ? t("detail.postEyebrow", language) : t("detail.projectEyebrow", language)}
-        title={project.title[language]}
-        description={project.summary[language]}
-        meta={publishedMeta}
-        metaDateTime={mode === "post" ? project.publishedAt : undefined}
-        tags={[]}
-        backLabel={t("detail.back", language)}
-        onBack={() => navigate(-1)}
-        actionLabel={canShowPublicDemo && publicDemoUrl ? demoActionLabel : undefined}
-        actionHref={canShowPublicDemo && publicDemoUrl ? publicDemoUrl : undefined}
-        extraActions={mode === "post" ? (
-          <PostActions
-            postId={project.id}
-            postTitle={project.title[language] || project.title.en || project.id}
-            postUrl={detailCanonicalUrl}
-            language={language}
-          />
-        ) : undefined}
-      />
+      <header className="rs-detail-header" data-gsap="reveal">
+        <p className="rs-section-label">
+          {mode === "post" ? t("detail.postEyebrow", language) : t("detail.projectEyebrow", language)}
+        </p>
+        <h1 className="rs-detail-header__title">{project.title[language] || project.title.en || project.id}</h1>
+        <p className="rs-detail-header__summary">
+          {project.summary[language] || project.summary.en || project.description[language] || project.description.en}
+        </p>
+
+        <div className="rs-detail-header__meta">
+          <span className={`content-card__badge ${mode === "post" ? "content-card__badge--post" : "content-card__badge--project"}`}>
+            {mode === "post" ? (language === "ru" ? "Пост" : "Post") : (language === "ru" ? "Проект" : "Project")}
+          </span>
+          {canShowPublicDemo ? (
+            <span className="content-card__badge content-card__badge--demo">
+              {language === "ru" ? "▶ Демо" : "▶ Demo"}
+            </span>
+          ) : null}
+          {publishedMeta ? (
+            <time className="rs-detail-header__date" dateTime={project.publishedAt}>{publishedMeta}</time>
+          ) : null}
+        </div>
+
+        {project.tags.length > 0 ? (
+          <div className="rs-detail-header__topics">
+            {project.tags.map((tag) => (
+              <Link key={`${project.id}-${tag}`} to={`/projects?topic=${encodeURIComponent(tag)}`} className="rs-topic-chip">
+                {tag}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
+        <div className="rs-detail-header__actions">
+          <button className="rs-btn rs-btn--border" type="button" onClick={() => navigate(-1)}>
+            {t("detail.back", language)}
+          </button>
+          {canShowPublicDemo && publicDemoUrl ? (
+            <a className="rs-btn rs-btn--accent" href={publicDemoUrl} target="_blank" rel="noreferrer">
+              {openDemoLabel}
+            </a>
+          ) : null}
+          {mode === "post" ? (
+            <PostActions
+              postId={project.id}
+              postTitle={project.title[language] || project.title.en || project.id}
+              postUrl={detailCanonicalUrl}
+              language={language}
+            />
+          ) : null}
+        </div>
+      </header>
 
       {project.videoUrl ? (
         <LiquidGlass as="section" className="project-detail__video project-detail__media-panel" data-gsap="reveal">
@@ -376,12 +410,18 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
         </>
       ) : (
         <>
-          <ProjectDetailSummary
-            imageSrc={project.heroImage[theme]}
-            imageAlt={project.title[language]}
-            eyebrow={t("detail.description", language)}
-            description={project.description[language]}
-          />
+          <section className="rs-project-summary" data-gsap="reveal">
+            <img
+              src={project.heroImage[theme]}
+              alt={project.title[language] || project.title.en || project.id}
+              className="rs-project-summary__image"
+              loading="eager"
+            />
+            <div className="rs-project-summary__copy">
+              <p className="rs-section-label">{t("detail.description", language)}</p>
+              <p>{project.description[language] || project.description.en}</p>
+            </div>
+          </section>
 
           <ProjectScreensGallery
             projectId={project.id}

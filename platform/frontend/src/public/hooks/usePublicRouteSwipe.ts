@@ -6,6 +6,8 @@ const HORIZONTAL_THRESHOLD_PX = 72;
 const VERTICAL_TOLERANCE_PX = 84;
 const HORIZONTAL_DOMINANCE_RATIO = 1.25;
 const MAX_GESTURE_DURATION_MS = 900;
+const EDGE_GUARD_PX = 24;
+const VERTICAL_CANCEL_PX = 16;
 const MOBILE_MEDIA_QUERY = "(max-width: 959.98px) and (pointer: coarse)";
 
 interface TouchPoint {
@@ -53,6 +55,7 @@ export function usePublicRouteSwipe(rootRef: RefObject<HTMLElement>) {
   const location = useLocation();
   const navigate = useNavigate();
   const touchStartRef = useRef<TouchPoint | null>(null);
+  const gestureCanceledRef = useRef(false);
   const pendingScrollResetRef = useRef(false);
   const enabled = useMemo(() => {
     if (typeof window === "undefined") {
@@ -83,20 +86,46 @@ export function usePublicRouteSwipe(rootRef: RefObject<HTMLElement>) {
     function handleTouchStart(event: TouchEvent) {
       if (event.touches.length !== 1 || isInteractiveTarget(event.target)) {
         touchStartRef.current = null;
+        gestureCanceledRef.current = false;
         return;
       }
 
       const touch = event.touches[0];
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+      if (touch.clientX <= EDGE_GUARD_PX || touch.clientX >= viewportWidth - EDGE_GUARD_PX) {
+        touchStartRef.current = null;
+        gestureCanceledRef.current = false;
+        return;
+      }
+
       touchStartRef.current = {
         x: touch.clientX,
         y: touch.clientY,
         at: Date.now()
       };
+      gestureCanceledRef.current = false;
+    }
+
+    function handleTouchMove(event: TouchEvent) {
+      const start = touchStartRef.current;
+      if (!start || event.touches.length !== 1 || gestureCanceledRef.current) {
+        return;
+      }
+
+      const touch = event.touches[0];
+      const absDeltaX = Math.abs(touch.clientX - start.x);
+      const absDeltaY = Math.abs(touch.clientY - start.y);
+
+      if (absDeltaY > VERTICAL_CANCEL_PX && absDeltaY > absDeltaX) {
+        gestureCanceledRef.current = true;
+      }
     }
 
     function handleTouchEnd(event: TouchEvent) {
       const start = touchStartRef.current;
       touchStartRef.current = null;
+      const gestureCanceled = gestureCanceledRef.current;
+      gestureCanceledRef.current = false;
       if (!start || event.changedTouches.length === 0) {
         return;
       }
@@ -109,6 +138,8 @@ export function usePublicRouteSwipe(rootRef: RefObject<HTMLElement>) {
       const durationMs = Date.now() - start.at;
 
       if (
+        gestureCanceled
+        ||
         durationMs > MAX_GESTURE_DURATION_MS
         || absDeltaX < HORIZONTAL_THRESHOLD_PX
         || absDeltaY > VERTICAL_TOLERANCE_PX
@@ -127,10 +158,12 @@ export function usePublicRouteSwipe(rootRef: RefObject<HTMLElement>) {
     }
 
     root.addEventListener("touchstart", handleTouchStart, { passive: true });
+    root.addEventListener("touchmove", handleTouchMove, { passive: true });
     root.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
       root.removeEventListener("touchstart", handleTouchStart);
+      root.removeEventListener("touchmove", handleTouchMove);
       root.removeEventListener("touchend", handleTouchEnd);
     };
   }, [enabled, location.pathname, navigate, rootRef]);

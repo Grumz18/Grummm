@@ -10,8 +10,12 @@ Use this flow when only public/admin frontend code changed and backend/nginx con
 - prerendered HTML
 - mirrored nginx static snapshot in:
   - `platform/infra/nginx/static`
+- nginx image content:
+  - `platform/frontend/dist`
+  - `platform/infra/nginx/static`
 
-`docker-compose.yml` serves nginx content from this folder directly.
+Important: in the current setup nginx serves files copied into the image at build time.
+`docker-compose.yml` does not mount `platform/infra/nginx/static` as a runtime volume.
 
 ## Local build
 
@@ -29,28 +33,28 @@ What this does:
 
 ## Files to upload
 
-Upload this folder to the server:
+Upload updated frontend sources to the server repository (or pull latest commit), including:
 
 ```text
-platform/infra/nginx/static
-```
-
-Target path on server:
-
-```text
-/opt/platform/platform/infra/nginx/static
+platform/frontend
+platform/infra/nginx
 ```
 
 ## Server apply
 
-After upload:
+After upload/pull, rebuild nginx image:
 
 ```bash
 cd /opt/platform
-docker compose up -d --force-recreate nginx
+docker compose up -d --build nginx
 ```
 
-This is enough because nginx mounts `platform/infra/nginx/static` as a runtime volume.
+If backend is unchanged, rebuilding `nginx` is enough for frontend text/layout updates.
+
+If you deploy with `docker-compose.deploy.yml` and prebuilt registry images:
+1. Build/push a new nginx image with updated frontend.
+2. Update `NGINX_IMAGE` tag.
+3. Recreate nginx using deploy compose files.
 
 ## Verification
 

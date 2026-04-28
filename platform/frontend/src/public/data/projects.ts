@@ -22,16 +22,16 @@ export const seedProjects: PortfolioProject[] = [
     kind: "post",
     visibility: "public",
     title: {
-      en: "Grummm Platform",
-      ru: "Платформа Grummm"
+      en: "Grummm IT and AI Lab",
+      ru: "Grummm: IT и AI лаборатория"
     },
     summary: {
-      en: "Editorial overview of the modular monolith, showcase layer, and admin workspace.",
-      ru: "Редакционный обзор платформы, витрины и административной рабочей зоны."
+      en: "Editorial overview of the site, project layer, and AI-assisted engineering workflow.",
+      ru: "Редакционный обзор сайта, проектного слоя и AI-assisted инженерного workflow."
     },
     description: {
-      en: "Grummm is a modular monolith platform that separates public showcase posts from runtime-ready projects.",
-      ru: "Grummm — это модульная монолитная платформа, разделяющая публичные посты и runtime-проекты."
+      en: "Grummm connects developer notes, practical guides, AI trend breakdowns, and runtime-ready projects.",
+      ru: "Grummm соединяет заметки разработчика, практические гайды, разборы AI-трендов и runtime-проекты."
     },
     publishedAt: "2026-03-16T09:30:00.000Z",
     contentBlocks: [
@@ -39,31 +39,31 @@ export const seedProjects: PortfolioProject[] = [
         id: "intro",
         type: "paragraph",
         content: {
-          en: "Grummm combines a public showcase, a secure admin area, and runtime-ready modules in one platform. The public side focuses on editorial posts and portfolio presentation, while the admin workspace controls projects, templates, and deployment flows.",
-          ru: "Grummm объединяет публичную витрину, защищённую админ-зону и runtime-модули в одной платформе. Публичная часть сфокусирована на редакционных постах и портфолио, а админка управляет проектами, шаблонами и публикацией."
+          en: "Grummm combines a public feed, project showcase, secure admin area, and runtime-ready modules. The public side focuses on posts, guides, AI trends, and projects, while the admin workspace controls materials, templates, and publishing.",
+          ru: "Grummm объединяет публичную ленту, проектную витрину, защищённую админ-зону и runtime-модули. Публичная часть сфокусирована на постах, гайдах, AI-трендах и проектах, а админка управляет материалами, шаблонами и публикацией."
         }
       },
       {
         id: "architecture-title",
         type: "subheading",
         content: {
-          en: "Why the platform stays modular",
-          ru: "Почему платформа остаётся модульной"
+          en: "Why projects stay close to posts",
+          ru: "Почему проекты остаются рядом с постами"
         }
       },
       {
         id: "architecture-copy",
         type: "paragraph",
         content: {
-          en: "Each module keeps its own contracts and infrastructure. That makes it possible to evolve analytics, platform operations, or business features without rewriting the core.",
-          ru: "Каждый модуль хранит свои контракты и инфраструктуру. Это позволяет развивать аналитику, платформенные операции и бизнес-функции без переписывания ядра."
+          en: "Posts explain ideas, guides document repeatable steps, and projects show the result in motion. This structure presents AI expertise through visible engineering artifacts.",
+          ru: "Посты объясняют идеи, гайды фиксируют повторяемые шаги, а проекты показывают результат в работе. Такая структура показывает AI-экспертизу через инженерные артефакты."
         }
       }
     ],
-    tags: ["Showcase", "Modular Monolith", "React", "ASP.NET Core 9", "Docker"],
+    tags: ["AI", "Guides", "Projects", "React", "ASP.NET Core 9", "Docker"],
     heroImage: {
-      light: svgCard("Grummm Platform", "#81A6C6", "#AACDDC", "#F3E3D0"),
-      dark: svgCard("Grummm Platform", "#1C252E", "#2C3B4A", "#81A6C6")
+      light: svgCard("IT + AI Lab", "#81A6C6", "#AACDDC", "#F3E3D0"),
+      dark: svgCard("IT + AI Lab", "#1C252E", "#2C3B4A", "#81A6C6")
     },
     screenshots: [],
     template: "None"

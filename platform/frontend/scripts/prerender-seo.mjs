@@ -317,9 +317,9 @@ function renderHomeShell(entries) {
   return `<main class="seo-shell">
     ${mainNav()}
     <section id="overview">
-      <h1>Grummm: posts, projects and runtime demos</h1>
-      <p>Grummm publishes editorial posts and runtime-ready projects inside one modular product. The site is structured so each post and each project can be discovered, read, and revisited through direct routes instead of being trapped inside a single client-side screen.</p>
-      <p>Visitors can open articles that explain architecture and product decisions, then move into project pages and runtime demos that show how those ideas are implemented. This gives the site a stronger crawl surface, clearer internal linking, and separate pages for separate topics.</p>
+      <h1>Grummm: IT, AI, projects and guides</h1>
+      <p>Grummm is a development site about software engineering, artificial intelligence, practical guides, and live projects. The public side is built as a content layer where readers can move from developer notes into detailed posts, inspect project decisions, and open runtime demos that show how ideas behave in practice.</p>
+      <p>Posts explain trends, architecture, and AI-assisted workflows. Projects show implemented modules, templates, applications, and delivery decisions. Runtime demos connect explanation to a working result.</p>
     </section>
     <section id="posts">
       <h2>Published posts</h2>
@@ -333,10 +333,10 @@ function renderHomeShell(entries) {
 }
 
 function renderListingShell(kind, entries) {
-  const title = kind === "post" ? "Grummm posts" : "Grummm projects";
+  const title = kind === "post" ? "Grummm posts and guides" : "Grummm projects";
   const intro = kind === "post"
-    ? "This page lists editorial posts published on Grummm. Each post is a dedicated entry with its own summary, publication date, and direct URL."
-    : "This page lists runtime-ready projects published on Grummm. Each project has a dedicated page with its own summary, tags, and direct URL.";
+    ? "This page lists learning posts and practical guides published on Grummm, including engineering notes and AI trend breakdowns."
+    : "This page lists live projects and runtime demos published on Grummm, each with direct routes, context, and technical details.";
 
   return `<main class="seo-shell">
     ${mainNav()}
@@ -583,12 +583,12 @@ async function main() {
   const posts = entries.filter((entry) => entry.kind === "post");
   const projects = entries.filter((entry) => entry.kind === "project");
 
-  const homeDescription = "Grummm publishes editorial posts, runtime projects, and modular demos with direct pages that search engines can index.";
-  const homeKeywords = "grummm, posts, projects, runtime demos, modular platform, showcase, admin workspace";
+  const homeDescription = "Grummm is a development site about software engineering, artificial intelligence, practical guides, and live project demos.";
+  const homeKeywords = "grummm, IT, AI, software development, projects, posts, guides, runtime demos, artificial intelligence";
 
   await writeRoutePage("/", renderPage(baseHtml, {
     route: "/",
-    title: "Grummm: posts, projects and runtime demos",
+    title: "Grummm: IT, AI, projects and guides",
     description: homeDescription,
     keywords: homeKeywords,
     shell: renderHomeShell(entries)
@@ -596,17 +596,17 @@ async function main() {
 
   await writeRoutePage("/posts", renderPage(baseHtml, {
     route: "/posts",
-    title: "Grummm posts | technical articles and notes",
-    description: trimDescription("Browse editorial posts on Grummm.", "Read technical articles, platform notes, release updates, and architectural explanations published on the site."),
-    keywords: "grummm, posts, technical articles, release notes, architecture, modular platform",
+    title: "Grummm posts and guides | IT and AI notes",
+    description: trimDescription("Browse learning posts and practical guides on Grummm.", "Read IT and AI notes, architectural breakdowns, release updates, and engineering explanations."),
+    keywords: "grummm, posts, guides, IT, AI, technical articles, architecture, software engineering",
     shell: renderListingShell("post", posts)
   }));
 
   await writeRoutePage("/projects", renderPage(baseHtml, {
     route: "/projects",
-    title: "Grummm projects | runtime modules and demos",
-    description: trimDescription("Browse runtime-ready projects on Grummm.", "Open showcase modules, template-based applications, and runtime demos published on the platform."),
-    keywords: "grummm, projects, runtime demos, modules, templates, showcase projects",
+    title: "Grummm projects | live demos and engineering builds",
+    description: trimDescription("Browse live projects on Grummm.", "Open runtime demos, implementation details, and project artifacts focused on fullstack and AI-assisted workflows."),
+    keywords: "grummm, projects, runtime demos, fullstack, AI workflow, engineering, software development",
     shell: renderListingShell("project", projects)
   }));
 

@@ -3,20 +3,18 @@ import { CookieNotice } from "../../public/components/CookieNotice";
 import { PublicFooter } from "../../public/components/PublicFooter";
 import { PublicHeader } from "../../public/components/PublicHeader";
 import { ScrollToTopButton } from "../../public/components/ScrollToTopButton";
+import { usePreferences } from "../../public/preferences";
 import { usePublicRouteSwipe } from "../../public/hooks/usePublicRouteSwipe";
 import { useGsapEnhancements } from "../../shared/ui/useGsapEnhancements";
 import { useRef } from "react";
 
-import type { Language } from "../../public/types";
-
 export function PublicLayout() {
   const location = useLocation();
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const { language } = usePreferences();
 
   useGsapEnhancements(rootRef, [location.pathname]);
   usePublicRouteSwipe(rootRef);
-
-  const language: Language = "ru";
 
   return (
     <div ref={rootRef} data-layout="public" className="public-layout">

@@ -15,7 +15,7 @@ import type {
   Topic
 } from "../types";
 
-const STORAGE_KEY = "platform.projects.posts.v2";
+const STORAGE_KEY = "platform.projects.posts.v3";
 const UPDATE_EVENT = "platform:projects:updated";
 const PUBLIC_API = "/api/public/projects";
 const PRIVATE_API = "/api/app/projects";
@@ -96,6 +96,14 @@ function normalizeContentBlockType(value: string | undefined): PortfolioContentB
     return "callout";
   }
 
+  if (normalized === "collage") {
+    return "collage";
+  }
+
+  if (normalized === "typewriter") {
+    return "typewriter";
+  }
+
   if (normalized === "codesnippet" || normalized === "code-snippet" || normalized === "code") {
     return "codeSnippet";
   }
@@ -126,13 +134,16 @@ function normalizeContentBlocks(blocks?: PortfolioContentBlock[] | null): Portfo
       return {
         id: typeof block?.id === "string" && block.id.trim().length > 0 ? block.id.trim() : `block-${index + 1}`,
         type,
-        content: type === "image" ? undefined : normalizeLocalizedText(block?.content),
+        content: type === "image" || type === "collage" ? undefined : normalizeLocalizedText(block?.content),
         imageUrl: typeof block?.imageUrl === "string" ? block.imageUrl : undefined,
+        images: type === "collage" && Array.isArray(block?.images)
+          ? block.images.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+          : undefined,
         videoUrl: typeof block?.videoUrl === "string" ? block.videoUrl : undefined,
         posterUrl: typeof block?.posterUrl === "string" ? block.posterUrl : undefined,
         pinEnabled: type === "video" ? Boolean(block?.pinEnabled) : undefined,
-        scrollSpan: type === "video" && typeof block?.scrollSpan === "number" && Number.isFinite(block.scrollSpan)
-          ? Math.min(320, Math.max(80, Math.round(block.scrollSpan)))
+        scrollSpan: (type === "video" || type === "typewriter") && typeof block?.scrollSpan === "number" && Number.isFinite(block.scrollSpan)
+          ? Math.min(320, Math.max(type === "video" ? 80 : 20, Math.round(block.scrollSpan)))
           : undefined,
         codeLanguage: type === "codeSnippet" && typeof block?.codeLanguage === "string" ? block.codeLanguage : undefined,
         infoBoxVariant: type === "infoBox" && typeof block?.infoBoxVariant === "string" ? block.infoBoxVariant as "tip" | "warning" | "important" | "note" : undefined,
@@ -149,6 +160,10 @@ function normalizeContentBlocks(blocks?: PortfolioContentBlock[] | null): Portfo
 
       if (block.type === "video") {
         return Boolean(block.videoUrl);
+      }
+
+      if (block.type === "collage") {
+        return Array.isArray(block.images) && block.images.length > 0;
       }
 
       return Boolean(block.content?.en?.trim() || block.content?.ru?.trim());
