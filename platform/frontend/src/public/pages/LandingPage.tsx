@@ -70,7 +70,7 @@ export function LandingPage() {
   const aboutTitle = fallback(landingContent.aboutTitle[language], t("landing.about.fallbackTitle", language));
   const aboutSubtitle = fallback(
     landingContent.aboutSubtitle[language],
-    language === "ru" ? "Что я делаю" : t("landing.about.fallbackSubtitle", language)
+    language === "ru" ? "Fullstack, LLM-workflow и продуктовый подход" : t("landing.about.fallbackSubtitle", language)
   );
   const aboutText = fallback(landingContent.aboutText[language], t("landing.about.fallbackText", language));
   const portfolioTitle = fallback(landingContent.portfolioTitle[language], t("landing.about.fallbackPortfolioTitle", language));
@@ -78,11 +78,11 @@ export function LandingPage() {
   const parsedHeroTitle = splitHeroTitle(heroTitle);
 
   const title = language === "ru"
-    ? "Grummm: посты, проекты и модульные демо"
-    : "Grummm: posts, projects and runtime demos";
+    ? "Grummm: IT, AI, проекты и гайды"
+    : "Grummm: IT, AI, projects and guides";
   const description = language === "ru"
-    ? "Grummm — модульная платформа с постами, проектами, демо, аналитикой и защищенной админ-зоной."
-    : "Grummm is a modular platform for posts, projects, runtime demos, analytics, and a secure admin workspace.";
+    ? "Grummm — площадка о разработке, искусственном интеллекте, практических гайдах и проектах с живыми демо."
+    : "Grummm is a development site about software engineering, artificial intelligence, practical guides, and live project demos.";
 
   useDocumentMetadata({
     title,
@@ -90,8 +90,8 @@ export function LandingPage() {
     path: "/",
     language,
     keywords: language === "ru"
-      ? "grummm, проекты, посты, демо, обучение, разработка"
-      : "grummm, projects, posts, demos, learning, development"
+      ? "grummm, IT, AI, ИИ, проекты, посты, гайды, обучение, разработка"
+      : "grummm, IT, AI, projects, posts, guides, learning, software development"
   });
 
   return (
@@ -162,9 +162,9 @@ export function LandingPage() {
       </section>
 
       <section className="rs-section">
-        <p className="rs-section-label">{language === "ru" ? "Контент" : "Content"}</p>
+        <p className="rs-section-label">{language === "ru" ? "Лента" : "Feed"}</p>
         <h2 className="rs-section-title">
-          {language === "ru" ? "Материалы платформы" : "Platform materials"}
+          {language === "ru" ? "Посты, проекты и гайды" : "Posts, projects, and guides"}
         </h2>
         <ContentFeed
           language={language}

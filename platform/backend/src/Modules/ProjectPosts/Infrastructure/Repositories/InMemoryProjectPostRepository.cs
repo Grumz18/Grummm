@@ -289,22 +289,22 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
     private static LandingContentDto SeedLandingContent()
     {
         return new LandingContentDto(
-            HeroEyebrow: new LocalizedTextDto("GRUMMM PLATFORM", "GRUMMM PLATFORM"),
+            HeroEyebrow: new LocalizedTextDto("IT, AI, projects and guides", "IT, AI, проекты и гайды"),
             HeroTitle: new LocalizedTextDto(
-                "A platform where projects become live demonstrations.",
-                "Платформа, где проекты превращаются в живые демонстрации"),
+                "Grummm - IT, AI and projects",
+                "Grummm - IT, AI и проекты"),
             HeroDescription: new LocalizedTextDto(
-                "Grummm.ru is a personal showcase with a public portfolio and private admin area where I manage projects, templates, and content.",
-                "Grummm.ru — это персональная витрина с публичным портфолио и приватной админ-зоной, где я управляю проектами, шаблонами и контентом"),
-            AboutTitle: new LocalizedTextDto("About Me", "\u041e\u0431\u043e \u043c\u043d\u0435"),
-            AboutSubtitle: new LocalizedTextDto("About", "\u041e \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u0435"),
+                "A development site with engineering notes, learning posts, practical guides, AI trend breakdowns, and live projects.",
+                "Площадка о разработке: мысли инженера, обучающие посты, практические гайды, разборы AI-трендов и живые проекты."),
+            AboutTitle: new LocalizedTextDto("Engineering focus", "Инженерный фокус"),
+            AboutSubtitle: new LocalizedTextDto("Fullstack, LLM workflows, and product thinking", "Fullstack, LLM-workflow и продуктовый подход"),
             AboutText: new LocalizedTextDto(
-                "Igor Igorevich Serbul\nGitHub: https://github.com/Grumz18",
-                "\u0421\u0435\u0440\u0431\u0443\u043b\u044c \u0418\u0433\u043e\u0440\u044c \u0418\u0433\u043e\u0440\u0435\u0432\u0438\u0447\nGitHub: https://github.com/Grumz18"),
-            PortfolioTitle: new LocalizedTextDto("Portfolio", "Портфолио"),
+                "I write here as a fullstack developer and AI specialist: about design, LLM workflows, documentation, automation, and turning ideas into working demos.",
+                "Я пишу как fullstack-разработчик и AI-специалист: о проектировании, LLM-workflow, документации, автоматизации и доведении идей до рабочих демо."),
+            PortfolioTitle: new LocalizedTextDto("Projects as proof", "Проекты как доказательство"),
             PortfolioText: new LocalizedTextDto(
-                "The portfolio includes projects with multiple templates: static, JavaScript, C#, and Python. Each one can be opened, explored, and reviewed in action",
-                "В портфолио собраны проекты с разными шаблонами: static, JavaScript, C#, Python. Каждый можно открыть, изучить и оценить в работе"),
+                "The focus is on artifacts: posts, guides, demos, architecture notes, and projects that show how AI tools help engineering work move faster and with better control.",
+                "Акцент на артефактах: постах, гайдах, демо, архитектурных разборах и проектах, где видно, как AI-инструменты помогают работать быстрее и точнее."),
             AboutPhoto: "/src/images/profile-main.jpeg");
     }
 }
