@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { t } from "../../shared/i18n";
 import type { Language } from "../types";
 
 interface ScrollToTopButtonProps {
@@ -26,14 +27,12 @@ export function ScrollToTopButton({ language }: ScrollToTopButtonProps) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const ariaLabel = language === "ru" ? "Прокрутить вверх" : "Scroll to top";
-
   return (
     <button
       type="button"
       className={`scroll-to-top ${isVisible ? "visible" : ""} ${isClicked ? "clicked" : ""}`}
       onClick={scrollToTop}
-      aria-label={ariaLabel}
+      aria-label={t("public.scroll.top", language)}
     >
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="18 15 12 9 6 15" />

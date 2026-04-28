@@ -364,5 +364,7 @@ export const en = {
   "postActions.platforms.telegram": "Telegram",
   "postActions.platforms.vk": "VKontakte",
   "postActions.platforms.linkedin": "LinkedIn",
-  "postActions.platforms.instagram": "Instagram (copy link)"
+  "postActions.platforms.instagram": "Instagram (copy link)",
+  
+  "public.scroll.top": "Scroll to top"
 } as const;
