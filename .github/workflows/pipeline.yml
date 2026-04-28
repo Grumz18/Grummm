@@ -163,9 +163,12 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
+            set -euo pipefail
             DEPLOY_PATH="${{ vars.STAGING_DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
             cd "$DEPLOY_PATH"
+            BASE_URL="${{ vars.STAGING_BASE_URL }}"
+            if [ -z "$BASE_URL" ]; then BASE_URL="https://grummm.ru"; fi
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
@@ -174,6 +177,22 @@ jobs:
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$(docker compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            if [ -z "$NGINX_CONTAINER_ID" ]; then
+              echo "ERROR: nginx container id is empty after deploy."
+              exit 1
+            fi
+            RUNNING_NGINX_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
+            if [ "$RUNNING_NGINX_IMAGE" != "$NGINX_IMAGE" ]; then
+              echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
+              exit 1
+            fi
+            EXPECTED_ASSET="$(docker run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
+            if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
+              echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
+              exit 1
+            fi
             docker system prune -af
 
   deploy-production:
@@ -203,9 +222,12 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
+            set -euo pipefail
             DEPLOY_PATH="${{ vars.PRODUCTION_DEPLOY_PATH }}"
             if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
             cd "$DEPLOY_PATH"
+            BASE_URL="${{ vars.PRODUCTION_BASE_URL }}"
+            if [ -z "$BASE_URL" ]; then BASE_URL="https://grummm.ru"; fi
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
@@ -214,6 +236,22 @@ jobs:
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
             docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$(docker compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            if [ -z "$NGINX_CONTAINER_ID" ]; then
+              echo "ERROR: nginx container id is empty after deploy."
+              exit 1
+            fi
+            RUNNING_NGINX_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
+            if [ "$RUNNING_NGINX_IMAGE" != "$NGINX_IMAGE" ]; then
+              echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
+              exit 1
+            fi
+            EXPECTED_ASSET="$(docker run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
+            if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
+              echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
+              exit 1
+            fi
             docker system prune -af
 
   smoke-staging:
