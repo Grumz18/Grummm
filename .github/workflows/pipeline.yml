@@ -164,11 +164,9 @@ jobs:
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             set -euo pipefail
-            DEPLOY_PATH="${{ vars.STAGING_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
+            DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
-            BASE_URL="${{ vars.STAGING_BASE_URL }}"
-            if [ -z "$BASE_URL" ]; then BASE_URL="https://grummm.ru"; fi
+            BASE_URL="https://grummm.ru"
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
@@ -223,11 +221,9 @@ jobs:
           envs: COMPOSE_BASE,COMPOSE_DEPLOY
           script: |
             set -euo pipefail
-            DEPLOY_PATH="${{ vars.PRODUCTION_DEPLOY_PATH }}"
-            if [ -z "$DEPLOY_PATH" ]; then DEPLOY_PATH="/opt/platform"; fi
+            DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
-            BASE_URL="${{ vars.PRODUCTION_BASE_URL }}"
-            if [ -z "$BASE_URL" ]; then BASE_URL="https://grummm.ru"; fi
+            BASE_URL="https://grummm.ru"
             echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
             echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
