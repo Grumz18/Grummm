@@ -180,7 +180,7 @@ jobs:
             compose_cmd() {
               $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY" "$@"
             }
-            echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
@@ -248,7 +248,7 @@ jobs:
             compose_cmd() {
               $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY" "$@"
             }
-            echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
