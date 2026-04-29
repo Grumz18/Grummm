@@ -167,19 +167,47 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            if [ -w "$DEPLOY_PATH" ]; then
-              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            else
-              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
-              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
-            fi
+            TMP_BASE="$(mktemp /tmp/platform-compose-base.XXXXXX.yml)"
+            TMP_DEPLOY="$(mktemp /tmp/platform-compose-deploy.XXXXXX.yml)"
+            TMP_DEPLOY_EFFECTIVE=""
+            TMP_BACKEND_ENV=""
+            cleanup() {
+              rm -f "$TMP_BASE" "$TMP_DEPLOY"
+              if [ -n "$TMP_DEPLOY_EFFECTIVE" ] && [ "$TMP_DEPLOY_EFFECTIVE" != "$TMP_DEPLOY" ]; then
+                rm -f "$TMP_DEPLOY_EFFECTIVE"
+              fi
+              if [ -n "$TMP_BACKEND_ENV" ]; then
+                rm -f "$TMP_BACKEND_ENV"
+              fi
+            }
+            trap cleanup EXIT
+            echo "$COMPOSE_BASE" | base64 -d > "$TMP_BASE"
+            echo "$COMPOSE_DEPLOY" | base64 -d > "$TMP_DEPLOY"
             DOCKER_CMD="docker"
-            if ! docker info >/dev/null 2>&1 || [ ! -r "$DEPLOY_PATH/.env.backend.local" ]; then
-              DOCKER_CMD="sudo docker"
+            if ! docker info >/dev/null 2>&1; then
+              if sudo -n docker info >/dev/null 2>&1; then
+                DOCKER_CMD="sudo -n docker"
+              else
+                echo "ERROR: docker is not accessible for the SSH user, and passwordless sudo is not configured."
+                echo "Fix: add the SSH user to the docker group, or configure NOPASSWD sudo for docker."
+                exit 1
+              fi
+            fi
+            TMP_DEPLOY_EFFECTIVE="$TMP_DEPLOY"
+            if [ "$DOCKER_CMD" = "docker" ] && [ ! -r "$DEPLOY_PATH/.env.backend.local" ]; then
+              BACKEND_CONTAINER_ID="$($DOCKER_CMD ps -aq --filter 'name=^platform-backend$' | head -n1 || true)"
+              if [ -z "$BACKEND_CONTAINER_ID" ]; then
+                echo "ERROR: cannot read $DEPLOY_PATH/.env.backend.local and no existing platform-backend container found for env fallback."
+                echo "Fix: grant the SSH user read access to .env.backend.local, or run one manual deploy after creating the file."
+                exit 1
+              fi
+              TMP_BACKEND_ENV="$(mktemp /tmp/platform-backend-env.XXXXXX.env)"
+              $DOCKER_CMD inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$BACKEND_CONTAINER_ID" > "$TMP_BACKEND_ENV"
+              TMP_DEPLOY_EFFECTIVE="$(mktemp /tmp/platform-compose-deploy-effective.XXXXXX.yml)"
+              sed "s#\\./\\.env\\.backend\\.local#$TMP_BACKEND_ENV#g" "$TMP_DEPLOY" > "$TMP_DEPLOY_EFFECTIVE"
             fi
             compose_cmd() {
-              $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml "$@"
+              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
             }
             echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
@@ -236,19 +264,47 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            if [ -w "$DEPLOY_PATH" ]; then
-              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            else
-              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
-              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
-            fi
+            TMP_BASE="$(mktemp /tmp/platform-compose-base.XXXXXX.yml)"
+            TMP_DEPLOY="$(mktemp /tmp/platform-compose-deploy.XXXXXX.yml)"
+            TMP_DEPLOY_EFFECTIVE=""
+            TMP_BACKEND_ENV=""
+            cleanup() {
+              rm -f "$TMP_BASE" "$TMP_DEPLOY"
+              if [ -n "$TMP_DEPLOY_EFFECTIVE" ] && [ "$TMP_DEPLOY_EFFECTIVE" != "$TMP_DEPLOY" ]; then
+                rm -f "$TMP_DEPLOY_EFFECTIVE"
+              fi
+              if [ -n "$TMP_BACKEND_ENV" ]; then
+                rm -f "$TMP_BACKEND_ENV"
+              fi
+            }
+            trap cleanup EXIT
+            echo "$COMPOSE_BASE" | base64 -d > "$TMP_BASE"
+            echo "$COMPOSE_DEPLOY" | base64 -d > "$TMP_DEPLOY"
             DOCKER_CMD="docker"
-            if ! docker info >/dev/null 2>&1 || [ ! -r "$DEPLOY_PATH/.env.backend.local" ]; then
-              DOCKER_CMD="sudo docker"
+            if ! docker info >/dev/null 2>&1; then
+              if sudo -n docker info >/dev/null 2>&1; then
+                DOCKER_CMD="sudo -n docker"
+              else
+                echo "ERROR: docker is not accessible for the SSH user, and passwordless sudo is not configured."
+                echo "Fix: add the SSH user to the docker group, or configure NOPASSWD sudo for docker."
+                exit 1
+              fi
+            fi
+            TMP_DEPLOY_EFFECTIVE="$TMP_DEPLOY"
+            if [ "$DOCKER_CMD" = "docker" ] && [ ! -r "$DEPLOY_PATH/.env.backend.local" ]; then
+              BACKEND_CONTAINER_ID="$($DOCKER_CMD ps -aq --filter 'name=^platform-backend$' | head -n1 || true)"
+              if [ -z "$BACKEND_CONTAINER_ID" ]; then
+                echo "ERROR: cannot read $DEPLOY_PATH/.env.backend.local and no existing platform-backend container found for env fallback."
+                echo "Fix: grant the SSH user read access to .env.backend.local, or run one manual deploy after creating the file."
+                exit 1
+              fi
+              TMP_BACKEND_ENV="$(mktemp /tmp/platform-backend-env.XXXXXX.env)"
+              $DOCKER_CMD inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$BACKEND_CONTAINER_ID" > "$TMP_BACKEND_ENV"
+              TMP_DEPLOY_EFFECTIVE="$(mktemp /tmp/platform-compose-deploy-effective.XXXXXX.yml)"
+              sed "s#\\./\\.env\\.backend\\.local#$TMP_BACKEND_ENV#g" "$TMP_DEPLOY" > "$TMP_DEPLOY_EFFECTIVE"
             fi
             compose_cmd() {
-              $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml "$@"
+              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
             }
             echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
