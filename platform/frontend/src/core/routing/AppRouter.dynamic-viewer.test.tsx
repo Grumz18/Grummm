@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { PreferencesProvider } from "../../public/preferences";
+import { ThemeProvider } from "../../shared/theme/ThemeContext";
 import { AuthSessionProvider } from "../auth/auth-session";
 import { DynamicProjectViewer } from "../pages/DynamicProjectViewer";
 import { ProtectedRoute } from "./ProtectedRoute";
@@ -40,24 +42,28 @@ jest.mock("../../public/data/project-store", () => ({
 describe("DynamicProjectViewer /app/:slug", () => {
   test("loads viewer for admin route /app/:slug", async () => {
     render(
-      <AuthSessionProvider value={{ isAuthenticated: true, bootstrapping: false, role: "Admin", signIn: () => undefined, signOut: () => undefined }}>
-        <MemoryRouter initialEntries={["/app/qr-generator"]}>
-          <Routes>
-            <Route
-              path="/app/:slug"
-              element={
-                <ProtectedRoute adminOnly>
-                  <DynamicProjectViewer />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<div>Home</div>} />
-          </Routes>
-        </MemoryRouter>
-      </AuthSessionProvider>
+      <ThemeProvider>
+        <PreferencesProvider>
+          <AuthSessionProvider value={{ isAuthenticated: true, bootstrapping: false, role: "Admin", signIn: () => undefined, signOut: () => undefined }}>
+            <MemoryRouter initialEntries={["/app/qr-generator"]}>
+              <Routes>
+                <Route
+                  path="/app/:slug"
+                  element={
+                    <ProtectedRoute adminOnly>
+                      <DynamicProjectViewer />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/" element={<div>Home</div>} />
+              </Routes>
+            </MemoryRouter>
+          </AuthSessionProvider>
+        </PreferencesProvider>
+      </ThemeProvider>
     );
 
-    expect(await screen.findByRole("heading", { name: "QR Generator" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /QR Generator/ })).toBeInTheDocument();
     expect(screen.getByTitle("qr-generator-preview")).toBeInTheDocument();
   });
 });

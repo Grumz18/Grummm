@@ -1,8 +1,11 @@
+import { useEffect, useMemo, useState } from "react";
 import ContentCard from "./ContentCard";
 import type { Language, PortfolioProject } from "../types";
 import { getPortfolioKind, getPublicEntryPath } from "../data/project-store";
 
 export type KindFilterValue = "all" | "project" | "post";
+
+const TOPIC_PREVIEW_LIMIT = 4;
 
 interface ContentFeedProps {
   language: Language;
@@ -39,8 +42,19 @@ export function ContentFeed({
   showKindFilter = true,
   emptyMessage
 }: ContentFeedProps) {
-  const topics = Array.from(new Set(items.flatMap((item) => item.tags).map((tag) => tag.trim()).filter(Boolean)))
-    .sort((a, b) => a.localeCompare(b));
+  const topics = useMemo(
+    () => Array.from(new Set(items.flatMap((item) => item.tags).map((tag) => tag.trim()).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b)),
+    [items]
+  );
+
+  const [topicsExpanded, setTopicsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (topic && topics.indexOf(topic) >= TOPIC_PREVIEW_LIMIT) {
+      setTopicsExpanded(true);
+    }
+  }, [topic, topics]);
 
   const filtered = items.filter((item) => {
     const itemKind = getPortfolioKind(item);
@@ -52,6 +66,8 @@ export function ContentFeed({
     }
     return true;
   });
+  const visibleTopics = topicsExpanded ? topics : topics.slice(0, TOPIC_PREVIEW_LIMIT);
+  const hasHiddenTopics = topics.length > TOPIC_PREVIEW_LIMIT;
 
   return (
     <section className="rs-feed">
@@ -71,18 +87,31 @@ export function ContentFeed({
           </div>
         ) : null}
 
-        <div className="rs-feed__topics">
+        <div className={topicsExpanded ? "rs-feed__topics is-expanded" : "rs-feed__topics"}>
           <span className="rs-feed__topics-label">{topicChipAll(language)}</span>
-          {topics.map((value) => (
+          <div className="rs-feed__topics-list">
+            {visibleTopics.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={topic === value ? "rs-topic-chip is-active" : "rs-topic-chip"}
+                onClick={() => onTopicToggle(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          {hasHiddenTopics ? (
             <button
-              key={value}
               type="button"
-              className={topic === value ? "rs-topic-chip is-active" : "rs-topic-chip"}
-              onClick={() => onTopicToggle(value)}
+              className="rs-topics-toggle"
+              aria-expanded={topicsExpanded}
+              aria-label={topicsExpanded ? (language === "ru" ? "Свернуть темы" : "Collapse topics") : (language === "ru" ? "Показать все темы" : "Show all topics")}
+              onClick={() => setTopicsExpanded((value) => !value)}
             >
-              {value}
+              <span className="rs-topics-toggle__chevron" aria-hidden="true" />
             </button>
-          ))}
+          ) : null}
         </div>
       </div>
 

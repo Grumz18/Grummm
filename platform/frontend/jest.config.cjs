@@ -13,6 +13,7 @@ module.exports = {
   },
   extensionsToTreatAsEsm: [".ts", ".tsx"],
   moduleNameMapper: {
-    "\\.(css|less|scss)$": "identity-obj-proxy"
+    "\\.(css|less|scss)$": "identity-obj-proxy",
+    "\\.(png|jpe?g|gif|webp|svg)$": "<rootDir>/src/test/fileMock.ts"
   }
 };

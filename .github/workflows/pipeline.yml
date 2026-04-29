@@ -229,13 +229,13 @@ jobs:
               echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
               exit 1
             fi
-            EXPECTED_ASSET="$($DOCKER_CMD run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
-            ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
+            EXPECTED_ASSET="$($DOCKER_CMD run --rm --entrypoint sh "$NGINX_IMAGE" -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            ACTIVE_ASSET="$(curl -ksS --connect-timeout 5 --max-time 15 "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
             if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
               echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
               exit 1
             fi
-            $DOCKER_CMD system prune -af
+            $DOCKER_CMD image prune -af --filter "until=168h" >/dev/null 2>&1 || true
 
   deploy-production:
     name: Deploy Production
@@ -330,13 +330,13 @@ jobs:
               echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
               exit 1
             fi
-            EXPECTED_ASSET="$($DOCKER_CMD run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
-            ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
+            EXPECTED_ASSET="$($DOCKER_CMD run --rm --entrypoint sh "$NGINX_IMAGE" -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            ACTIVE_ASSET="$(curl -ksS --connect-timeout 5 --max-time 15 "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
             if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
               echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
               exit 1
             fi
-            $DOCKER_CMD system prune -af
+            $DOCKER_CMD image prune -af --filter "until=168h" >/dev/null 2>&1 || true
 
   smoke-staging:
     name: Smoke Staging

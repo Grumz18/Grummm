@@ -399,7 +399,7 @@ public sealed partial class ProjectPostsModule
 
     private static bool IsPubliclyVisible(ProjectPostDto item)
     {
-        return item.Kind == ProjectEntryKind.Post || item.Visibility != ProjectVisibility.Private;
+        return item.Visibility != ProjectVisibility.Private;
     }
 
     private static string NormalizePublicRoutePath(string path)
