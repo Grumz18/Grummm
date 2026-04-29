@@ -167,24 +167,26 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            if [ -w "$DEPLOY_PATH" ]; then
-              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            else
-              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
-              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
+            TMP_BASE="$(mktemp /tmp/platform-compose-base.XXXXXX.yml)"
+            TMP_DEPLOY="$(mktemp /tmp/platform-compose-deploy.XXXXXX.yml)"
+            trap 'rm -f "$TMP_BASE" "$TMP_DEPLOY"' EXIT
+            echo "$COMPOSE_BASE" | base64 -d > "$TMP_BASE"
+            echo "$COMPOSE_DEPLOY" | base64 -d > "$TMP_DEPLOY"
+            if ! docker info >/dev/null 2>&1; then
+              echo "ERROR: docker is not accessible for the SSH user. Configure docker group access or passwordless sudo."
+              exit 1
             fi
             DOCKER_CMD="docker"
-            if ! docker info >/dev/null 2>&1; then
-              DOCKER_CMD="sudo docker"
-            fi
+            compose_cmd() {
+              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY" "$@"
+            }
             echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
-            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml pull
-            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
-            NGINX_CONTAINER_ID="$($DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            compose_cmd pull
+            compose_cmd up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$(compose_cmd ps -q nginx)"
             if [ -z "$NGINX_CONTAINER_ID" ]; then
               echo "ERROR: nginx container id is empty after deploy."
               exit 1
@@ -233,24 +235,26 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            if [ -w "$DEPLOY_PATH" ]; then
-              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            else
-              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
-              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
+            TMP_BASE="$(mktemp /tmp/platform-compose-base.XXXXXX.yml)"
+            TMP_DEPLOY="$(mktemp /tmp/platform-compose-deploy.XXXXXX.yml)"
+            trap 'rm -f "$TMP_BASE" "$TMP_DEPLOY"' EXIT
+            echo "$COMPOSE_BASE" | base64 -d > "$TMP_BASE"
+            echo "$COMPOSE_DEPLOY" | base64 -d > "$TMP_DEPLOY"
+            if ! docker info >/dev/null 2>&1; then
+              echo "ERROR: docker is not accessible for the SSH user. Configure docker group access or passwordless sudo."
+              exit 1
             fi
             DOCKER_CMD="docker"
-            if ! docker info >/dev/null 2>&1; then
-              DOCKER_CMD="sudo docker"
-            fi
+            compose_cmd() {
+              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY" "$@"
+            }
             echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
-            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml pull
-            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
-            NGINX_CONTAINER_ID="$($DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            compose_cmd pull
+            compose_cmd up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$(compose_cmd ps -q nginx)"
             if [ -z "$NGINX_CONTAINER_ID" ]; then
               echo "ERROR: nginx container id is empty after deploy."
               exit 1
