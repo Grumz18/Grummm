@@ -8,7 +8,7 @@ using Platform.Modules.ProjectPosts.Domain.Entities;
 
 namespace Platform.Modules.ProjectPosts.Infrastructure.Repositories;
 
-public sealed class PostgresProjectPostRepository(string connectionString) : IProjectPostRepository
+public sealed class PostgresProjectPostRepository(string connectionString, bool includeLocalTestSeeds = false) : IProjectPostRepository
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private const string LandingContentId = "main";
@@ -390,11 +390,17 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             PortfolioText: new LocalizedTextDto(
                 "The focus is on artifacts: posts, guides, demos, architecture notes, and projects that show how AI tools help engineering work move faster and with better control.",
                 "Акцент на артефактах: постах, гайдах, демо, архитектурных разборах и проектах, где видно, как AI-инструменты помогают работать быстрее и точнее."),
-            AboutPhoto: "/src/images/profile-main.jpeg");
+            AboutPhoto: "/assets/about/profile-main.jpeg");
     }
 
-    private static async Task EnsureSeedPostsAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    private async Task EnsureSeedPostsAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
     {
+        if (!includeLocalTestSeeds)
+        {
+            await HideLocalTestPostAsync(connection, cancellationToken);
+            return;
+        }
+
         const string sql = """
                            insert into project_posts (
                                id, kind, visibility, title_en, title_ru, summary_en, summary_ru, description_en, description_ru,
@@ -416,6 +422,21 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
             BindUpsertParameters(command, post);
             await command.ExecuteNonQueryAsync(cancellationToken);
         }
+    }
+
+    private static async Task HideLocalTestPostAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    {
+        const string sql = """
+                           update project_posts
+                           set visibility = 'private',
+                               updated_at = now()
+                           where id = @id
+                             and visibility <> 'private';
+                           """;
+
+        await using var command = new NpgsqlCommand(sql, connection);
+        command.Parameters.AddWithValue("id", TestAllBlocksPostId);
+        await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
     private static async Task EnsureLandingContentSeedAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
@@ -460,19 +481,31 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
 
         const string fillMissingAboutSql = """
                                            update landing_content
-                                           set about_title_en = @about_title_en,
-                                               about_title_ru = @about_title_ru,
-                                               about_subtitle_en = @about_subtitle_en,
-                                               about_subtitle_ru = @about_subtitle_ru,
-                                               about_text_en = @about_text_en,
-                                               about_text_ru = @about_text_ru,
-                                               about_photo = @about_photo,
+                                           set about_title_en = case when btrim(about_title_en) = '' then @about_title_en else about_title_en end,
+                                               about_title_ru = case when btrim(about_title_ru) = '' then @about_title_ru else about_title_ru end,
+                                               about_subtitle_en = case when btrim(about_subtitle_en) = '' then @about_subtitle_en else about_subtitle_en end,
+                                               about_subtitle_ru = case when btrim(about_subtitle_ru) = '' then @about_subtitle_ru else about_subtitle_ru end,
+                                               about_text_en = case when btrim(about_text_en) = '' then @about_text_en else about_text_en end,
+                                               about_text_ru = case when btrim(about_text_ru) = '' then @about_text_ru else about_text_ru end,
+                                               about_photo = case
+                                                   when about_photo is null
+                                                        or btrim(about_photo) = ''
+                                                        or about_photo = '/src/images/profile-main.jpeg'
+                                                   then @about_photo
+                                                   else about_photo
+                                               end,
                                                updated_at = now()
                                            where id = @id
                                              and (
-                                                 about_photo is null
+                                                 btrim(about_title_en) = ''
+                                                 or btrim(about_title_ru) = ''
+                                                 or btrim(about_subtitle_en) = ''
+                                                 or btrim(about_subtitle_ru) = ''
+                                                 or btrim(about_text_en) = ''
+                                                 or btrim(about_text_ru) = ''
+                                                 or about_photo is null
                                                  or btrim(about_photo) = ''
-                                                 or about_photo = '/assets/about/profile-main.jpeg'
+                                                 or about_photo = '/src/images/profile-main.jpeg'
                                              );
                                            """;
 
@@ -784,7 +817,7 @@ public sealed class PostgresProjectPostRepository(string connectionString) : IPr
         return $"data:image/svg+xml;utf8,{Uri.EscapeDataString(svg)}";
     }
 
-    private static async Task EnsureSchemaAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
+    private async Task EnsureSchemaAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
     {
         const string sql = """
                            create table if not exists project_posts (

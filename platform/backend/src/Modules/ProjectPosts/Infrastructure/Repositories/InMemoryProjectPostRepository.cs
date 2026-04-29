@@ -305,6 +305,6 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
             PortfolioText: new LocalizedTextDto(
                 "The focus is on artifacts: posts, guides, demos, architecture notes, and projects that show how AI tools help engineering work move faster and with better control.",
                 "Акцент на артефактах: постах, гайдах, демо, архитектурных разборах и проектах, где видно, как AI-инструменты помогают работать быстрее и точнее."),
-            AboutPhoto: "/src/images/profile-main.jpeg");
+            AboutPhoto: "/assets/about/profile-main.jpeg");
     }
 }

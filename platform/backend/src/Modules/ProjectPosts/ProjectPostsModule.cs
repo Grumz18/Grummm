@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Platform.Core.Contracts.Modules;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Plugins;
@@ -32,6 +33,7 @@ public sealed partial class ProjectPostsModule : IModule
         services.AddSingleton<IProjectPostRepository>(serviceProvider =>
         {
             var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var environment = serviceProvider.GetService<IHostEnvironment>();
             var connectionString = configuration.GetConnectionString("Platform");
 
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -39,7 +41,11 @@ public sealed partial class ProjectPostsModule : IModule
                 return new InMemoryProjectPostRepository();
             }
 
-            return new PostgresProjectPostRepository(connectionString);
+            var includeLocalTestSeeds = configuration.GetValue<bool?>("ProjectPosts:IncludeLocalTestSeeds")
+                ?? environment?.IsDevelopment()
+                ?? false;
+
+            return new PostgresProjectPostRepository(connectionString, includeLocalTestSeeds);
         });
         services.AddSingleton<UploadWithTemplateCommandHandler>();
         RegisterRuntimeServices(services);
