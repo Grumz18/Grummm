@@ -206,8 +206,12 @@ jobs:
               TMP_DEPLOY_EFFECTIVE="$(mktemp /tmp/platform-compose-deploy-effective.XXXXXX.yml)"
               sed "s#\\./\\.env\\.backend\\.local#$TMP_BACKEND_ENV#g" "$TMP_DEPLOY" > "$TMP_DEPLOY_EFFECTIVE"
             fi
+            COMPOSE_PROJECT_NAME="$($DOCKER_CMD inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' platform-backend 2>/dev/null || true)"
+            if [ -z "$COMPOSE_PROJECT_NAME" ]; then
+              COMPOSE_PROJECT_NAME="$(basename "$DEPLOY_PATH")"
+            fi
             compose_cmd() {
-              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
+              $DOCKER_CMD compose --project-name "$COMPOSE_PROJECT_NAME" --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
             }
             echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
@@ -303,8 +307,12 @@ jobs:
               TMP_DEPLOY_EFFECTIVE="$(mktemp /tmp/platform-compose-deploy-effective.XXXXXX.yml)"
               sed "s#\\./\\.env\\.backend\\.local#$TMP_BACKEND_ENV#g" "$TMP_DEPLOY" > "$TMP_DEPLOY_EFFECTIVE"
             fi
+            COMPOSE_PROJECT_NAME="$($DOCKER_CMD inspect -f '{{index .Config.Labels "com.docker.compose.project"}}' platform-backend 2>/dev/null || true)"
+            if [ -z "$COMPOSE_PROJECT_NAME" ]; then
+              COMPOSE_PROJECT_NAME="$(basename "$DEPLOY_PATH")"
+            fi
             compose_cmd() {
-              $DOCKER_CMD compose --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
+              $DOCKER_CMD compose --project-name "$COMPOSE_PROJECT_NAME" --project-directory "$DEPLOY_PATH" -f "$TMP_BASE" -f "$TMP_DEPLOY_EFFECTIVE" "$@"
             }
             echo "${{ github.token }}" | $DOCKER_CMD login ghcr.io -u "${{ github.actor }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
