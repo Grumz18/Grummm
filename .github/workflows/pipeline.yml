@@ -167,31 +167,40 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-            echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            if [ -w "$DEPLOY_PATH" ]; then
+              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
+              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
+            else
+              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
+              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
+            fi
+            DOCKER_CMD="docker"
+            if ! docker info >/dev/null 2>&1; then
+              DOCKER_CMD="sudo docker"
+            fi
+            echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
-            NGINX_CONTAINER_ID="$(docker compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$($DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
             if [ -z "$NGINX_CONTAINER_ID" ]; then
               echo "ERROR: nginx container id is empty after deploy."
               exit 1
             fi
-            RUNNING_NGINX_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
+            RUNNING_NGINX_IMAGE="$($DOCKER_CMD inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
             if [ "$RUNNING_NGINX_IMAGE" != "$NGINX_IMAGE" ]; then
               echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
               exit 1
             fi
-            EXPECTED_ASSET="$(docker run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            EXPECTED_ASSET="$($DOCKER_CMD run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
             ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
             if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
               echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
               exit 1
             fi
-            docker system prune -af
+            $DOCKER_CMD system prune -af
 
   deploy-production:
     name: Deploy Production
@@ -224,31 +233,40 @@ jobs:
             DEPLOY_PATH="/opt/platform"
             cd "$DEPLOY_PATH"
             BASE_URL="https://grummm.ru"
-            echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
-            echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
+            if [ -w "$DEPLOY_PATH" ]; then
+              echo "$COMPOSE_BASE" | base64 -d > docker-compose.yml
+              echo "$COMPOSE_DEPLOY" | base64 -d > docker-compose.deploy.yml
+            else
+              echo "$COMPOSE_BASE" | base64 -d | sudo tee docker-compose.yml >/dev/null
+              echo "$COMPOSE_DEPLOY" | base64 -d | sudo tee docker-compose.deploy.yml >/dev/null
+            fi
+            DOCKER_CMD="docker"
+            if ! docker info >/dev/null 2>&1; then
+              DOCKER_CMD="sudo docker"
+            fi
+            echo "${{ secrets.GHCR_TOKEN }}" | $DOCKER_CMD login ghcr.io -u "${{ secrets.GHCR_USERNAME }}" --password-stdin
             export BACKEND_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-backend:${{ needs.docker.outputs.image_tag }}"
             export NGINX_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-frontend:${{ needs.docker.outputs.image_tag }}"
             export POSTGRES_IMAGE="ghcr.io/${{ needs.docker.outputs.image_namespace }}/platform-postgres:${{ needs.docker.outputs.image_tag }}"
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
-            NGINX_CONTAINER_ID="$(docker compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
+            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+            $DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml up -d --force-recreate --remove-orphans
+            NGINX_CONTAINER_ID="$($DOCKER_CMD compose -f docker-compose.yml -f docker-compose.deploy.yml ps -q nginx)"
             if [ -z "$NGINX_CONTAINER_ID" ]; then
               echo "ERROR: nginx container id is empty after deploy."
               exit 1
             fi
-            RUNNING_NGINX_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
+            RUNNING_NGINX_IMAGE="$($DOCKER_CMD inspect -f '{{.Config.Image}}' "$NGINX_CONTAINER_ID")"
             if [ "$RUNNING_NGINX_IMAGE" != "$NGINX_IMAGE" ]; then
               echo "ERROR: nginx image mismatch. expected=$NGINX_IMAGE actual=$RUNNING_NGINX_IMAGE"
               exit 1
             fi
-            EXPECTED_ASSET="$(docker run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
+            EXPECTED_ASSET="$($DOCKER_CMD run --rm "$NGINX_IMAGE" sh -lc "grep -o '/assets/index-[^\" ]*\\.js' /usr/share/nginx/html/index.html | head -n1")"
             ACTIVE_ASSET="$(curl -ksS "$BASE_URL/" | grep -o '/assets/index-[^\" ]*\\.js' | head -n1 || true)"
             if [ -n "$EXPECTED_ASSET" ] && [ -n "$ACTIVE_ASSET" ] && [ "$EXPECTED_ASSET" != "$ACTIVE_ASSET" ]; then
               echo "ERROR: live asset mismatch. expected=$EXPECTED_ASSET actual=$ACTIVE_ASSET base_url=$BASE_URL"
               exit 1
             fi
-            docker system prune -af
+            $DOCKER_CMD system prune -af
 
   smoke-staging:
     name: Smoke Staging
