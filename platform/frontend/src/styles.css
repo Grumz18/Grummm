@@ -8284,6 +8284,53 @@ h6 {
   }
 }
 
+@media (min-width: 720px) and (max-width: 959.98px) {
+  .rs-hero__top {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 30vw);
+    align-items: center;
+    gap: 24px;
+  }
+
+  .rs-hero__content {
+    gap: 16px;
+  }
+
+  .rs-hero__title {
+    font-size: clamp(42px, 5.2vw, 50px);
+    line-height: 1.08;
+  }
+
+  .rs-hero__subtitle {
+    max-width: 500px;
+    font-size: 16px;
+  }
+
+  .rs-hero__scene {
+    justify-content: flex-end;
+  }
+
+  .rs-hero__scene-stage {
+    width: min(100%, 260px);
+  }
+
+  .rs-latest-row {
+    grid-template-columns: 90px max-content minmax(0, 1fr) minmax(48px, auto);
+    gap: 14px;
+  }
+
+  .rs-latest-row__kind {
+    justify-self: start;
+  }
+
+  .rs-latest-row__title {
+    min-width: 0;
+  }
+
+  .rs-latest-row__demo {
+    text-align: right;
+  }
+}
+
 /* ===== Redesign: content cards ===== */
 
 .content-card {
