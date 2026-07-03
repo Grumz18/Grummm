@@ -82,7 +82,9 @@ public sealed partial class ProjectPostsModule : IModule
         var backendPath = kind == ProjectEntryKind.Post || string.IsNullOrWhiteSpace(request.BackendPath)
             ? null
             : request.BackendPath.Trim();
+        PostVisibilityValidator.Validate(request, kind);
         var visibility = NormalizeVisibility(request, kind, template);
+        var publishedAt = NormalizePublishedAt(request.PublishedAt, kind, visibility);
         var publicDemoEnabled = kind == ProjectEntryKind.Project
             && template == TemplateType.Static
             && visibility == ProjectVisibility.Demo;
@@ -100,7 +102,7 @@ public sealed partial class ProjectPostsModule : IModule
             Title: new LocalizedTextDto(request.Title.En.Trim(), request.Title.Ru.Trim()),
             Summary: new LocalizedTextDto(request.Summary.En.Trim(), request.Summary.Ru.Trim()),
             Description: new LocalizedTextDto(fallbackDescriptionEn, fallbackDescriptionRu),
-            PublishedAt: request.PublishedAt ?? DateTimeOffset.UtcNow,
+            PublishedAt: publishedAt,
             ContentBlocks: contentBlocks,
             Tags: tags,
             PublicDemoEnabled: publicDemoEnabled,
@@ -139,7 +141,17 @@ public sealed partial class ProjectPostsModule : IModule
     {
         if (kind == ProjectEntryKind.Post)
         {
-            return ProjectVisibility.Public;
+            if (request.PublishNow)
+            {
+                return ProjectVisibility.Public;
+            }
+
+            return request.Visibility switch
+            {
+                ProjectVisibility.Private => ProjectVisibility.Private,
+                ProjectVisibility.Public => ProjectVisibility.Public,
+                _ => ProjectVisibility.Draft
+            };
         }
 
         if (request.Visibility == ProjectVisibility.Private)
@@ -153,6 +165,21 @@ public sealed partial class ProjectPostsModule : IModule
         }
 
         return ProjectVisibility.Public;
+    }
+
+    private static DateTimeOffset? NormalizePublishedAt(
+        DateTimeOffset? requestedPublishedAt,
+        ProjectEntryKind kind,
+        ProjectVisibility visibility)
+    {
+        if (kind == ProjectEntryKind.Post)
+        {
+            return visibility == ProjectVisibility.Public
+                ? requestedPublishedAt ?? DateTimeOffset.UtcNow
+                : null;
+        }
+
+        return requestedPublishedAt ?? (visibility == ProjectVisibility.Public ? DateTimeOffset.UtcNow : null);
     }
 
     private static ProjectPostContentBlockDto[] NormalizeContentBlocks(ProjectPostContentBlockDto[]? blocks)
@@ -305,5 +332,26 @@ public sealed partial class ProjectPostsModule : IModule
 
         var errors = results.Select(r => r.ErrorMessage ?? "Validation error");
         throw new ValidationException(string.Join("; ", errors));
+    }
+
+    private static class PostVisibilityValidator
+    {
+        public static void Validate(UpsertProjectPostRequest request, ProjectEntryKind kind)
+        {
+            if (kind != ProjectEntryKind.Post)
+            {
+                return;
+            }
+
+            if (request.Visibility == ProjectVisibility.Demo)
+            {
+                throw new ValidationException("Demo visibility is only available for static projects.");
+            }
+
+            if (request.PublishNow && request.Visibility == ProjectVisibility.Draft)
+            {
+                throw new ValidationException("A draft post cannot be saved with PublishNow=true. Set visibility to Public or use the publish endpoint.");
+            }
+        }
     }
 }

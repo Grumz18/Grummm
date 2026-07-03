@@ -1,9 +1,9 @@
 # LLM Rules (Hard Constraints)
 
 1. Do not break route-zone boundaries:
-   - public web: `/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`
+   - public web: `/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`, `/login`, `/404`
    - private web: `/app/*`
-   - public API: `/api/public/*`
+   - public API: `/api/public/*`, `/health`, `/ready`, `/sitemap.xml`
    - private API: `/api/app/*`
 2. Keep module isolation strict:
    - no cross-module business imports,
@@ -25,4 +25,6 @@
 11. Refresh tokens must be PostgreSQL-persisted; do not revert to memory-only storage.
 12. ProjectPosts module uses raw Npgsql (not EF Core); keep this pattern for new tables in that module.
 13. Docker Compose uses overlay strategy (base + env-specific); do not merge secrets into the base file.
-14. Topics and relations are bidirectional at query level (UNION); storage is directional (source_id → target_id).
+14. Topics and relations are bidirectional at query level (UNION); storage is directional (`source_id` -> `target_id`).
+15. Static demos are public only through the demo surface (`demo.grummm.ru/{slug}/viewer/`); keep main-domain viewer routes blocked unless the architecture lock changes.
+16. Posts currently have no draft/private behavior because backend normalizes `kind=post` to `visibility=public`; do not document or depend on draft posts until the contract changes.

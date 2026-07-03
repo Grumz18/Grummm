@@ -1,170 +1,180 @@
-# AI CONTEXT - PLATFORM STATE
+# AI Context - Platform State
 
-Last Updated: 2026-03-30
-Version: 9.0
-Phase: 12.x (topics & relations, dev/prod environment separation, auth persistence)
+Last updated: 2026-05-25
+Version: 10.0
+Phase: production stabilization after GHCR/Compose deploy fixes
 
-> The repository is Grummm Platform. Older notes about earlier frontend experiments are not authoritative.
-
----
+This repository is the Grummm Platform. Older phase notes are useful history, but this file reflects the current reviewed code state.
 
 ## 1. System Overview
 
-Architecture: Modular Monolith
-Backend: ASP.NET Core 9 / .NET 9
-Frontend: React + TypeScript + Vite 5
-Database: PostgreSQL (raw Npgsql for ProjectPosts module, EF Core for audit)
-Proxy: Nginx
-Deployment: Docker Compose (base + overlay strategy)
-Auth: JWT access tokens (15 min) + refresh token rotation (7 days, PostgreSQL-backed)
+Architecture: modular monolith.
 
-Project domain:
-- Public showcase (`/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`)
-- Private admin workspace (`/app/*`)
-- Dynamic template runtime host for interactive project entries
-- Server-computed recommendations based on topics and explicit relations
+Stack:
+
+- Backend: ASP.NET Core 9 / .NET 9.
+- Frontend: React 18 + TypeScript + Vite.
+- Database: PostgreSQL.
+- Proxy/static: Nginx.
+- Deployment: Docker Compose base + environment overlay.
+- CI/CD: GitHub Actions builds GHCR images and deploys by SSH.
+- Auth: JWT access tokens plus PostgreSQL-backed refresh token rotation.
+
+Core domain:
+
+- public landing, projects, posts, detail pages;
+- private admin workspace under `/app/*`;
+- static public demos under `demo.grummm.ru/{slug}/viewer/`;
+- topics, relations, and server-computed related entries;
+- analytics for visits, post views, and likes.
 
 ## 2. Locked Route Zones
 
 Public web:
+
 - `/`
 - `/projects`
 - `/projects/:id`
 - `/posts`
 - `/posts/:id`
+- `/login`
+- `/404`
 
 Private web:
+
 - `/app`
-- `/app/:module`
-- `/app/:module/*`
+- `/app/*`
 
 Public API:
+
 - `/api/public/*`
+- `/health`
+- `/ready`
+- `/sitemap.xml`
 
 Private API:
-- `/api/app/*` (`AdminOnly`)
 
-## 3. Current Functional State
+- `/api/app/*` protected by `AdminOnly`.
 
-### 3.1 Public frontend
-
-Implemented:
-- landing page, separate project catalog, separate posts catalog, split detail pages
-- persistent `PublicLayout` with compact public header (language/theme icon buttons)
-- shared public footer across public routes, including mobile-specific centered action layout
-- layered landing hero with desktop-only decorative scene and `HeroMorphTitle`
-- CSP-safe preloader and semantic fallback shell in `index.html`
-- runtime metadata sync through `useDocumentMetadata`
-- post detail with structured content blocks, footer date and related entries
-- project detail with summary, gallery, optional static public demo CTA
-- **server-computed related entries** on both post and project detail pages (weighted scoring: explicit relations > shared topics > same kind)
-- server-side invalid route handling targets static `__error_404.html`
-
-### 3.2 Private admin frontend
+## 3. Current Frontend State
 
 Implemented:
-- persistent `PrivateAppLayout`
-- admin overview, posts editor, projects editor, content page, security page
-- posts editor is block-based and stores EN/RU text separately
-- post editor supports numbered lists, callouts, image blocks, and drag-and-drop uploaded video blocks
-- projects editor keeps template, upload, screenshot and video controls project-only
-- **topics manager** (CRUD for global topics: id, name EN/RU)
-- **relations selector** (per-project: topic chips + searchable entry linking)
-- custom template picker replaces native browser select
 
-### 3.3 Data flow and content model
+- `PublicLayout` for public routes;
+- `PrivateAppLayout` for `/app/*`;
+- `ProtectedRoute` with admin guard;
+- public landing, project catalog, post catalog, detail page, 404 page;
+- admin overview, projects editor, posts editor, security page;
+- module auto-discovery via `import.meta.glob("../../modules/**/*.module.{ts,tsx}")`;
+- public related entries through `/api/public/projects/{id}/related`;
+- public analytics tracking in `AppRouter`;
+- `project-store.ts` API-first store with localStorage fallback.
 
-Current model:
-- `PortfolioProject.kind` splits `post` and `project`
-- `PortfolioProject.contentBlocks` stores structured post body blocks
-- `PortfolioProject.publishedAt` is normalized for both posts and projects
-- frontend store is API-first and falls back to `localStorage`
+Important current gaps:
 
-**Topics and relations model (new):**
-- `topics` table: id, name_en, name_ru
-- `project_topics` table: project_id, topic_id (many-to-many)
-- `project_relations` table: source_id, target_id (bidirectional via UNION query)
-- Recommendation algorithm: explicit relations (+100) > shared topics (+10 each) > same kind (+1)
-- Public endpoint: `GET /api/public/projects/{id}/related`
+- `landing-content-store.ts` is static-only and does not call the backend landing API;
+- no `AdminLandingContentPage.tsx` and no `/app/landing` route;
+- public frontend can fall back to stale `localStorage` content;
+- runtime template options are disabled in UI with `RUNTIME_TEMPLATE_OPTIONS_ENABLED = false`;
+- project-level video can still be stored as a `data:` URL.
 
-Template/runtime flow:
-- upload endpoint: `POST /api/app/projects/{id}/upload-with-template`
-- Nginx serves uploaded frontend bundles under `/app/{slug}/...`
-- dynamic backend dispatch stays under `/api/app/{slug}/*`
-- public static demo is exposed through short route `/{slug}/viewer/`
+## 4. Current Backend State
 
-### 3.4 Backend modules
+Modules:
 
-Implemented:
-- `TaskTracker`
-- `ProjectPosts` (core content module)
-- `Analytics`
-- `PlatformOps`
+- `ProjectPosts`;
+- `Analytics`;
+- `PlatformOps`;
+- `TaskTracker`.
 
-`ProjectPosts` now owns:
-- `kind`, `contentBlocks`, `publishedAt`, `publicDemoEnabled`
-- repository-backed `/sitemap.xml`
-- **topics CRUD** (3 endpoints under `/api/app/topics`)
-- **project relations** (2 endpoints under `/api/app/projects/{id}/relations`)
-- **project topics** (2 endpoints under `/api/app/projects/{id}/topics`)
-- **public related entries** (1 endpoint: `/api/public/projects/{id}/related`)
+`ProjectPosts` owns:
 
-### 3.5 Auth and session management
+- `project_posts`;
+- `topics`;
+- `project_topics`;
+- `project_relations`;
+- `landing_content`;
+- public list/detail/related/sitemap endpoints;
+- private content CRUD;
+- topics and relations endpoints;
+- content video upload endpoint;
+- static demo upload/viewer support.
 
-Architecture:
-- JWT access tokens (15 min lifetime, HS256)
-- Refresh token rotation with family tracking (7 days lifetime)
-- **Refresh tokens persisted in PostgreSQL** (`refresh_tokens` table with auto-migration)
-- Refresh token cookie: `__Host-platform-rt` (prod) / `platform-rt` (dev)
-- Cookie settings are environment-aware: `Secure: true` + `SameSite: Strict` in prod, relaxed in dev
-- CSRF cookie also environment-aware: `__Host-platform-csrf` (prod) / `platform-csrf` (dev)
-- Frontend bootstrap: on page refresh, `ProtectedRoute` waits for refresh token rotation before deciding whether to redirect to login
-- Reauth dialog opens when access token expires (user enters email + 6-digit code)
+Important behavior:
 
-### 3.6 SEO and crawl surface
+- `kind` is `post` or `project`;
+- `visibility` is `public`, `private`, or `demo`;
+- backend forces every `kind=post` upsert to `visibility=public`;
+- private visibility currently matters for projects, not posts;
+- C#/Python/JavaScript runtime templates are disabled;
+- static demos are supported.
+
+## 5. Auth And Security
 
 Implemented:
-- `index.html` includes title, description, keywords, canonical and semantic fallback HTML
-- frontend build runs `scripts/prerender-seo.mjs`
-- production `/sitemap.xml` is dynamically generated by backend from DB
-- post detail pages include BlogPosting + BreadcrumbList structured data (JSON-LD)
-- static server-side `__error_404.html` for invalid routes
 
-### 3.7 Environment separation
+- JWT access tokens;
+- refresh token family rotation;
+- PostgreSQL refresh token store;
+- fallback in-memory refresh store only when no connection string exists;
+- environment-aware refresh and CSRF cookies;
+- JWT auth middleware;
+- CSRF middleware;
+- admin audit logging middleware;
+- correlation-id middleware;
+- global exception middleware;
+- rate limiting for global and auth-specific flows.
 
-Architecture:
-- `docker-compose.yml` - shared base (no secrets, no env-specific config)
-- `docker-compose.deploy.yml` - production overlay (GHCR images, production env vars, secrets from `.env.backend.local`)
-- `docker-compose.dev.yml` - development overlay (local build, Vite HMR on port 5173, dev database `platform_dev`, email verification disabled)
-- `.env.dev` - dev environment variables (safe to commit)
-- `.env.prod.example` - production template
-- `appsettings.Development.json` - dev backend config (simple admin/admin123 credentials)
-- `appsettings.Production.json` - prod backend config (warning-level logging)
+Do not revert refresh tokens to memory-only for production.
 
-### 3.8 Current deployment caveats
+## 6. Deploy State
 
-Important:
-- `platform/infra/nginx/default.conf` must stay UTF-8 without BOM
-- backend repository bootstrap SQL must not contain literal backtick escape fragments
-- frontend deploy is still tied to the mounted `platform/frontend/dist` directory on the server
-- dev environment does NOT have hot reload for backend (dotnet watch crashes on Windows Docker volumes due to PollingDirectoryWatcher duplicate key bug); use `--build` flag for backend changes
+Current deploy model:
 
-## 4. Security and operations baseline
+- `.github/workflows/pipeline.yml` builds backend, frontend/nginx, and postgres images;
+- images are pushed to GHCR with short SHA and environment tags;
+- `develop` deploys to staging;
+- `main` deploys to production;
+- compose files are sent over SSH as base64 temp files;
+- deploy reuses the existing compose project name from the `platform-backend` container label;
+- deploy verifies the running nginx image and live frontend asset hash.
 
-Implemented baseline:
-- JWT auth and refresh rotation (PostgreSQL-backed)
-- `AdminOnly` protection for private routes and APIs
-- CSRF strategy for unsafe requests (environment-aware cookie names)
-- correlation-id propagation
-- audit logging baseline
-- rate limiting and security headers
-- health/readiness and backup runbooks
-- template upload validation and malware scanning
-- GitHub branch protection: require PR + 1 approval for main
+Nginx image:
 
-## 5. Developer workflow
+- copies `platform/infra/nginx/static/`;
+- copies fresh `platform/frontend/dist/` on top;
+- serves the SPA from `/usr/share/nginx/html`;
+- proxies `/api/*`, `/health`, `/ready`, `/sitemap.xml`;
+- blocks main-domain viewer paths;
+- routes `demo.grummm.ru/{slug}/viewer/` to uploaded static demos.
 
-- Git: branch protection on main, PRs required with review
-- Second developer onboarding: `docs/developer-guide.docx`
-- Dev environment: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build`
-- CI/CD: GitHub Actions pipeline (build on PR, deploy on merge to main)
+Known CI/CD gaps:
+
+- frontend typecheck is not a separate CI gate;
+- frontend tests are not run in CI;
+- backend tests are not run in CI;
+- smoke jobs are non-blocking.
+
+## 7. High-Risk Areas
+
+- `ProjectPostsModule.NormalizeVisibility`: controls post publish/draft behavior.
+- `project-store.ts`: public fallback can expose stale local content.
+- `landing-content-store.ts`: bypasses backend landing content.
+- `PostgresAnalyticsRepository`: post view query still uses `template = 0`.
+- `ProjectTemplateStorage.cs`: static demo upload is not fully transactional.
+- `.github/workflows/pipeline.yml`: deploy safety and smoke behavior.
+- `platform/infra/nginx/default.conf`: route validation, demo domain, CSP, SPA fallback.
+
+## 8. Current Work Pipeline
+
+Use `docs/current-audit-and-completion-pipeline.md` as the active plan.
+
+Recommended next PRs:
+
+1. Documentation and encoding cleanup.
+2. Landing content source decision.
+3. Publish/draft model for posts.
+4. Public localStorage fallback cleanup.
+5. Analytics semantics fix.
+6. CI/CD hardening.
+7. Media/static demo hardening.

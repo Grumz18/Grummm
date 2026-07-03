@@ -17,9 +17,10 @@ public enum ProjectEntryKind
 
 public enum ProjectVisibility
 {
-    Public = 0,
+    Draft = 0,
     Private = 1,
-    Demo = 2
+    Public = 2,
+    Demo = 3
 }
 
 public enum ProjectPostContentBlockType
@@ -88,4 +89,16 @@ public sealed class ProjectPost
     public TemplateType Template { get; set; } = TemplateType.None;
     public string? FrontendPath { get; set; }
     public string? BackendPath { get; set; }
+
+    public void Publish(DateTimeOffset publishedAt)
+    {
+        Visibility = ProjectVisibility.Public;
+        PublishedAt = publishedAt;
+    }
+
+    public void Unpublish()
+    {
+        Visibility = ProjectVisibility.Draft;
+        PublishedAt = null;
+    }
 }
