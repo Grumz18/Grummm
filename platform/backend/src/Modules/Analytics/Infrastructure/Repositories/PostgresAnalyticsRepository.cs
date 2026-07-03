@@ -167,7 +167,8 @@ public sealed class PostgresAnalyticsRepository(string connectionString, ILogger
                    coalesce(v.views, 0) as views
             from project_posts p
             left join analytics.post_views v on v.post_id = p.id
-            where p.template = 0
+            where p.kind = 'post'
+              and p.visibility = 'public'
             order by views desc, p.id asc;
             """;
 
@@ -276,4 +277,3 @@ public sealed class PostgresAnalyticsRepository(string connectionString, ILogger
         return Convert.ToHexString(hash);
     }
 }
-

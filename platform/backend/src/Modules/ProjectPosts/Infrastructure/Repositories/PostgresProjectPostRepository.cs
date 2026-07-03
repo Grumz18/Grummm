@@ -76,7 +76,7 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
                            )
                            values (
                                @id, @kind, @visibility, @title_en, @title_ru, @summary_en, @summary_ru, @description_en, @description_ru,
-                               coalesce(@published_at, now()),
+                               @published_at,
                                @content_blocks::jsonb, @tags, @public_demo_enabled, @hero_image_light, @hero_image_dark, @screenshots::jsonb, @video_url,
                                @template, @frontend_path, @backend_path, now(), now()
                            )
@@ -89,7 +89,7 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
                                summary_ru = excluded.summary_ru,
                                description_en = excluded.description_en,
                                description_ru = excluded.description_ru,
-                               published_at = coalesce(project_posts.published_at, excluded.published_at, now()),
+                               published_at = excluded.published_at,
                                content_blocks = excluded.content_blocks,
                                tags = excluded.tags,
                                public_demo_enabled = excluded.public_demo_enabled,
@@ -889,6 +889,10 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
                            alter table project_posts
                                alter column visibility set not null;
 
+                           create index if not exists ix_project_posts_public_posts_published_at
+                               on project_posts (published_at desc)
+                               where kind = 'post' and visibility = 'public';
+
                            create table if not exists landing_content (
                                id text primary key,
                                hero_eyebrow_en text not null,
@@ -1137,7 +1141,10 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
                                ) topic_match on true
                                left join project_topics st on st.project_id = pp.id and st.topic_id in (select topic_id from current_topics)
                                where pp.id <> @id
-                                 and (pp.kind = 'post' or pp.visibility <> 'private')
+                                 and (
+                                     (pp.kind = 'post' and pp.visibility = 'public')
+                                     or (pp.kind = 'project' and pp.visibility in ('public', 'demo'))
+                                 )
                                group by pp.id, pp.kind, pp.title_en, pp.title_ru, pp.summary_en, pp.summary_ru,
                                         pp.hero_image_light, pp.hero_image_dark, er.related_id, topic_match.shared_count
                            )
@@ -1187,6 +1194,7 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
     {
         return visibility switch
         {
+            ProjectVisibility.Draft => "draft",
             ProjectVisibility.Private => "private",
             ProjectVisibility.Demo => "demo",
             _ => "public"
@@ -1195,6 +1203,11 @@ public sealed class PostgresProjectPostRepository(string connectionString, bool 
 
     private static ProjectVisibility ParseVisibility(string? raw)
     {
+        if (string.Equals(raw, "draft", StringComparison.OrdinalIgnoreCase))
+        {
+            return ProjectVisibility.Draft;
+        }
+
         if (string.Equals(raw, "private", StringComparison.OrdinalIgnoreCase))
         {
             return ProjectVisibility.Private;

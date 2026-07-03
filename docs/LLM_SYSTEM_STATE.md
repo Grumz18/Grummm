@@ -1,275 +1,245 @@
 # LLM System State Guide
 
-Last updated: 2026-03-30
+Last updated: 2026-05-25
 
-Purpose: this file is the **fastest accurate way** to load an LLM into the current state of `Grummm` without re-discovering the repository. Read this first, then drill into specific files as needed.
+Purpose: load an LLM or developer into the current state of `Grummm` without rediscovering the repository.
 
-**Quick-reference chain:**
-1. **This file** — system overview, architecture, runtime flows, sharp edges
-2. `docs/LLM_PROJECT_MAP.md` — verified file-level map of the entire repo
-3. `ai-context.md` — rolling snapshot of features and phase state
-4. `architecture-lock.md`, `module-contract.md`, `llm-rules.md` — hard constraints
+Read in this order:
 
----
+1. `docs/current-audit-and-completion-pipeline.md`
+2. this file
+3. `docs/LLM_PROJECT_MAP.md`
+4. `docs/cicd.md`
+5. `llm-rules.md`, `architecture-lock.md`, `module-contract.md`
 
 ## 1. What this project is
 
-`Grummm` is a **modular monolith platform** for publishing projects and editorial posts, with an admin workspace and optional sandboxed public demos.
+`Grummm` is a modular monolith platform for public projects/posts, admin content management, static public demos, analytics, and production deployment through Docker Compose.
 
 | Layer | Tech | Location |
-|-------|------|----------|
-| Backend | ASP.NET Core 9 / .NET 9, raw Npgsql | `platform/backend/` |
-| Frontend | React 18 + TypeScript + Vite 5 | `platform/frontend/` |
-| Database | PostgreSQL | via Docker Compose |
-| Proxy | Nginx | `platform/infra/nginx/` |
-| Deploy | Docker Compose (base + overlay) | root `docker-compose*.yml` |
-| CI/CD | GitHub Actions | `.github/workflows/pipeline.yml` |
-| Auth | JWT (15 min) + refresh rotation (7 days, PostgreSQL-persisted) | |
+|---|---|---|
+| Backend | ASP.NET Core 9 / .NET 9, raw Npgsql in modules | `platform/backend/` |
+| Frontend | React 18 + TypeScript + Vite | `platform/frontend/` |
+| Database | PostgreSQL | Docker Compose |
+| Proxy/static | Nginx | `platform/infra/nginx/` |
+| Deploy | GHCR images + Compose base/deploy overlay | `.github/workflows/pipeline.yml`, `docker-compose*.yml` |
+| Auth | JWT access token + PostgreSQL refresh token rotation | `Infrastructure/Security` |
 
-## 2. Architecture at a glance
+## 2. Current architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                     Nginx (443/80)                   │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
-│  │ /api/*   │→ │ Backend  │  │ /var/projects/*   │  │
-│  │ /health  │  │ :8080    │  │ (uploaded demos)  │  │
-│  │ /ready   │  └────┬─────┘  └───────────────────┘  │
-│  │ /sitemap │       │                                │
-│  └──────────┘       ▼                                │
-│              ┌──────────────┐                        │
-│  Static SPA  │  PostgreSQL  │                        │
-│  from dist/  │  :5432       │                        │
-│              └──────────────┘                        │
-└─────────────────────────────────────────────────────┘
+```text
+Browser
+  -> Nginx container
+       -> static SPA from /usr/share/nginx/html
+       -> /api/*, /health, /ready proxy to backend:8080
+       -> demo.grummm.ru/{id}/viewer/* proxies uploaded static demos
+  -> Backend container
+       -> modules discovered at startup
+       -> raw Npgsql repositories
+  -> PostgreSQL container
 ```
 
-## 3. Route and API boundaries (LOCKED)
+The nginx image is built in CI. `platform/infra/nginx/Dockerfile` copies `platform/infra/nginx/static/` first, then copies fresh `platform/frontend/dist/` over it. The remote server does not build the frontend during production deploy.
 
-These boundaries are **architectural constraints**. Never blur them.
+Uploaded static demos are intentionally split onto `demo.grummm.ru`. Main-domain viewer paths such as `/{slug}/viewer/` and `/api/public/projects/{id}/viewer/*` are blocked by Nginx.
+
+## 3. Route and API boundaries
 
 | Zone | Routes | Guard | Layout |
-|------|--------|-------|--------|
-| Public web | `/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id` | none | `PublicLayout` |
-| Private web | `/app`, `/app/*` | `ProtectedRoute` (AdminOnly) | `PrivateAppLayout` |
-| Public API | `/api/public/*` | none | — |
-| Private API | `/api/app/*` | JWT + AdminOnly policy | — |
+|---|---|---|---|
+| Public web | `/`, `/projects`, `/projects/:id`, `/posts`, `/posts/:id`, `/login`, `/404` | none | `PublicLayout` |
+| Private web | `/app`, `/app/*` | `ProtectedRoute` + AdminOnly | `PrivateAppLayout` |
+| Public API | `/api/public/*`, `/health`, `/ready`, `/sitemap.xml` | none | backend |
+| Private API | `/api/app/*` | JWT + AdminOnly | backend |
 
-## 4. Backend structure
+Do not blur these zones. Public pages stay in `PublicLayout`; private pages stay in `PrivateAppLayout`.
 
-**Entrypoint:** `platform/backend/src/WebAPI/Program.cs`
+## 4. Backend modules
 
-### Backend modules (under `platform/backend/src/Modules/`)
+Entrypoint: `platform/backend/src/WebAPI/Program.cs`
 
 | Module | Purpose |
-|--------|---------|
-| `ProjectPosts` | Core content module: projects, posts, topics, relations, recommendations, sitemap |
-| `Analytics` | Public/admin analytics (site visits, post views) |
-| `PlatformOps` | Readiness checks, DB backups, ops endpoints |
-| `TaskTracker` | Simple task tracker (demo module) |
+|---|---|
+| `ProjectPosts` | projects, posts, topics, relations, landing content, static demo upload/viewer |
+| `Analytics` | public visit/post/like endpoints and admin analytics |
+| `PlatformOps` | readiness, backup, ops endpoints |
+| `TaskTracker` | demo/private module |
 
-### ProjectPosts — the main module
+### ProjectPosts state
 
-**Domain entities:**
-- `ProjectPost` — unified entity for both posts and projects
-  - `Kind`: `Post` or `Project`
-  - `Visibility`: `Public`, `Private`, or `Demo`
-  - Fields: Title, Summary, Description, Tags, HeroImage, Screenshots, VideoUrl, ContentBlocks, PublishedAt, PublicDemoEnabled, Template, FrontendPath, BackendPath
+Core table: `project_posts`.
 
-**Database tables (auto-migrated via `CREATE TABLE IF NOT EXISTS`):**
-- `project_posts` — main content table
-- `topics` — global topics (id, name_en, name_ru)
-- `project_topics` — many-to-many: project ↔ topic
-- `project_relations` — directional pairs, queried bidirectionally via UNION
-- `landing_content` — landing page content blocks
-- `refresh_tokens` — JWT refresh token persistence (in Infrastructure, not ProjectPosts)
+Other tables:
 
-**API endpoints (ProjectPosts):**
+- `topics`
+- `project_topics`
+- `project_relations`
+- `landing_content`
 
-| Method | Path | Auth | Purpose |
-|--------|------|------|---------|
-| GET | `/api/public/projects` | — | List public entries |
-| GET | `/api/public/projects/{id}` | — | Get single entry |
-| GET | `/api/public/projects/{id}/related` | — | Server-computed recommendations |
-| GET | `/api/app/topics` | Admin | List all topics |
-| POST | `/api/app/topics` | Admin | Create/update topic |
-| DELETE | `/api/app/topics/{id}` | Admin | Delete topic |
-| GET | `/api/app/projects/{id}/relations` | Admin | Get project relations |
-| PUT | `/api/app/projects/{id}/relations` | Admin | Set project relations |
-| GET | `/api/app/projects/{id}/topics` | Admin | Get project topics |
-| PUT | `/api/app/projects/{id}/topics` | Admin | Set project topics |
-| POST | `/api/app/projects/{id}` | Admin | Create/update entry |
-| DELETE | `/api/app/projects/{id}` | Admin | Delete entry |
-| POST | `/api/app/projects/{id}/upload-with-template` | Admin | Upload project bundle |
+Current important behavior:
 
-**Recommendation algorithm:**
-```
-Score per candidate:
-  +100  if explicitly linked via project_relations
-  +10   per shared topic via project_topics
-  +1    if same kind (post↔post or project↔project)
-Filter: exclude current item, exclude private entries
-Order: score DESC, limit 6
-```
+- `kind` is `post` or `project`;
+- `visibility` is `public`, `private`, or `demo`;
+- backend currently forces every `kind=post` upsert to `visibility=public`;
+- private visibility is meaningful for projects, but not yet for posts;
+- `ProjectPosts:IncludeLocalTestSeeds` controls local test seed insertion and should remain false in production;
+- runtime C#/Python/JS templates are disabled;
+- static project demos are still supported through `demo.grummm.ru/{id}/viewer/`;
+- post block videos use managed content media endpoints, while project-level videos can still be stored as `data:` URLs.
 
-### Auth system
+### Landing content state
+
+Backend has:
+
+- `GET /api/public/content/landing`
+- `PUT /api/app/content/landing`
+- table `landing_content`
+
+Frontend currently does not consume it. `platform/frontend/src/public/data/landing-content-store.ts` returns static content only and throws on server save. Treat landing editor/content sync as unfinished.
+
+### Public visibility state
+
+Public project/post list and detail endpoints filter by `item.Visibility != Private`, but because posts are normalized to public, posts do not currently have a real draft/private state.
+
+## 5. Auth system
 
 | Component | Location |
-|-----------|----------|
+|---|---|
 | JWT generation/validation | `Infrastructure/Security/JwtTokenService.cs` |
 | Refresh token service | `Infrastructure/Security/RefreshTokenService.cs` |
-| Refresh token store (PostgreSQL) | `Infrastructure/Security/PostgresRefreshTokenStore.cs` |
-| Refresh token store (fallback) | `Infrastructure/Security/InMemoryRefreshTokenStore.cs` |
+| Persistent refresh tokens | `Infrastructure/Security/PostgresRefreshTokenStore.cs` |
+| Fallback refresh tokens | `Infrastructure/Security/InMemoryRefreshTokenStore.cs` |
 | Cookie handling | `WebAPI/Extensions/AuthCookieExtensions.cs` |
-| Auth endpoints | `Program.cs` (login, refresh, confirm-session, logout) |
 
-**Token flow:**
-1. Login → validates credentials + email code → issues access token (body) + refresh token (HttpOnly cookie)
-2. Refresh → reads cookie → rotates refresh token → returns new access token
-3. On page refresh → frontend calls `/api/public/auth/refresh` → restores session
-4. On access token expiry → reauth modal (email + code)
+Token flow:
 
-**Cookie configuration:**
-- Production: `__Host-platform-rt`, `Secure: true`, `SameSite: Strict`
-- Development: `platform-rt`, `Secure: false`, `SameSite: Lax`
+1. Login validates admin credentials and email code.
+2. Backend returns access token and sets refresh token in HttpOnly cookie.
+3. Frontend stores access token in memory only.
+4. On browser reload, frontend calls `/api/public/auth/refresh`.
+5. Refresh token is rotated and persisted in PostgreSQL.
 
-## 5. Frontend structure
+Do not revert refresh tokens to memory-only for production.
 
-**Entrypoint:** `platform/frontend/src/main.tsx`
-**Router:** `platform/frontend/src/core/routing/AppRouter.tsx`
+## 6. Frontend state
 
-### Four source areas
+Entrypoint: `platform/frontend/src/main.tsx`
 
-| Area | Path | Purpose |
-|------|------|---------|
-| `src/core` | Auth, layouts, router, admin pages, plugin registry | App shell |
-| `src/public` | Public pages, components, store, preferences, types | Public site |
-| `src/shared` | i18n, SEO helpers, GSAP motion hook | Cross-cutting |
-| `src/modules` | Auto-discovered feature modules (e.g. task-tracker) | Plugins |
+Router: `platform/frontend/src/core/routing/AppRouter.tsx`
 
-### Key frontend files
+Main areas:
 
-| File | What it does |
-|------|-------------|
-| `core/auth/auth-session.tsx` | Auth context, in-memory token storage, bootstrapping state |
-| `core/auth/auth-api.ts` | Login, refresh, confirm-session, logout API calls |
-| `core/routing/AppRouter.tsx` | Route tree, auth bootstrap, reauth dialog |
-| `core/routing/ProtectedRoute.tsx` | Auth guard (waits for bootstrap, then checks auth) |
-| `core/pages/AdminProjectsWorkspace.tsx` | Project/post editor with topics and relations UI |
-| `core/components/AdminTopicsManager.tsx` | Global topics CRUD |
-| `core/components/AdminRelationsSelector.tsx` | Per-project topic chips + relation search/link |
-| `public/data/project-store.ts` | API-first store with localStorage fallback, 8 topics/relations API functions |
-| `public/pages/ProjectDetailPage.tsx` | Detail page with server-fetched related entries |
-| `public/types.ts` | `PortfolioProject`, `Topic`, `RelatedEntry` types |
-| `public/components/RelatedEntriesSection.tsx` | Related posts/projects cards at bottom of detail pages |
+| Area | Purpose |
+|---|---|
+| `src/core` | auth, router, layouts, admin pages/components |
+| `src/public` | public pages, public data stores, public components |
+| `src/shared` | i18n, SEO, shared UI hooks |
+| `src/modules` | auto-discovered plugin modules |
 
-### Frontend auth bootstrap flow (critical)
+Important files:
 
-```
-1. Page loads → main.tsx reads localStorage → {isAuthenticated, role, email} (NO token)
-2. AppRouter mounts → detects isAuthenticated but no token → sets bootstrapping=true
-3. Calls POST /api/public/auth/refresh (cookie sent automatically)
-4. Success → stores new access token in memory, bootstrapping=false
-5. Failure → signOut, clears localStorage, bootstrapping=false
-6. ProtectedRoute → if bootstrapping, renders null (waits); if !authenticated, redirects to /login
-```
+- `core/routing/AppRouter.tsx` - route tree.
+- `core/auth/auth-session.tsx` - auth context and bootstrap.
+- `core/pages/AdminProjectsWorkspace.tsx` - project/post editor.
+- `public/data/project-store.ts` - API-first store with localStorage fallback.
+- `public/data/landing-content-store.ts` - static-only landing content today.
+- `public/pages/LandingPage.tsx` - public landing.
+- `public/pages/ProjectsPage.tsx`, `PostsPage.tsx`, `ProjectDetailPage.tsx` - catalogs and detail pages.
 
-## 6. Environment separation
+Known frontend caveat: `project-store.ts` can fall back to localStorage key `platform.projects.posts.v3`. That fallback is useful for local/offline flows, but it can show stale/test content if public API fails. This must be tightened before calling production content fully reliable.
 
-### Docker Compose overlay strategy
+## 7. Environment separation
 
-| File | Purpose | Contains secrets? |
-|------|---------|-------------------|
-| `docker-compose.yml` | Base services (structure only) | No |
-| `docker-compose.deploy.yml` | Production overlay (GHCR images, prod env vars) | References `.env.backend.local` |
-| `docker-compose.dev.yml` | Dev overlay (local build, Vite HMR, dev DB) | No (uses inline dev creds) |
+| File | Purpose | Secrets |
+|---|---|---|
+| `docker-compose.yml` | base service graph | no |
+| `docker-compose.deploy.yml` | production images/env overlay | references `.env.backend.local` |
+| `docker-compose.dev.yml` | local dev overlay with Vite/dev DB | safe dev values |
+| `.env.dev` | local dev values | safe to commit |
+| `.env.prod.example` | production template | no real secrets |
+| `.env.backend.local` | production backend secrets | gitignored, server only |
 
-**Dev startup:**
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
+Production deploy relies on SSH user being able to:
 
-**Dev environment specifics:**
-- Frontend: Vite dev server on port 5173 with HMR and API proxy to backend
-- Backend: standard Dockerfile (NOT dotnet watch — crashes on Windows Docker volumes)
-- Database: `platform_dev` with simple credentials
-- Email verification: disabled
-- Admin credentials: `admin` / `admin123`
+- read `/opt/platform/.env.backend.local`;
+- run `docker info`;
+- use Docker Compose against the existing project name.
 
-### Config files by environment
+## 8. CI/CD state
 
-| File | Environment | Purpose |
-|------|------------|---------|
-| `.env.dev` | Dev | Docker env vars (safe to commit) |
-| `.env.prod.example` | Prod template | Shows required prod vars |
-| `.env.backend.local` | Prod | Actual secrets (gitignored) |
-| `appsettings.Development.json` | Dev | Dev DB, simple auth, relaxed cookies |
-| `appsettings.Production.json` | Prod | Warning-level logging |
+Workflow: `.github/workflows/pipeline.yml`
 
-## 7. Runtime flows
+Current CI:
 
-### Public visitor
-1. Nginx serves SPA from `platform/frontend/dist`
-2. React mounts, loads content via `/api/public/*`
-3. Detail pages fetch related entries via `/api/public/projects/{id}/related`
-4. Analytics events sent for visits and post views
+- builds backend;
+- installs npm dependencies;
+- runs encoding/mojibake check;
+- builds frontend.
 
-### Admin content editing
-1. Login with credentials + email verification code
-2. Navigate to `/app/posts` or `/app/projects`
-3. Edit content, assign topics, link related entries
-4. Save via private API → store resyncs
+Current CD:
 
-### Public demo
-1. Admin uploads static bundle for a project
-2. Sets visibility to `Demo` + `publicDemoEnabled: true`
-3. Public detail shows CTA → viewer at `/{slug}/viewer/`
+- builds and pushes backend, frontend/nginx, postgres images to GHCR;
+- deploys `develop` to staging and `main` to production;
+- sends compose files over SSH as base64;
+- detects existing compose project name from `platform-backend`;
+- checks running nginx image and live asset hash;
+- prunes old images with age filter.
 
-## 8. CI/CD and Git workflow
+Known CI/CD gaps:
 
-- **Branch protection:** main requires PR + 1 approving review
-- **CI:** GitHub Actions — builds backend and frontend on every PR
-- **CD:** On merge to main → build Docker images → push to GHCR → deploy to production
-- **Developer onboarding:** `docs/developer-guide.docx` (16KB DOCX)
+- frontend tests are not run in CI;
+- backend tests are not run in CI;
+- smoke jobs are `continue-on-error: true`;
+- production smoke is therefore informative, not blocking.
 
 ## 9. Known sharp edges
 
-1. `platform/infra/nginx/default.conf` — must be UTF-8 without BOM (breaks nginx)
-2. SQL in `EnsureSchemaAsync` — no backtick fragments (breaks PostgreSQL)
-3. `dotnet watch` — crashes on Windows Docker volumes (PollingDirectoryWatcher duplicate key bug)
-4. Frontend deploy — depends on fresh `dist/` mounted into nginx
-5. Browser cache — hard reload often needed after deploy
-6. InMemoryRefreshTokenStore — still used as fallback when no connection string is configured
+1. `platform/infra/nginx/default.conf` must stay UTF-8 without BOM.
+2. SQL in repository auto-migrations must remain PostgreSQL-compatible.
+3. `dotnet watch` is not used in Docker dev because it is unstable on Windows volume watching.
+4. Landing content backend exists, but frontend currently uses static-only content.
+5. Posts currently cannot be private/draft through backend normalization.
+6. Frontend localStorage fallback can show stale content.
+7. Runtime C#/Python/JS templates are disabled; static demos are the supported path.
+8. Smoke after deploy is not blocking yet.
+9. Root `package.json` still uses the historical package name `trash-platform`.
+10. A stale one-off nginx test container can remain on production from old asset checks; remove it manually if present.
+11. Main-domain demo viewer routes are blocked; public demo smoke should target `https://demo.grummm.ru/{slug}/viewer/`.
 
 ## 10. Where to change things
 
 | Task | Files |
-|------|-------|
-| Add/change public route | `core/routing/AppRouter.tsx`, `public/pages/*` |
-| Change admin editor | `core/pages/AdminProjectsWorkspace.tsx`, `core/components/Admin*.tsx` |
-| Change content model | `public/types.ts`, `Modules/ProjectPosts/Contracts/ProjectPostDtos.cs` |
-| Change recommendations | `PostgresProjectPostRepository.cs` (SQL CTEs), `project-store.ts` |
-| Change auth flow | `auth-session.tsx`, `auth-api.ts`, `AppRouter.tsx`, `ProtectedRoute.tsx` |
-| Change topics/relations | `AdminTopicsManager.tsx`, `AdminRelationsSelector.tsx`, `ProjectPosts.Endpoints.cs` |
-| Change deploy | `docker-compose*.yml`, `platform/infra/nginx/default.conf` |
-| Change SEO | `index.html`, `prerender-seo.mjs`, `useDocumentMetadata.ts` |
+|---|---|
+| Public route/layout | `core/routing/AppRouter.tsx`, `core/layouts/PublicLayout.tsx`, public pages |
+| Admin editor | `core/pages/AdminProjectsWorkspace.tsx`, `core/components/Admin*.tsx` |
+| Content model | `ProjectPostDtos.cs`, `ProjectPostsModule.cs`, `project-store.ts`, `types.ts` |
+| Publish/draft behavior | `ProjectPostsModule.NormalizeVisibility`, public filters, sitemap, related SQL, frontend visibility helpers |
+| Landing content | `landing-content-store.ts`, `LandingPage.tsx`, `ProjectPosts.Endpoints.cs`, `PostgresProjectPostRepository.cs` |
+| Topics/relations | `AdminTopicsManager.tsx`, `AdminRelationsSelector.tsx`, `PostgresProjectPostRepository.cs` |
+| Analytics | `Analytics.Endpoints.cs`, `PostgresAnalyticsRepository.cs`, frontend post action hooks |
+| Static demos/media | `ProjectTemplateStorage.cs`, `ProjectPosts.Endpoints.cs`, `AdminProjectsWorkspace.tsx`, `PostgresProjectPostRepository.cs`, `platform/infra/nginx/default.conf` |
+| Deploy | `.github/workflows/pipeline.yml`, `docker-compose*.yml`, `platform/infra/nginx/*` |
+| Docs | `docs/current-audit-and-completion-pipeline.md`, this file, `docs/LLM_PROJECT_MAP.md` |
 
-## 11. Commands
+## 11. Common commands
 
 ```bash
-# Dev environment
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-
 # Frontend
-npm run dev --workspace @platform/frontend
 npm run build --workspace @platform/frontend
 npm run typecheck --workspace @platform/frontend
 npm run test --workspace @platform/frontend
 
-# Backend (requires dotnet SDK)
+# Backend
 dotnet build platform/backend/src/WebAPI/WebAPI.csproj --configuration Release
 dotnet test platform/backend/tests/ProjectPosts.Tests/ProjectPosts.Tests.csproj
 
-# Production deploy
+# Dev Docker
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+# Production-style compose
 docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+
+# Docs/basic hygiene
+npm run check:encoding
+git diff --check
 ```

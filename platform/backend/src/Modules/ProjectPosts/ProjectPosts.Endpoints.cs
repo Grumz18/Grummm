@@ -7,6 +7,7 @@ using System.IO;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using Platform.Core.Contracts.Audit;
 using Platform.Modules.ProjectPosts.Application.Commands;
 using Platform.Modules.ProjectPosts.Application.Plugins;
 using Platform.Modules.ProjectPosts.Application.Repositories;
@@ -33,6 +34,8 @@ public sealed partial class ProjectPostsModule
     {
         var publicGroup = app.MapGroup("/api/public/projects");
         var privateGroup = app.MapGroup("/api/app/projects").RequireAuthorization("AdminOnly");
+        var publicPostsGroup = app.MapGroup("/api/public/posts");
+        var privatePostsGroup = app.MapGroup("/api/app/posts").RequireAuthorization("AdminOnly");
         var publicContentGroup = app.MapGroup("/api/public/content");
         var privateContentGroup = app.MapGroup("/api/app/content").RequireAuthorization("AdminOnly");
 
@@ -85,6 +88,42 @@ public sealed partial class ProjectPostsModule
             return item is null || !IsPubliclyVisible(item)
                 ? Results.NotFound()
                 : Results.Ok(ToPublicProjectPostDto(item));
+        });
+
+        publicPostsGroup.MapGet("/", async (IProjectPostRepository repository, CancellationToken cancellationToken) =>
+        {
+            var items = await repository.ListAsync(cancellationToken);
+            var posts = items
+                .Where(item => item.Kind == ProjectEntryKind.Post && item.Visibility == ProjectVisibility.Public)
+                .OrderByDescending(item => item.PublishedAt ?? DateTimeOffset.MinValue)
+                .ThenBy(item => item.Id, StringComparer.OrdinalIgnoreCase)
+                .Select(ToPublicProjectPostDto)
+                .ToArray();
+
+            return Results.Ok(new { items = posts });
+        });
+
+        publicPostsGroup.MapGet("/{id}", async (
+            string id,
+            HttpContext httpContext,
+            IProjectPostRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            if (!ProjectTemplateStorage.IsValidProjectId(id))
+            {
+                return Results.NotFound();
+            }
+
+            var item = await repository.GetByIdAsync(id, cancellationToken);
+            if (item is null || item.Kind != ProjectEntryKind.Post)
+            {
+                return Results.NotFound();
+            }
+
+            var isAuthenticated = httpContext.User.Identity?.IsAuthenticated == true;
+            return item.Visibility == ProjectVisibility.Public || (item.Visibility == ProjectVisibility.Private && isAuthenticated)
+                ? Results.Ok(ToPublicProjectPostDto(item))
+                : Results.NotFound();
         });
 
         publicGroup.MapGet("/{id}/viewer/{**assetPath}", async (
@@ -238,7 +277,7 @@ public sealed partial class ProjectPostsModule
             }
 
             var item = await repository.GetByIdAsync(id, cancellationToken);
-            if (item is null)
+            if (item is null || !IsPubliclyVisible(item))
             {
                 return Results.NotFound();
             }
@@ -310,6 +349,24 @@ public sealed partial class ProjectPostsModule
             return Results.Created($"/api/app/projects/{created.Id}", created);
         });
 
+        privatePostsGroup.MapPost("/", async (
+            UpsertProjectPostRequest request,
+            IProjectPostRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            ValidateDto(request);
+            var normalized = Normalize(request with
+            {
+                Kind = ProjectEntryKind.Post,
+                Template = TemplateType.None,
+                FrontendPath = null,
+                BackendPath = null,
+                PublicDemoEnabled = false
+            });
+            var created = await repository.UpsertAsync(normalized, cancellationToken);
+            return Results.Created($"/api/app/posts/{created.Id}", created);
+        });
+
         privateGroup.MapPut("/{id}", async (
             string id,
             UpsertProjectPostRequest request,
@@ -324,6 +381,113 @@ public sealed partial class ProjectPostsModule
             var normalized = Normalize(request) with { Id = id.Trim() };
             var updated = await repository.UpsertAsync(normalized, cancellationToken);
             await CleanupUnusedManagedContentVideosAsync(repository, GetManagedContentVideoFileNames(existing), cancellationToken);
+            return Results.Ok(updated);
+        });
+
+        privatePostsGroup.MapPut("/{id}", async (
+            string id,
+            UpsertProjectPostRequest request,
+            HttpContext httpContext,
+            IProjectPostRepository repository,
+            IAuditLogWriter auditLogWriter,
+            CancellationToken cancellationToken) =>
+        {
+            ValidateProjectId(id);
+            ValidateDto(request);
+            var existing = await repository.GetByIdAsync(id.Trim(), cancellationToken);
+            if (existing is null || existing.Kind != ProjectEntryKind.Post)
+            {
+                return Results.NotFound();
+            }
+
+            var normalized = Normalize(request with
+            {
+                Id = id.Trim(),
+                Kind = ProjectEntryKind.Post,
+                Template = TemplateType.None,
+                FrontendPath = null,
+                BackendPath = null,
+                PublicDemoEnabled = false
+            });
+            var updated = await repository.UpsertAsync(normalized, cancellationToken);
+            if (existing.Visibility != updated.Visibility)
+            {
+                await WritePostVisibilityAuditAsync(
+                    httpContext,
+                    auditLogWriter,
+                    updated.Id,
+                    existing.Visibility,
+                    updated.Visibility,
+                    "update",
+                    StatusCodes.Status200OK,
+                    cancellationToken);
+            }
+
+            await CleanupUnusedManagedContentVideosAsync(repository, GetManagedContentVideoFileNames(existing), cancellationToken);
+            return Results.Ok(updated);
+        });
+
+        privatePostsGroup.MapPost("/{id}/publish", async (
+            string id,
+            HttpContext httpContext,
+            IProjectPostRepository repository,
+            IAuditLogWriter auditLogWriter,
+            CancellationToken cancellationToken) =>
+        {
+            ValidateProjectId(id);
+            var existing = await repository.GetByIdAsync(id.Trim(), cancellationToken);
+            if (existing is null || existing.Kind != ProjectEntryKind.Post)
+            {
+                return Results.NotFound();
+            }
+
+            var updated = existing with
+            {
+                Visibility = ProjectVisibility.Public,
+                PublishedAt = DateTimeOffset.UtcNow
+            };
+            await repository.UpsertAsync(updated, cancellationToken);
+            await WritePostVisibilityAuditAsync(
+                httpContext,
+                auditLogWriter,
+                updated.Id,
+                existing.Visibility,
+                updated.Visibility,
+                "publish",
+                StatusCodes.Status200OK,
+                cancellationToken);
+            return Results.Ok(updated);
+        });
+
+        privatePostsGroup.MapPost("/{id}/unpublish", async (
+            string id,
+            HttpContext httpContext,
+            IProjectPostRepository repository,
+            IAuditLogWriter auditLogWriter,
+            CancellationToken cancellationToken) =>
+        {
+            ValidateProjectId(id);
+            var existing = await repository.GetByIdAsync(id.Trim(), cancellationToken);
+            if (existing is null || existing.Kind != ProjectEntryKind.Post)
+            {
+                return Results.NotFound();
+            }
+
+            var updated = existing with
+            {
+                Visibility = ProjectVisibility.Draft,
+                PublishedAt = null
+            };
+            await repository.UpsertAsync(updated, cancellationToken);
+            await WritePostVisibilityAuditAsync(
+                httpContext,
+                auditLogWriter,
+                updated.Id,
+                existing.Visibility,
+                updated.Visibility,
+                "unpublish",
+                StatusCodes.Status200OK,
+                cancellationToken);
             return Results.Ok(updated);
         });
 
@@ -399,7 +563,40 @@ public sealed partial class ProjectPostsModule
 
     private static bool IsPubliclyVisible(ProjectPostDto item)
     {
-        return item.Visibility != ProjectVisibility.Private;
+        return item.Kind == ProjectEntryKind.Post
+            ? item.Visibility == ProjectVisibility.Public
+            : item.Visibility is ProjectVisibility.Public or ProjectVisibility.Demo;
+    }
+
+    private static Task WritePostVisibilityAuditAsync(
+        HttpContext httpContext,
+        IAuditLogWriter auditLogWriter,
+        string postId,
+        ProjectVisibility previousVisibility,
+        ProjectVisibility nextVisibility,
+        string reason,
+        int responseStatusCode,
+        CancellationToken cancellationToken)
+    {
+        var user = httpContext.User;
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier) ?? "unknown";
+        var userName = user.FindFirstValue(ClaimTypes.Name);
+        var role = user.FindFirstValue(ClaimTypes.Role) ?? "unknown";
+        var userAgent = httpContext.Request.Headers.UserAgent.ToString();
+
+        return auditLogWriter.WriteAdminActionAsync(new AdminActionAuditRecord(
+            OccurredAtUtc: DateTime.UtcNow,
+            UserId: userId,
+            UserName: userName,
+            Role: role,
+            Action: $"POST_VISIBILITY_CHANGE post {postId}: {previousVisibility} -> {nextVisibility}; reason={reason}",
+            HttpMethod: httpContext.Request.Method,
+            RequestPath: httpContext.Request.Path.ToString(),
+            QueryString: httpContext.Request.QueryString.HasValue ? httpContext.Request.QueryString.Value : null,
+            ResponseStatusCode: responseStatusCode,
+            CorrelationId: httpContext.TraceIdentifier,
+            IpAddress: httpContext.Connection.RemoteIpAddress?.ToString(),
+            UserAgent: string.IsNullOrWhiteSpace(userAgent) ? null : userAgent), cancellationToken);
     }
 
     private static string NormalizePublicRoutePath(string path)

@@ -89,4 +89,5 @@ public sealed record UpsertProjectPostRequest(
     [property: MaxLength(5_000_000)] string? VideoUrl,
     [property: JsonConverter(typeof(JsonStringEnumConverter<TemplateType>))] TemplateType Template,
     [property: MaxLength(500)] string? FrontendPath,
-    [property: MaxLength(500)] string? BackendPath);
+    [property: MaxLength(500)] string? BackendPath,
+    bool PublishNow = false);

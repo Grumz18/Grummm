@@ -10,8 +10,10 @@ import {
   createProjectWithOptions,
   deleteProject,
   getPortfolioKind,
+  publishPost,
   uploadPostVideoFile,
   updateProject,
+  unpublishPost,
   useProjectPosts,
   type ProjectUploadBundle
 } from "../../public/data/project-store";
@@ -62,6 +64,12 @@ const VISIBILITY_OPTIONS: Array<{ value: PortfolioVisibility; label: string; hin
   { value: "public", label: "Public", hint: "Visible in public catalog." },
   { value: "private", label: "Private", hint: "Visible only in admin workspace." },
   { value: "demo", label: "Demo", hint: "Public entry with sandboxed demo." }
+];
+
+const POST_VISIBILITY_OPTIONS: Array<{ value: PortfolioVisibility; label: string; hint: string }> = [
+  { value: "draft", label: "Draft", hint: "Hidden from public pages." },
+  { value: "private", label: "Private", hint: "Hidden from visitors, available for authenticated preview." },
+  { value: "public", label: "Public", hint: "Published on the public site." }
 ];
 
 const TEMPLATE_INSTRUCTIONS: Record<Exclude<TemplateType, "None">, { frontend: string; backend: string }> = {
@@ -384,7 +392,7 @@ function fromDraft(draft: DraftProject, kind: "post" | "project"): PortfolioProj
   const fallbackDescriptionRu = draft.descriptionRu.trim() || firstTextBlockValue(contentBlocks, "ru") || draft.summaryRu || draft.summaryEn || "No description yet.";
   const templateType = kind === "post" ? "None" : draft.templateType;
   const visibility = kind === "post"
-    ? "public"
+    ? (draft.visibility === "private" || draft.visibility === "public" ? draft.visibility : "draft")
     : (draft.visibility === "demo" && templateType !== "Static" ? "public" : draft.visibility);
 
   return {
@@ -416,6 +424,31 @@ function templateBadge(project: PortfolioProject): string {
 
   const current = project.template ?? "None";
   return current === "CSharp" ? "C#" : current;
+}
+
+function postStatusLabel(project: PortfolioProject): string {
+  if (project.visibility === "public") {
+    const published = project.publishedAt ? formatPublishedMeta(project.publishedAt, getCurrentLanguage()) : null;
+    return published ? `Published · ${published}` : "Published";
+  }
+
+  if (project.visibility === "private") {
+    return "Private";
+  }
+
+  return "Draft";
+}
+
+function postStatusStyle(visibility: PortfolioVisibility | undefined): { background: string; color: string; borderColor: string } {
+  if (visibility === "public") {
+    return { background: "#dcfce7", color: "#166534", borderColor: "#86efac" };
+  }
+
+  if (visibility === "private") {
+    return { background: "#fef3c7", color: "#92400e", borderColor: "#fcd34d" };
+  }
+
+  return { background: "#f1f5f9", color: "#475569", borderColor: "#cbd5e1" };
 }
 
 interface TemplateDropzoneProps {
@@ -548,7 +581,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
     next.set("create", "1");
     setSearchParams(next, { replace: true });
     setEditingId(null);
-    setDraft(emptyDraft());
+    setDraft({ ...emptyDraft(), visibility: isPostsMode ? "draft" : "public" });
     setServerError("");
   }
 
@@ -672,6 +705,46 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
     }
   }
 
+  async function handlePublishPost() {
+    if (!editingId || !window.confirm("Publish this post now? Changes will be visible on the public site.")) {
+      return;
+    }
+
+    setBusy(true);
+    setServerError("");
+    try {
+      await publishPost(editingId);
+      setDraft((current) => ({ ...current, visibility: "public" }));
+      notify.success("Post published.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to publish post.";
+      setServerError(message);
+      notify.error(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleUnpublishPost() {
+    if (!editingId || !window.confirm("Unpublish this post and move it back to Draft?")) {
+      return;
+    }
+
+    setBusy(true);
+    setServerError("");
+    try {
+      await unpublishPost(editingId);
+      setDraft((current) => ({ ...current, visibility: "draft" }));
+      notify.success("Post unpublished.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to unpublish post.";
+      setServerError(message);
+      notify.error(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -733,7 +806,16 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                       <div>
                         <strong>{item.title[lang] || item.title.en}</strong>
                         <p className="admin-muted">{item.id}</p>
-                        {!isPostsMode && <p className="admin-muted">Template: {item.template ?? "None"}</p>}
+                        {isPostsMode ? (
+                          <span
+                            className="content-card__badge"
+                            style={postStatusStyle(item.visibility)}
+                          >
+                            {postStatusLabel(item)}
+                          </span>
+                        ) : (
+                          <p className="admin-muted">Template: {item.template ?? "None"}</p>
+                        )}
                       </div>
                       <div className="admin-chip-nav">
                         <button type="button" onClick={() => startEdit(item.id)} disabled={busy}>Edit</button>
@@ -827,9 +909,45 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                     </div>
                   </>
                 ) : (
-                  <div className="admin-projects__template-note">
-                    <strong>Posts mode</strong>
-                    <p className="admin-muted">Posts are stored as structured editorial content. Runtime templates are disabled here.</p>
+                  <div className="admin-projects__template-note admin-projects__template-note--compact">
+                    <strong>Post visibility</strong>
+                    <div className="admin-visibility-switch" role="radiogroup" aria-label="Post visibility">
+                      {POST_VISIBILITY_OPTIONS.map((option) => {
+                        const selected = draft.visibility === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={selected ? "is-active" : ""}
+                            role="radio"
+                            aria-checked={selected}
+                            disabled={busy}
+                            onClick={() => setDraft((current) => ({ ...current, visibility: option.value }))}
+                          >
+                            <strong>{option.label}</strong>
+                            <small>{option.hint}</small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {draft.visibility === "public" ? (
+                      <p className="admin-muted">This post is published. Saved changes will be visible on the public site immediately.</p>
+                    ) : (
+                      <p className="admin-muted">This post is not published. It is not visible to public site visitors.</p>
+                    )}
+                    {editingId ? (
+                      <div className="admin-chip-nav">
+                        {draft.visibility !== "public" ? (
+                          <button type="button" onClick={() => void handlePublishPost()} disabled={busy}>
+                            Publish
+                          </button>
+                        ) : (
+                          <button type="button" onClick={() => void handleUnpublishPost()} disabled={busy}>
+                            Unpublish
+                          </button>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -969,7 +1087,11 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                 ) : (
                   <div className="admin-projects__template-note admin-projects__template-note--preview">
                     <strong>Post publishing</strong>
-                    <p className="admin-muted">The public post shows title, summary, cover, structured body blocks, and related links to other entries.</p>
+                    <p className="admin-muted">
+                      {draft.visibility === "public"
+                        ? "The public post shows title, summary, cover, structured body blocks, and related links to other entries."
+                        : "This post is not published. It is not visible to public site visitors."}
+                    </p>
                   </div>
                 )}
 
@@ -980,7 +1102,7 @@ export function AdminProjectsWorkspace({ mode = "projects" }: AdminProjectsWorks
                     <span>{draft.heroLight ? "Light cover set" : "No light cover"}</span>
                     <span>{draft.heroDark ? "Dark cover set" : "No dark cover"}</span>
                     <span>{isPostsMode ? `${draft.contentBlocks.length} blocks` : `${draft.screenshots.length} screenshots`}</span>
-                    <span>{isPostsMode ? "Structured post" : (draft.visibility === "private" ? "Private project" : (draft.visibility === "demo" && draft.templateType === "Static" ? "Public demo enabled" : "Public project"))}</span>
+                    <span>{isPostsMode ? (draft.visibility === "public" ? "Published post" : draft.visibility === "private" ? "Private post" : "Draft post") : (draft.visibility === "private" ? "Private project" : (draft.visibility === "demo" && draft.templateType === "Static" ? "Public demo enabled" : "Public project"))}</span>
                   </div>
                 </div>
               </section>

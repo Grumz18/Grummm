@@ -25,6 +25,7 @@ import { useSwipeBack } from "../hooks/useSwipeBack";
 import { usePreferences } from "../preferences";
 import { t } from "../../shared/i18n";
 import { useDocumentMetadata } from "../../shared/seo/useDocumentMetadata";
+import { getCurrentAccessToken } from "../../core/auth/auth-session";
 
 interface ProjectDetailPageProps {
   mode?: "project" | "post";
@@ -70,6 +71,7 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
 
   const project = useProjectPost(id);
   const allEntries = useProjectPosts();
+  const canPreviewNonPublic = Boolean(getCurrentAccessToken());
   const [serverRelated, setServerRelated] = useState<RelatedEntry[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [lightboxZoom, setLightboxZoom] = useState(1);
@@ -295,7 +297,7 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [lightboxIndex, project]);
 
-  if (!project || resolvedKind !== mode || !isPortfolioPubliclyVisible(project)) {
+  if (!project || resolvedKind !== mode || (!isPortfolioPubliclyVisible(project) && !canPreviewNonPublic)) {
     return (
       <section className="project-detail-page" data-gsap="reveal">
         <ProjectNotFoundCard
@@ -326,6 +328,16 @@ export function ProjectDetailPage({ mode = "project" }: ProjectDetailPageProps) 
       </nav>
 
       <header className="rs-detail-header" data-gsap="reveal">
+        {!isPortfolioPubliclyVisible(project) ? (
+          <div className="admin-projects__template-note" role="status">
+            <strong>{language === "ru" ? "Этот пост не опубликован" : "This entry is not published"}</strong>
+            <p className="admin-muted">
+              {language === "ru"
+                ? "Он не виден посетителям сайта. Вы видите превью, потому что открыта админ-сессия."
+                : "It is not visible to public visitors. You are seeing a preview because an admin session is active."}
+            </p>
+          </div>
+        ) : null}
         <p className="rs-section-label">
           {mode === "post" ? t("detail.postEyebrow", language) : t("detail.projectEyebrow", language)}
         </p>

@@ -1,146 +1,238 @@
-# CI/CD Pipeline (Phase 9.1)
+# CI/CD Pipeline
+
+Last updated: 2026-05-25
 
 ## Scope
 
-- Build backend (`platform/backend/src/WebAPI/WebAPI.csproj`)
-- Build frontend (`@platform/frontend`)
-- Build and push images (nginx, backend, postgres) to GHCR
-- Deploy by branch:
-  - `develop` -> `staging`
-  - `main` -> `production`
+This document describes the current GitHub Actions pipeline and the target improvements needed to make deploy safer.
 
-## Current release assumptions
+Workflow file:
 
-- Frontend production build is `vite build && node scripts/prerender-seo.mjs`.
-- Frontend prerender prefers live public API data when `PRERENDER_SEO_API_URL` is set.
-  - Fallback source remains `src/public/data/projects.ts` for offline/local builds.
-- Frontend build mirrors `platform/frontend/dist` into `platform/infra/nginx/static` so nginx image builds use the same prerendered output.
-- `docker-compose.yml` now mounts `platform/infra/nginx/static` into nginx at runtime.
-  - target servers do not need local Node/npm to boot the latest committed frontend snapshot.
-- Frontend public build now includes a static server-side error document:
-  - `platform/frontend/public/__error_404.html`
-- Backend Docker publish runs with runtime templates disabled by default:
-  - `/p:EnableRuntimeTemplates=false`
-- Backend runtime includes `postgresql-client` so admin-only DB backups can be generated from the running container.
-- Public static demos are exposed by short routes:
-  - `/{project-slug}/viewer/`
-- Invalid public URLs are expected to resolve to plain HTTP `404` with the static error page instead of SPA fallback or `500`.
-- Public web includes top-level mobile swipe navigation between:
-  - `/`
-  - `/projects`
-  - `/posts`
+- `.github/workflows/pipeline.yml`
 
-## Workflow
+## Current triggers
 
-- File: `.github/workflows/pipeline.yml`
-- Triggers:
-  - `push` to `develop`/`main`
-  - `pull_request` to `develop`/`main` (CI build only)
-  - `workflow_dispatch`
+- `push` to `main`
+- `push` to `develop`
+- `pull_request` to `main`
+- `pull_request` to `develop`
+- `workflow_dispatch`
 
-## Environment separation
+Concurrency:
 
-- GitHub Environments:
-  - `staging`
-  - `production`
-- Deploy path variables (optional, default `/opt/platform`):
-  - `STAGING_DEPLOY_PATH`
-  - `PRODUCTION_DEPLOY_PATH`
-- Image tags:
-  - immutable: short commit SHA
-  - mutable env tag: `staging` or `production`
+- `platform-cicd-${{ github.ref }}`
+- `cancel-in-progress: true`
 
-## Required secrets
+## Current jobs
 
-- Registry:
-  - `GHCR_USERNAME`
-  - `GHCR_TOKEN`
-- Staging SSH:
-  - `STAGING_SSH_HOST`
-  - `STAGING_SSH_USER`
-  - `STAGING_SSH_KEY`
-- Production SSH:
-  - `PRODUCTION_SSH_HOST`
-  - `PRODUCTION_SSH_USER`
-  - `PRODUCTION_SSH_KEY`
+| Job | Runs when | Purpose |
+|---|---|---|
+| `ci` | PR and push | build backend, install npm, encoding check, build frontend |
+| `docker` | push only | build/push backend, frontend/nginx, postgres images to GHCR |
+| `deploy-staging` | push to `develop` | deploy to staging over SSH |
+| `deploy-production` | push to `main` | deploy to production over SSH |
+| `smoke-staging` | after staging deploy | smoke checks, non-blocking |
+| `smoke-production` | after production deploy | smoke checks, non-blocking |
 
-## Deploy compose mode
+## Current CI commands
 
-Docker Compose uses an overlay strategy:
-- `docker-compose.yml` — base (shared structure, no secrets, no env-specific config)
-- `docker-compose.deploy.yml` — production overlay (GHCR images, production env vars, secrets from `.env.backend.local`)
-- `docker-compose.dev.yml` — development overlay (local build, Vite HMR, dev database)
+```bash
+dotnet build platform/backend/src/WebAPI/WebAPI.csproj --configuration Release
+npm ci
+npm run check:encoding
+npm run build --workspace @platform/frontend
+```
 
-Production deploy command:
+Current gap: CI does not run backend tests, frontend tests, or frontend typecheck as independent gates.
+
+## Current image build
+
+Images:
+
+- `ghcr.io/<owner>/platform-backend:<short-sha>`
+- `ghcr.io/<owner>/platform-frontend:<short-sha>`
+- `ghcr.io/<owner>/platform-postgres:<short-sha>`
+- mutable env tags: `staging` or `production`
+
+Frontend/nginx image flow:
+
+1. CI runs `npm run build --workspace @platform/frontend`.
+2. Docker builds `platform/infra/nginx/Dockerfile`.
+3. Dockerfile copies `platform/infra/nginx/static/`.
+4. Dockerfile copies fresh `platform/frontend/dist/` over it.
+5. Remote server pulls the final GHCR image.
+
+Production server does not run Node/npm during deploy.
+
+## Compose model
+
+| File | Role |
+|---|---|
+| `docker-compose.yml` | base service graph, no secrets |
+| `docker-compose.deploy.yml` | GHCR image overlay and production env references |
+| `docker-compose.dev.yml` | local dev overlay |
+
+Production-style command:
+
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
 ```
 
-Dev environment command:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
+Deploy workflow sends `docker-compose.yml` and `docker-compose.deploy.yml` over SSH as base64 temp files. It does not require the remote repo checkout to be updated before compose up.
 
-Required runtime env vars on remote deployment step:
-  - `NGINX_IMAGE`
-  - `BACKEND_IMAGE`
-  - `POSTGRES_IMAGE`
+## Remote deploy behavior
 
-The workflow exports these variables before `docker compose pull` and `docker compose up -d`.
+Current SSH script:
 
-## Post-deploy smoke
+- enters `/opt/platform`;
+- writes temp compose files;
+- checks direct Docker access;
+- falls back to `sudo -n docker` only if passwordless sudo works;
+- reuses existing compose project name from `platform-backend` label;
+- logs into GHCR with GitHub token;
+- exports image env vars;
+- runs `compose pull`;
+- runs `compose up -d --force-recreate --remove-orphans`;
+- checks nginx container id;
+- checks running nginx image matches expected image;
+- checks expected frontend asset hash against live `/`;
+- prunes old images with `docker image prune -af --filter "until=168h"`.
 
-- Build verification:
-  - `npm run build --workspace @platform/frontend`
-    - optional live SEO source: `PRERENDER_SEO_API_URL=https://grummm.ru/api/public/projects npm run build --workspace @platform/frontend`
-  - `dotnet build platform/backend/src/WebAPI/WebAPI.csproj --configuration Release`
-- Public routes:
-  - `/`
-  - `/projects`
-  - `/posts`
-  - `/404`
-- Invalid URL handling:
-  - request a non-existent path such as `/does-not-exist`
-  - confirm HTTP status is `404`
-  - confirm nginx serves the static `__error_404.html` page instead of booting the SPA or returning `500`
-- Public detail routes:
-  - open a valid `/posts/{slug}` and `/projects/{slug}`
-  - request non-existent `/posts/{missing}` and `/projects/{missing}`
-  - confirm missing detail routes return HTTP `404`
-- Demo routes:
-  - open a published static demo by `/{project-slug}/viewer/`
-  - confirm assets/styles load correctly inside viewer
-- Admin ops:
-  - open `/app`
-  - confirm the readiness card shows latest DB backup state
-  - click `Create backup`
-  - confirm a `platform_*.sql.gz` file downloads and a matching artifact appears in `backups/postgres`
-- Public content:
-  - confirm hero renders without CTA buttons
-  - confirm `About` block layout/content renders correctly
-  - confirm public footer is present on all public pages and mobile footer actions stay centered
-  - if a post contains a `video` block, confirm it autoplays once when the block enters the viewport and does not pin/scrub with scroll
-  - if a post video block has no poster URL, confirm the block still saves and renders correctly
-  - if a post was created via admin, confirm it appears in `/sitemap.xml` and its prerendered `/posts/{slug}` HTML contains article metadata after frontend rebuild
-- Mobile-only navigation:
-  - on a coarse-pointer device, swipe left/right between `/`, `/projects`, `/posts`
-  - verify vertical scroll is not hijacked
-- Security checks:
-  - login/reauth UI must not display debug email codes
-  - public demo viewer must load without asset/CORS errors
-  - invalid public routes must not surface `500`
+This project-name detection is important because older production containers may have been created with compose project `opt` instead of `platform`.
 
-## Fast bootstrap on a new IP
+## Required remote permissions
 
-When repo files and `.env.backend.local` are already present on the target host, use:
+The SSH deploy user must be able to:
 
 ```bash
-chmod +x platform/infra/server/bootstrap-platform-stack.sh
-ROOT_DIR=/opt/platform READY_URL=https://grummm.ru/ready ./platform/infra/server/bootstrap-platform-stack.sh
+id
+docker info >/dev/null
+test -r /opt/platform/.env.backend.local
 ```
 
-The script:
+Expected production state from previous server inspection:
 
-- ensures `backups/postgres` exists
-- builds/recreates the full compose stack
-- waits for `/ready` to become green
+- user: `grum`
+- groups include `docker`
+- `.env.backend.local` readable
+- Docker accessible without sudo
+
+Do not require interactive sudo in Actions. `appleboy/ssh-action` does not allocate a password prompt by default, and `sudo` without NOPASSWD will fail.
+
+## Current smoke checks
+
+Smoke checks currently hit:
+
+- `/health`
+- `/ready`
+- `/`
+- `/posts`
+- `/projects`
+- `/login`
+- `/api/public/security/csrf`
+
+Known gaps:
+
+- both smoke jobs use `continue-on-error: true`, so they are informative, not blocking;
+- current smoke does not verify `demo.grummm.ru/{slug}/viewer/` static demo routing.
+
+## Target CI/CD hardening
+
+Add these commands to `ci`:
+
+```bash
+npm run typecheck --workspace @platform/frontend
+npm run test --workspace @platform/frontend
+dotnet test platform/backend/tests/ProjectPosts.Tests/ProjectPosts.Tests.csproj
+```
+
+Then split smoke into:
+
+- blocking smoke: health, ready, public shell routes, CSRF, asset hash;
+- optional extended smoke: content fixtures, admin flows, backup, e2e/browser checks.
+
+Recommended blocking production smoke:
+
+```bash
+curl -ksS "$BASE_URL/health" | grep -q '"status":"healthy"'
+curl -ksS "$BASE_URL/ready" | grep -q '"status":"ready"'
+for path in / /posts /projects /login; do
+  code=$(curl -ksS -o /dev/null -w "%{http_code}" "$BASE_URL$path")
+  test "$code" = "200"
+done
+csrf=$(curl -ksS -o /dev/null -w "%{http_code}" "$BASE_URL/api/public/security/csrf")
+test "$csrf" = "200" -o "$csrf" = "204"
+```
+
+Recommended extended demo smoke when a known public static demo exists:
+
+```bash
+curl -kI --connect-timeout 5 --max-time 15 "https://demo.grummm.ru/<slug>/viewer/"
+curl -kI --connect-timeout 5 --max-time 15 "https://grummm.ru/<slug>/viewer/" | grep -q "404"
+```
+
+Recommended server cleanup check:
+
+```bash
+docker ps --format '{{.Names}} {{.Image}} {{.Label "com.docker.compose.project"}}'
+```
+
+There should not be extra long-running frontend containers outside the compose project, for example old random names created by a previous asset check.
+
+## Known deploy incidents and fixes
+
+### `.env.backend.local: permission denied`
+
+Cause: deploy user could run Docker but Compose tried to read backend env file without sufficient read permission.
+
+Correct fix:
+
+- ensure SSH user can read `/opt/platform/.env.backend.local`;
+- avoid interactive sudo in Actions.
+
+### `sudo: a terminal is required`
+
+Cause: workflow attempted sudo without passwordless sudo.
+
+Correct fix:
+
+- use direct Docker group access for deploy user;
+- only use `sudo -n docker` if it works non-interactively.
+
+### container name conflict for `platform-backend`
+
+Cause: compose project name changed between old and new deploy commands.
+
+Correct fix:
+
+- detect existing compose project label from `platform-backend`;
+- pass `--project-name "$COMPOSE_PROJECT_NAME"`.
+
+### old asset-check frontend container
+
+Cause: old check ran the nginx image without overriding entrypoint.
+
+Correct fix in workflow:
+
+```bash
+docker run --rm --entrypoint sh "$NGINX_IMAGE" -lc "grep ..."
+```
+
+One-time server cleanup if still present:
+
+```bash
+docker rm -f adoring_cannon
+```
+
+## Release checklist
+
+Before merging to `main`:
+
+- CI build is green.
+- Encoding check is green.
+- Tests are green after the target hardening is implemented.
+- Branch diff does not modify secrets.
+- Deploy script still uses compose overlays.
+- Smoke is either blocking or explicitly acknowledged as non-blocking.
+- Static demo smoke targets `demo.grummm.ru`, not the main domain.
+- Docs are updated when route/deploy/content behavior changes.

@@ -159,7 +159,9 @@ public sealed class InMemoryProjectPostRepository : IProjectPostRepository
 
         return all
             .Where(p => !string.Equals(p.Id, projectId, StringComparison.OrdinalIgnoreCase)
-                && (p.Kind == ProjectEntryKind.Post || p.Visibility != ProjectVisibility.Private))
+                && (p.Kind == ProjectEntryKind.Post
+                    ? p.Visibility == ProjectVisibility.Public
+                    : p.Visibility is ProjectVisibility.Public or ProjectVisibility.Demo))
             .Select(p =>
             {
                 var pTopics = _projectTopics.TryGetValue(p.Id, out var ts) ? ts : new HashSet<string>();

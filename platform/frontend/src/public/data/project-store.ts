@@ -185,7 +185,7 @@ function normalizeExplicitVisibility(value?: string | null): PortfolioVisibility
   }
 
   const normalized = value.trim().toLowerCase();
-  if (normalized === "public" || normalized === "private" || normalized === "demo") {
+  if (normalized === "draft" || normalized === "public" || normalized === "private" || normalized === "demo") {
     return normalized;
   }
 
@@ -205,7 +205,11 @@ function normalizeVisibility(project: PortfolioProject, kind: PortfolioEntryKind
   const explicit = normalizeExplicitVisibility(project.visibility) ?? SEED_VISIBILITY_BY_ID.get(project.id);
 
   if (kind === "post") {
-    return "public";
+    return explicit === "private" || explicit === "public" ? explicit : "draft";
+  }
+
+  if (explicit === "draft") {
+    return "private";
   }
 
   if (explicit === "private") {
@@ -237,7 +241,7 @@ export function isPortfolioProject(project: PortfolioProject): boolean {
 
 export function isPortfolioPubliclyVisible(project: PortfolioProject): boolean {
   if (getPortfolioKind(project) === "post") {
-    return true;
+    return (normalizeExplicitVisibility(project.visibility) ?? "draft") === "public";
   }
 
   return (normalizeExplicitVisibility(project.visibility) ?? "public") !== "private";
@@ -267,7 +271,9 @@ function normalizeProjectRecord(project: PortfolioProject): PortfolioProject {
   const template = kind === "post" ? "None" : (project.template ?? "None");
   const visibility = normalizeVisibility(project, kind, template);
   const normalizedPublishedAt = normalizePublishedAt(project.publishedAt) ?? normalizePublishedAt(SEED_PUBLISHED_AT_BY_ID.get(project.id));
-  const publishedAt = normalizedPublishedAt ?? new Date().toISOString();
+  const publishedAt = kind === "post" && visibility !== "public"
+    ? undefined
+    : normalizedPublishedAt ?? (visibility === "public" ? new Date().toISOString() : undefined);
 
   return {
     ...project,
@@ -384,7 +390,7 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
     title: normalizeLocalizedText(input.title),
     summary: normalizeLocalizedText(input.summary),
     description: normalizeLocalizedText(input.description),
-    publishedAt: normalizePublishedAt(input.publishedAt),
+    publishedAt: kind === "post" && visibility !== "public" ? undefined : normalizePublishedAt(input.publishedAt),
     contentBlocks: normalizeContentBlocks(input.contentBlocks),
     publicDemoEnabled: kind === "project" && visibility === "demo" && template === "Static",
     heroImage: normalizeThemedAsset(input.heroImage),
@@ -397,6 +403,10 @@ function toApiPayload(input: PortfolioProject): PortfolioProject {
 }
 
 function ensurePublishedAt(input: PortfolioProject, existing?: PortfolioProject): string | undefined {
+  if (getPortfolioKind(input) === "post" && normalizeExplicitVisibility(input.visibility) !== "public") {
+    return undefined;
+  }
+
   return normalizePublishedAt(input.publishedAt)
     ?? normalizePublishedAt(existing?.publishedAt)
     ?? new Date().toISOString();
@@ -740,6 +750,52 @@ export async function deleteProject(projectId: string, options: AdminMutationOpt
   const next = current.filter((project) => project.id !== projectId);
   writeProjects(next);
   return normalizeProjectList(next);
+}
+
+export async function publishPost(projectId: string): Promise<PortfolioProject[]> {
+  const token = ensureAccessToken(true);
+  if (!token) {
+    throw new Error(tr("projectsStore.error.noAccessToken"));
+  }
+
+  const response = await fetch(`/api/app/posts/${projectId}/publish`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    throw new Error(response.status === 404 ? "Post not found." : "Failed to publish post.");
+  }
+
+  const synced = await fetchProjectsForCurrentSession();
+  if (synced === null) {
+    throw new Error(tr("projectsStore.error.serverNoList"));
+  }
+
+  return synced;
+}
+
+export async function unpublishPost(projectId: string): Promise<PortfolioProject[]> {
+  const token = ensureAccessToken(true);
+  if (!token) {
+    throw new Error(tr("projectsStore.error.noAccessToken"));
+  }
+
+  const response = await fetch(`/api/app/posts/${projectId}/unpublish`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    throw new Error(response.status === 404 ? "Post not found." : "Failed to unpublish post.");
+  }
+
+  const synced = await fetchProjectsForCurrentSession();
+  if (synced === null) {
+    throw new Error(tr("projectsStore.error.serverNoList"));
+  }
+
+  return synced;
 }
 
 export function useProjectPosts(): PortfolioProject[] {

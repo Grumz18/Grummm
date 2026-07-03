@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Platform.Core.Contracts.Audit;
 using Platform.Modules.ProjectPosts;
 using Platform.Modules.ProjectPosts.Application.Repositories;
 using Platform.Modules.ProjectPosts.Application.Plugins;
@@ -26,6 +27,126 @@ namespace ProjectPosts.Tests;
 
 public sealed class UploadWithTemplateEndpointTests
 {
+    [Fact]
+    public async Task PostVisibility_DraftPublish_MakesPostPubliclyAvailable()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedPostAsync(app.Services, "draft-publish", ProjectVisibility.Draft);
+        var client = app.GetTestClient();
+
+        var beforePublish = await client.GetAsync("/api/public/posts/draft-publish");
+        Assert.Equal(HttpStatusCode.NotFound, beforePublish.StatusCode);
+
+        var publishResponse = await client.PostAsync("/api/app/posts/draft-publish/publish", content: null);
+        var published = await publishResponse.Content.ReadFromJsonAsync<ProjectPostDto>();
+        Assert.Equal(HttpStatusCode.OK, publishResponse.StatusCode);
+        Assert.NotNull(published);
+        Assert.Equal(ProjectVisibility.Public, published!.Visibility);
+        Assert.NotNull(published.PublishedAt);
+
+        var afterPublish = await client.GetAsync("/api/public/posts/draft-publish");
+        Assert.Equal(HttpStatusCode.OK, afterPublish.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostVisibility_PublicUnpublish_HidesPostFromPublicApi()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedPostAsync(app.Services, "public-unpublish", ProjectVisibility.Public);
+        var client = app.GetTestClient();
+
+        var beforeUnpublish = await client.GetAsync("/api/public/posts/public-unpublish");
+        Assert.Equal(HttpStatusCode.OK, beforeUnpublish.StatusCode);
+
+        var unpublishResponse = await client.PostAsync("/api/app/posts/public-unpublish/unpublish", content: null);
+        var unpublished = await unpublishResponse.Content.ReadFromJsonAsync<ProjectPostDto>();
+        Assert.Equal(HttpStatusCode.OK, unpublishResponse.StatusCode);
+        Assert.NotNull(unpublished);
+        Assert.Equal(ProjectVisibility.Draft, unpublished!.Visibility);
+        Assert.Null(unpublished.PublishedAt);
+
+        var afterUnpublish = await client.GetAsync("/api/public/posts/public-unpublish");
+        Assert.Equal(HttpStatusCode.NotFound, afterUnpublish.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostVisibility_PrivatePost_RequiresAuthenticatedPreview()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime(),
+            authToken: null);
+        await SeedPostAsync(app.Services, "private-preview", ProjectVisibility.Private);
+        var client = app.GetTestClient();
+
+        var anonymousResponse = await client.GetAsync("/api/public/posts/private-preview");
+        Assert.Equal(HttpStatusCode.NotFound, anonymousResponse.StatusCode);
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "test-token");
+        var authenticatedResponse = await client.GetAsync("/api/public/posts/private-preview");
+        Assert.Equal(HttpStatusCode.OK, authenticatedResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task PostVisibility_Sitemap_ExcludesDraftAndPrivatePosts()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedPostAsync(app.Services, "sitemap-public", ProjectVisibility.Public);
+        await SeedPostAsync(app.Services, "sitemap-draft", ProjectVisibility.Draft);
+        await SeedPostAsync(app.Services, "sitemap-private", ProjectVisibility.Private);
+        var client = app.GetTestClient();
+
+        var response = await client.GetAsync("/sitemap.xml");
+        var xml = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("/posts/sitemap-public", xml);
+        Assert.DoesNotContain("/posts/sitemap-draft", xml);
+        Assert.DoesNotContain("/posts/sitemap-private", xml);
+    }
+
+    [Fact]
+    public async Task PostVisibility_RelatedEntries_ExcludeDraftAndPrivatePosts()
+    {
+        await using var app = await CreateAppAsync(
+            scanner: new FakeScanner(new ProjectFileScanResult(true)),
+            csharpRuntime: new FakeCSharpRuntime(),
+            pythonRuntime: new FakePythonRuntime());
+        await SeedPostAsync(app.Services, "related-source", ProjectVisibility.Public);
+        await SeedPostAsync(app.Services, "related-public", ProjectVisibility.Public);
+        await SeedPostAsync(app.Services, "related-draft", ProjectVisibility.Draft);
+        await SeedPostAsync(app.Services, "related-private", ProjectVisibility.Private);
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var repository = scope.ServiceProvider.GetRequiredService<IProjectPostRepository>();
+            await repository.SetProjectRelationsAsync(
+                "related-source",
+                ["related-public", "related-draft", "related-private"],
+                CancellationToken.None);
+        }
+
+        var client = app.GetTestClient();
+        var response = await client.GetAsync("/api/public/projects/related-source/related");
+        var payload = await response.Content.ReadFromJsonAsync<RelatedResponse>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(payload);
+        Assert.Contains(payload!.Items, item => item.Id == "related-public");
+        Assert.DoesNotContain(payload.Items, item => item.Id == "related-draft");
+        Assert.DoesNotContain(payload.Items, item => item.Id == "related-private");
+    }
+
     [Fact]
     public async Task PostUploadWithTemplate_VirusDetected_Returns400()
     {
@@ -314,9 +435,11 @@ public sealed class UploadWithTemplateEndpointTests
         builder.Services.RemoveAll<IProjectFileMalwareScanner>();
         builder.Services.RemoveAll<ICSharpTemplatePluginRuntime>();
         builder.Services.RemoveAll<IPythonTemplateRuntime>();
+        builder.Services.RemoveAll<IAuditLogWriter>();
         builder.Services.AddSingleton<IProjectFileMalwareScanner>(scanner);
         builder.Services.AddSingleton<ICSharpTemplatePluginRuntime>(csharpRuntime);
         builder.Services.AddSingleton<IPythonTemplateRuntime>(pythonRuntime);
+        builder.Services.AddSingleton<IAuditLogWriter, FakeAuditLogWriter>();
 
         var app = builder.Build();
         app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -335,19 +458,36 @@ public sealed class UploadWithTemplateEndpointTests
 
     private static async Task SeedProjectAsync(IServiceProvider services, string id)
     {
+        await SeedEntryAsync(services, id, ProjectEntryKind.Project, ProjectVisibility.Public);
+    }
+
+    private static async Task SeedPostAsync(IServiceProvider services, string id, ProjectVisibility visibility)
+    {
+        await SeedEntryAsync(services, id, ProjectEntryKind.Post, visibility);
+    }
+
+    private static async Task SeedEntryAsync(
+        IServiceProvider services,
+        string id,
+        ProjectEntryKind kind,
+        ProjectVisibility visibility)
+    {
         using var scope = services.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IProjectPostRepository>();
+        var publishedAt = visibility == ProjectVisibility.Public ? DateTimeOffset.UtcNow : (DateTimeOffset?)null;
 
         await repository.UpsertAsync(
             new ProjectPostDto(
                 Id: id,
-                Kind: ProjectEntryKind.Post,
+                Kind: kind,
+                Visibility: visibility,
                 Title: new LocalizedTextDto("Demo", "Demo RU"),
                 Summary: new LocalizedTextDto("Summary", "Summary RU"),
                 Description: new LocalizedTextDto("Description", "Description RU"),
-                PublishedAt: DateTimeOffset.UtcNow,
+                PublishedAt: publishedAt,
                 ContentBlocks: [],
                 Tags: ["demo"],
+                PublicDemoEnabled: false,
                 HeroImage: new ThemedAssetDto("light", "dark"),
                 Screenshots: [new ThemedAssetDto("s1", "s1")],
                 VideoUrl: null,
@@ -391,6 +531,15 @@ public sealed class UploadWithTemplateEndpointTests
     }
 
     private sealed record ProblemResponse(string Type, string Title, int Status, string TraceId);
+    private sealed record RelatedResponse(RelatedProjectDto[] Items);
+
+    private sealed class FakeAuditLogWriter : IAuditLogWriter
+    {
+        public Task WriteAdminActionAsync(AdminActionAuditRecord record, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+    }
 
     private sealed class FakeScanner(ProjectFileScanResult result) : IProjectFileMalwareScanner
     {
